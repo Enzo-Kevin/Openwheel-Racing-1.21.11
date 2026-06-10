@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "CCC",
+    " F ",
+    "CCC"
+  ],
+  "key": {
+    "C": "openwheelracing:carbon_fiber",
+    "F": "minecraft:feather"
+  },
+  "result": {
+    "id": "openwheelracing:aero_kit",
+    "count": 1
+  }
+}

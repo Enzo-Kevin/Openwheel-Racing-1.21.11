@@ -1,0 +1,23 @@
+{
+  "itemGroup.openwheelracing.openwheel_racing": "Openwheel Racing",
+  "block.openwheelracing.car_assembly_workstation": "Car Assembly Workstation",
+  "entity.openwheelracing.prototype_car": "Prototype Openwheel Car",
+  "item.openwheelracing.carbon_fiber": "Carbon Fiber",
+  "item.openwheelracing.chassis": "Chassis",
+  "item.openwheelracing.engine": "Engine",
+  "item.openwheelracing.tires": "Tires",
+  "item.openwheelracing.aero_kit": "Aero Kit",
+  "item.openwheelracing.gearbox": "Gearbox",
+  "item.openwheelracing.steering_controls": "Steering Controls",
+  "item.openwheelracing.prototype_car_spawn": "Prototype Car Spawn",
+  "container.openwheelracing.car_assembly_workstation": "Car Assembly Workstation",
+  "tooltip.openwheelracing.prototype_car.single_seat": "Single-seat prototype",
+  "tooltip.openwheelracing.prototype_car.power": "Power: %s/10",
+  "tooltip.openwheelracing.prototype_car.grip": "Grip: %s/10",
+  "tooltip.openwheelracing.prototype_car.aero": "Aero: %s/10",
+  "tooltip.openwheelracing.prototype_car.gearing": "Gearing: %s/10",
+  "key.categories.openwheelracing": "Openwheel Racing",
+  "key.openwheelracing.shift_up": "Shift Up",
+  "key.openwheelracing.shift_down": "Shift Down",
+  "key.openwheelracing.exit_car": "Exit Car"
+}

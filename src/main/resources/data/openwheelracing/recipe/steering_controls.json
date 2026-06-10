@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " L ",
+    "SRS",
+    " L "
+  ],
+  "key": {
+    "L": "minecraft:leather",
+    "S": "minecraft:stick",
+    "R": "minecraft:redstone"
+  },
+  "result": {
+    "id": "openwheelracing:steering_controls",
+    "count": 1
+  }
+}

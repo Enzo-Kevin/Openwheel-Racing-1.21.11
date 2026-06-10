@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IRI",
+    "CPC",
+    "IRI"
+  ],
+  "key": {
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone",
+    "C": "openwheelracing:carbon_fiber",
+    "P": "minecraft:piston"
+  },
+  "result": {
+    "id": "openwheelracing:engine",
+    "count": 1
+  }
+}

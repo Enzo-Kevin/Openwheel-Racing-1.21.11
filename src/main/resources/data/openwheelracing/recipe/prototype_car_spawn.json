@@ -1,0 +1,14 @@
+{
+  "type": "openwheelracing:car_assembly",
+  "chassis": "openwheelracing:chassis",
+  "engine": "openwheelracing:engine",
+  "tires": "openwheelracing:tires",
+  "aero_kit": "openwheelracing:aero_kit",
+  "gearbox": "openwheelracing:gearbox",
+  "steering_controls": "openwheelracing:steering_controls",
+  "result": {
+    "id": "openwheelracing:prototype_car_spawn",
+    "count": 1
+  },
+  "assembly_time": 100
+}

@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "minecraft:coal",
+    "minecraft:iron_ingot"
+  ],
+  "result": {
+    "id": "openwheelracing:carbon_fiber",
+    "count": 2
+  }
+}
