@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "RDR",
+    "DQD",
+    "RDR"
+  ],
+  "key": {
+    "R": "minecraft:redstone",
+    "D": "minecraft:diamond",
+    "Q": "minecraft:quartz"
+  },
+  "result": {
+    "id": "openwheelracing:racing_electronics",
+    "count": 1
+  }
+}

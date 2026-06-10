@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "openwheelracing:asphalt_binder",
+    "minecraft:gravel"
+  ],
+  "result": {
+    "id": "openwheelracing:asphalt_track",
+    "count": 3
+  }
+}

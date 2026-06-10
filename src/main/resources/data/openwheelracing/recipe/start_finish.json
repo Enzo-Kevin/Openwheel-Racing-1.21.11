@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "BWB",
+    "AAA"
+  ],
+  "key": {
+    "B": "minecraft:black_dye",
+    "W": "minecraft:white_dye",
+    "A": "openwheelracing:asphalt_track"
+  },
+  "result": {
+    "id": "openwheelracing:start_finish",
+    "count": 3
+  }
+}

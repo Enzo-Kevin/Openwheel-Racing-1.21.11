@@ -1,18 +1,16 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "WLW",
-    "ICI",
-    "WLW"
+    " R ",
+    "RIR",
+    " R "
   ],
   "key": {
-    "W": "minecraft:black_wool",
-    "L": "minecraft:leather",
-    "I": "minecraft:iron_nugget",
-    "C": "openwheelracing:carbon_fiber"
+    "R": "openwheelracing:rubber",
+    "I": "minecraft:iron_ingot"
   },
   "result": {
     "id": "openwheelracing:tires",
-    "count": 1
+    "count": 4
   }
 }

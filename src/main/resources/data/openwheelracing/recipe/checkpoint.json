@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "LBL",
+    "AAA"
+  ],
+  "key": {
+    "L": "minecraft:light_blue_dye",
+    "B": "minecraft:redstone",
+    "A": "openwheelracing:asphalt_track"
+  },
+  "result": {
+    "id": "openwheelracing:checkpoint",
+    "count": 3
+  }
+}

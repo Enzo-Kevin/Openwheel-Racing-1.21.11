@@ -2,6 +2,7 @@ package com.openwheelracing.registry;
 
 import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.menu.CarAssemblyMenu;
+import com.openwheelracing.content.menu.RefineryMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.common.extensions.IForgeMenuType;
@@ -14,6 +15,10 @@ public final class OWRMenus {
 
     public static final RegistryObject<MenuType<CarAssemblyMenu>> CAR_ASSEMBLY = MENUS.register("car_assembly",
         () -> IForgeMenuType.create(CarAssemblyMenu::new)
+    );
+
+    public static final RegistryObject<MenuType<RefineryMenu>> REFINERY = MENUS.register("refinery",
+        () -> IForgeMenuType.create(RefineryMenu::new)
     );
 
     private OWRMenus() {

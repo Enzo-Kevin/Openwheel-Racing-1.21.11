@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "openwheelracing:block/kerb" },
+    "facing=east": { "model": "openwheelracing:block/kerb", "y": 90 },
+    "facing=south": { "model": "openwheelracing:block/kerb", "y": 180 },
+    "facing=west": { "model": "openwheelracing:block/kerb", "y": 270 }
+  }
+}

@@ -7,7 +7,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 
 public record PrototypeCarSetup(int power, int grip, int aero, int gearing) {
-    public static final PrototypeCarSetup DEFAULT = new PrototypeCarSetup(5, 5, 5, 5);
+    public static final PrototypeCarSetup DEFAULT = new PrototypeCarSetup(1, 3, 2, 1);
 
     public static final Codec<PrototypeCarSetup> CODEC = RecordCodecBuilder.create(instance -> instance.group(
         Codec.INT.fieldOf("power").forGetter(PrototypeCarSetup::power),
@@ -25,29 +25,45 @@ public record PrototypeCarSetup(int power, int grip, int aero, int gearing) {
     );
 
     public PrototypeCarSetup {
-        power = clamp(power);
-        grip = clamp(grip);
-        aero = clamp(aero);
-        gearing = clamp(gearing);
+        power = clamp(power, 3);
+        grip = clamp(grip, 4);
+        aero = clamp(aero, 4);
+        gearing = clamp(gearing, 2);
     }
 
     public double powerMultiplier() {
-        return 0.75 + power * 0.06;
+        return 0.70 + power * 0.20;
     }
 
     public double gripMultiplier() {
-        return 0.75 + grip * 0.06;
+        return 0.86 + (4 - grip) * 0.07;
     }
 
     public double aeroMultiplier() {
-        return 0.85 + aero * 0.04;
+        return 0.92 + aero * 0.05;
+    }
+
+    public double dragMultiplier() {
+        return 1.0 - aero * 0.018;
     }
 
     public double gearingMultiplier() {
-        return 0.80 + gearing * 0.05;
+        return 0.86 + gearing * 0.12;
     }
 
-    private static int clamp(int value) {
-        return Math.max(0, Math.min(10, value));
+    public double accelerationMultiplier() {
+        return 1.0 - gearing * 0.08;
+    }
+
+    public double fuelUseMultiplier() {
+        return 0.75 + power * 0.25;
+    }
+
+    public double tyreWearMultiplier() {
+        return 0.75 + (4 - grip) * 0.18;
+    }
+
+    private static int clamp(int value, int max) {
+        return Math.max(0, Math.min(max, value));
     }
 }

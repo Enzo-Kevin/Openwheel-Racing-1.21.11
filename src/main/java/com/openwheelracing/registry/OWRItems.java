@@ -3,6 +3,7 @@ package com.openwheelracing.registry;
 import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -12,6 +13,18 @@ public final class OWRItems {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, OpenwheelRacing.MODID);
 
     public static final RegistryObject<Item> CARBON_FIBER = registerSimple("carbon_fiber");
+    public static final RegistryObject<Item> RUBBER = registerSimple("rubber");
+    public static final RegistryObject<Item> CRUDE_RUBBER = registerSimple("crude_rubber");
+    public static final RegistryObject<Item> CRUDE_OIL_CHUNK = registerSimple("crude_oil_chunk");
+    public static final RegistryObject<Item> CRUDE_OIL_BUCKET = ITEMS.register("crude_oil_bucket",
+        () -> new Item(new Item.Properties().setId(ITEMS.key("crude_oil_bucket")).craftRemainder(Items.BUCKET).stacksTo(1))
+    );
+    public static final RegistryObject<Item> GAS = registerSimple("gas");
+    public static final RegistryObject<Item> PETROL_CAN = registerSimple("petrol_can");
+    public static final RegistryObject<Item> DIESEL_CAN = registerSimple("diesel_can");
+    public static final RegistryObject<Item> ASPHALT_BINDER = registerSimple("asphalt_binder");
+    public static final RegistryObject<Item> PLASTIC = registerSimple("plastic");
+    public static final RegistryObject<Item> RACING_ELECTRONICS = registerSimple("racing_electronics");
     public static final RegistryObject<Item> CHASSIS = registerSimple("chassis");
     public static final RegistryObject<Item> ENGINE = registerSimple("engine");
     public static final RegistryObject<Item> TIRES = registerSimple("tires");

@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "GGG",
+    "AAA"
+  ],
+  "key": {
+    "G": "minecraft:gray_dye",
+    "A": "openwheelracing:asphalt_track"
+  },
+  "result": {
+    "id": "openwheelracing:pit_lane",
+    "count": 6
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    "openwheelracing:crude_rubber",
+    "minecraft:bone_meal"
+  ],
+  "result": {
+    "id": "openwheelracing:rubber",
+    "count": 2
+  }
+}

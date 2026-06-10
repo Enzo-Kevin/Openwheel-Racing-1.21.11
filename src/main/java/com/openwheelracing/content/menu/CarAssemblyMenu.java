@@ -52,6 +52,14 @@ public class CarAssemblyMenu extends AbstractContainerMenu {
         return maxProgress == 0 || progress == 0 ? 0 : progress * 24 / maxProgress;
     }
 
+    public Container getContainer() {
+        return container;
+    }
+
+    public ItemStack getOutputStack() {
+        return container.getItem(CarAssemblyWorkstationBlockEntity.SLOT_OUTPUT);
+    }
+
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         ItemStack result = ItemStack.EMPTY;
@@ -114,14 +122,14 @@ public class CarAssemblyMenu extends AbstractContainerMenu {
     private void addPlayerInventory(Inventory playerInventory) {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
-                addSlot(new Slot(playerInventory, column + row * 9 + 9, 8 + column * 18, 84 + row * 18));
+                addSlot(new Slot(playerInventory, column + row * 9 + 9, 8 + column * 18, 96 + row * 18));
             }
         }
     }
 
     private void addPlayerHotbar(Inventory playerInventory) {
         for (int column = 0; column < 9; column++) {
-            addSlot(new Slot(playerInventory, column, 8 + column * 18, 142));
+            addSlot(new Slot(playerInventory, column, 8 + column * 18, 154));
         }
     }
 

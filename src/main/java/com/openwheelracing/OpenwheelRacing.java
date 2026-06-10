@@ -1,14 +1,17 @@
 package com.openwheelracing;
 
 import com.mojang.logging.LogUtils;
+import com.openwheelracing.network.OWRNetwork;
 import com.openwheelracing.registry.OWRBlockEntities;
 import com.openwheelracing.registry.OWRBlocks;
 import com.openwheelracing.registry.OWRCreativeTabs;
 import com.openwheelracing.registry.OWRDataComponents;
 import com.openwheelracing.registry.OWREntities;
+import com.openwheelracing.registry.OWRFuelHandler;
 import com.openwheelracing.registry.OWRItems;
 import com.openwheelracing.registry.OWRMenus;
 import com.openwheelracing.registry.OWRRecipes;
+import net.minecraftforge.event.furnace.FurnaceFuelBurnTimeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -32,9 +35,11 @@ public final class OpenwheelRacing {
         OWRMenus.register(modBusGroup);
         OWRRecipes.register(modBusGroup);
         OWRCreativeTabs.register(modBusGroup);
+        FurnaceFuelBurnTimeEvent.BUS.addListener(OWRFuelHandler::onFuelBurnTime);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
+        OWRNetwork.register();
         LOGGER.info("Openwheel Racing initialized");
     }
 }

@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:smelting",
+  "ingredient": "openwheelracing:gas",
+  "result": {
+    "id": "openwheelracing:plastic"
+  },
+  "experience": 0.2,
+  "cookingtime": 200
+}

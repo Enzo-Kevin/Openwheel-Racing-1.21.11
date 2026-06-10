@@ -1,0 +1,24 @@
+{
+  "stats": {
+    "minecraft:custom": {
+      "minecraft:sprint_one_cm": 85,
+      "minecraft:time_since_rest": 5742,
+      "minecraft:walk_one_cm": 17969,
+      "minecraft:total_world_time": 9657,
+      "minecraft:leave_game": 3,
+      "minecraft:fly_one_cm": 4164,
+      "minecraft:crouch_one_cm": 1175,
+      "minecraft:sneak_time": 212,
+      "minecraft:play_time": 5742,
+      "minecraft:jump": 17,
+      "minecraft:time_since_death": 5742
+    },
+    "minecraft:used": {
+      "openwheelracing:start_finish": 7,
+      "openwheelracing:refinery": 3,
+      "openwheelracing:asphalt_track": 33,
+      "openwheelracing:kerb": 26
+    }
+  },
+  "DataVersion": 4671
+}

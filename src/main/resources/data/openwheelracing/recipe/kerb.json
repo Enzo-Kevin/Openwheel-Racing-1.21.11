@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "RRR",
+    "AAA"
+  ],
+  "key": {
+    "R": "openwheelracing:rubber",
+    "A": "openwheelracing:asphalt_track"
+  },
+  "result": {
+    "id": "openwheelracing:kerb",
+    "count": 3
+  }
+}

@@ -2,6 +2,7 @@ package com.openwheelracing.registry;
 
 import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.car.PrototypeCarSetup;
+import com.mojang.serialization.Codec;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
@@ -15,6 +16,20 @@ public final class OWRDataComponents {
         () -> DataComponentType.<PrototypeCarSetup>builder()
             .persistent(PrototypeCarSetup.CODEC)
             .networkSynchronized(PrototypeCarSetup.STREAM_CODEC)
+            .build()
+    );
+
+    public static final RegistryObject<DataComponentType<Integer>> CAR_DAMAGE = DATA_COMPONENTS.register("car_damage",
+        () -> DataComponentType.<Integer>builder()
+            .persistent(Codec.intRange(0, 100))
+            .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.VAR_INT)
+            .build()
+    );
+
+    public static final RegistryObject<DataComponentType<Integer>> TYRE_WEAR = DATA_COMPONENTS.register("tyre_wear",
+        () -> DataComponentType.<Integer>builder()
+            .persistent(Codec.intRange(0, 100))
+            .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.VAR_INT)
             .build()
     );
 

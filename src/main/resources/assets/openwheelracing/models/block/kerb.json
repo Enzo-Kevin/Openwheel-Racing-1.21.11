@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/cube_column",
+  "textures": {
+    "end": "openwheelracing:block/kerb_top",
+    "side": "openwheelracing:block/kerb_side"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "type": "forge:add_features",
+  "biomes": "#openwheelracing:oil_rich",
+  "features": "openwheelracing:crude_oil_bonus",
+  "step": "underground_ores"
+}

@@ -1,9 +1,10 @@
 package com.openwheelracing.content.block.entity;
 
-import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.menu.CarAssemblyMenu;
+import com.openwheelracing.content.recipe.CarAssemblyRecipe;
 import com.openwheelracing.registry.OWRBlockEntities;
 import com.openwheelracing.registry.OWRItems;
+import com.openwheelracing.registry.OWRRecipes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.Container;
@@ -42,7 +43,7 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
         public int get(int index) {
             return switch (index) {
                 case 0 -> progress;
-                case 1 -> MAX_PROGRESS;
+                case 1 -> getAssemblyTime();
                 default -> 0;
             };
         }
@@ -65,10 +66,11 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, CarAssemblyWorkstationBlockEntity workstation) {
-        if (workstation.canAssemble()) {
+        CarAssemblyRecipe recipe = workstation.getRecipe(level);
+        if (workstation.canAssemble(recipe)) {
             workstation.progress++;
-            if (workstation.progress >= MAX_PROGRESS) {
-                workstation.assembleCar();
+            if (workstation.progress >= recipe.assemblyTime()) {
+                workstation.assembleCar(recipe);
                 workstation.progress = 0;
             }
         } else {
@@ -85,29 +87,48 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
         return slot != SLOT_OUTPUT && stack.is(requiredItemForSlot(slot));
     }
 
-    private boolean canAssemble() {
-        for (int slot = SLOT_CHASSIS; slot <= SLOT_STEERING_CONTROLS; slot++) {
-            ItemStack stack = getItem(slot);
-            if (stack.isEmpty() || !stack.is(requiredItemForSlot(slot))) {
-                return false;
-            }
+    private boolean canAssemble(CarAssemblyRecipe recipe) {
+        if (recipe == null) {
+            return false;
         }
 
         ItemStack output = getItem(SLOT_OUTPUT);
-        return output.isEmpty() || output.is(OWRItems.PROTOTYPE_CAR_SPAWN.get()) && output.getCount() < output.getMaxStackSize();
+        ItemStack result = recipe.result();
+        return output.isEmpty() || ItemStack.isSameItemSameComponents(output, result) && output.getCount() + result.getCount() <= output.getMaxStackSize();
     }
 
-    private void assembleCar() {
+    private void assembleCar(CarAssemblyRecipe recipe) {
         for (int slot = SLOT_CHASSIS; slot <= SLOT_STEERING_CONTROLS; slot++) {
             removeItem(slot, 1);
         }
 
+        ItemStack result = recipe.result().copy();
+        if (result.is(OWRItems.PROTOTYPE_CAR_SPAWN.get()) && result.get(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get()) == null) {
+            result.set(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get(), com.openwheelracing.content.car.PrototypeCarSetup.DEFAULT);
+        }
+
         ItemStack output = getItem(SLOT_OUTPUT);
         if (output.isEmpty()) {
-            setItem(SLOT_OUTPUT, PrototypeCarItem.createWithDefaultSetup());
+            setItem(SLOT_OUTPUT, result);
         } else {
-            output.grow(1);
+            output.grow(result.getCount());
         }
+    }
+
+    private int getAssemblyTime() {
+        return level == null ? MAX_PROGRESS : Math.max(1, getRecipe(level) == null ? MAX_PROGRESS : getRecipe(level).assemblyTime());
+    }
+
+    private @Nullable CarAssemblyRecipe getRecipe(Level level) {
+        CarAssemblyRecipe.Input input = new CarAssemblyRecipe.Input(
+            getItem(SLOT_CHASSIS),
+            getItem(SLOT_ENGINE),
+            getItem(SLOT_TIRES),
+            getItem(SLOT_AERO_KIT),
+            getItem(SLOT_GEARBOX),
+            getItem(SLOT_STEERING_CONTROLS)
+        );
+        return level.getServer() == null ? null : level.getServer().getRecipeManager().getRecipeFor(OWRRecipes.CAR_ASSEMBLY_TYPE.get(), input, level).map(holder -> holder.value()).orElse(null);
     }
 
     private Item requiredItemForSlot(int slot) {

@@ -2,6 +2,7 @@ package com.openwheelracing.registry;
 
 import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.block.entity.CarAssemblyWorkstationBlockEntity;
+import com.openwheelracing.content.block.entity.RefineryBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
 import net.minecraftforge.registries.DeferredRegister;
@@ -15,6 +16,10 @@ public final class OWRBlockEntities {
 
     public static final RegistryObject<BlockEntityType<CarAssemblyWorkstationBlockEntity>> CAR_ASSEMBLY_WORKSTATION = BLOCK_ENTITIES.register("car_assembly_workstation",
         () -> new BlockEntityType<>(CarAssemblyWorkstationBlockEntity::new, Set.of(OWRBlocks.CAR_ASSEMBLY_WORKSTATION.get()))
+    );
+
+    public static final RegistryObject<BlockEntityType<RefineryBlockEntity>> REFINERY = BLOCK_ENTITIES.register("refinery",
+        () -> new BlockEntityType<>(RefineryBlockEntity::new, Set.of(OWRBlocks.REFINERY.get()))
     );
 
     private OWRBlockEntities() {
