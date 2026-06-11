@@ -6,3 +6,8 @@
 /gamemode creative
 /kill @e[type=openwheelracing:prototype_car]
 /time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/give @s minecraft:acacia_boat
+/kill @e[type=openwheelracing:prototype_car]

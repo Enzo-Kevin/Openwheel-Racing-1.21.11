@@ -32,10 +32,12 @@ public final class OWRClientInputHandler {
             return;
         }
 
+        OpenwheelCarEntity car = (OpenwheelCarEntity) mc.player.getVehicle();
         float throttle = isDown(OWRKeyMappings.THROTTLE)    ? 1.0f : 0.0f;
         float brake    = isDown(OWRKeyMappings.BRAKE)        ? 1.0f : 0.0f;
         float steering = (isDown(OWRKeyMappings.STEER_RIGHT) ? 1.0f : 0.0f)
                        - (isDown(OWRKeyMappings.STEER_LEFT)  ? 1.0f : 0.0f);
+        car.tickLocalClientMovement(throttle, brake, steering);
         OWRNetwork.CHANNEL.send(new OWRNetwork.DriveInputMessage(throttle, brake, steering), PacketDistributor.SERVER.noArg());
 
         while (OWRKeyMappings.SHIFT_UP.consumeClick()) {

@@ -8,7 +8,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.AddGuiOverlayLayersEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.gui.overlay.ForgeLayeredDraw;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.listener.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -27,7 +26,7 @@ public final class OpenwheelRacingClientEvents {
 
     @SubscribeEvent
     public static void onAddGuiOverlayLayers(AddGuiOverlayLayersEvent event) {
-        event.getLayeredDraw().addAbove(ForgeLayeredDraw.HOTBAR_AND_DECOS, CAR_HUD, CarHudOverlay::render);
+        event.getLayeredDraw().add(CAR_HUD, CarHudOverlay::render);
     }
 
     @SubscribeEvent

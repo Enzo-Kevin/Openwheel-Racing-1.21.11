@@ -1,5 +1,6 @@
 package com.openwheelracing.content.entity;
 
+import com.mojang.logging.LogUtils;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.race.OWRLapRecords;
@@ -33,8 +34,10 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
 
 public class OpenwheelCarEntity extends Entity {
+    private static final Logger LOGGER = LogUtils.getLogger();
     private static final EntityDataAccessor<Integer> GEAR = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> RPM = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Float> SPEED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.FLOAT);
@@ -78,16 +81,31 @@ public class OpenwheelCarEntity extends Entity {
     private float inputThrottle;
     private float inputBrake;
     private float inputSteering;
+    private long lastMovementDebugAt = -20L;
+    private boolean wasRiddenLastTick;
 
     public void applyDriveInput(float throttle, float brake, float steering) {
         this.inputThrottle = throttle;
         this.inputBrake = brake;
         this.inputSteering = steering;
+        if (!level().isClientSide() && level().getGameTime() - lastMovementDebugAt >= 20L) {
+            lastMovementDebugAt = level().getGameTime();
+            LOGGER.info("OWR car input id={} pos=({}, {}, {}) passenger={} throttle={} brake={} steering={} delta={}",
+                getId(),
+                String.format("%.3f", getX()),
+                String.format("%.3f", getY()),
+                String.format("%.3f", getZ()),
+                getControllingPassenger() == null ? "none" : getControllingPassenger().getScoreboardName(),
+                throttle,
+                brake,
+                steering,
+                formatVec(getDeltaMovement()));
+        }
     }
 
     public OpenwheelCarEntity(EntityType<? extends OpenwheelCarEntity> entityType, Level level) {
         super(entityType, level);
-        blocksBuilding = true;
+        blocksBuilding = false;
     }
 
     @Override
@@ -257,9 +275,23 @@ public class OpenwheelCarEntity extends Entity {
         super.tick();
 
         if (!level().isClientSide()) {
+            boolean ridden = getControllingPassenger() != null;
+            if (wasRiddenLastTick && !ridden) {
+                LOGGER.info("OWR car dismounted id={} pos=({}, {}, {}) delta={} speedKmh={} horizontalCollision={} verticalCollision={} onGround={}",
+                    getId(),
+                    String.format("%.3f", getX()),
+                    String.format("%.3f", getY()),
+                    String.format("%.3f", getZ()),
+                    formatVec(getDeltaMovement()),
+                    String.format("%.2f", getSpeedKmh()),
+                    horizontalCollision,
+                    verticalCollision,
+                    onGround());
+            }
+            wasRiddenLastTick = ridden;
             tickLapTimer();
             tickPitStop();
-            tickMovement();
+            tickMovement(true);
             tickImpactDamage();
             tickWarnings();
         }
@@ -298,7 +330,7 @@ public class OpenwheelCarEntity extends Entity {
         }
 
         if (getPassengers().isEmpty() && player.startRiding(this)) {
-            syncPlayerBestLap(player);
+            prepareForDriver(player);
             return InteractionResult.CONSUME;
         }
 
@@ -321,7 +353,22 @@ public class OpenwheelCarEntity extends Entity {
     public void positionRider(Entity passenger, MoveFunction callback) {
         if (hasPassenger(passenger)) {
             Vec3 seat = SEAT_OFFSET.yRot((float) -Math.toRadians(getYRot()));
-            callback.accept(passenger, getX() + seat.x, getY() + seat.y, getZ() + seat.z);
+            double riderX = getX() + seat.x;
+            double riderY = getY() + seat.y;
+            double riderZ = getZ() + seat.z;
+            if (!level().isClientSide() && level().getGameTime() - lastMovementDebugAt >= 20L) {
+                LOGGER.info("OWR car rider id={} carPos=({}, {}, {}) riderPos=({}, {}, {}) seat={} carDelta={}",
+                    getId(),
+                    String.format("%.3f", getX()),
+                    String.format("%.3f", getY()),
+                    String.format("%.3f", getZ()),
+                    String.format("%.3f", riderX),
+                    String.format("%.3f", riderY),
+                    String.format("%.3f", riderZ),
+                    formatVec(seat),
+                    formatVec(getDeltaMovement()));
+            }
+            callback.accept(passenger, riderX, riderY, riderZ);
         }
     }
 
@@ -468,13 +515,23 @@ public class OpenwheelCarEntity extends Entity {
     }
 
 
-    private void tickMovement() {
+    public void tickLocalClientMovement(float throttle, float brake, float steering) {
+        if (level().isClientSide() && getControllingPassenger() != null) {
+            tickMovement(throttle, brake, steering, false);
+        }
+    }
+
+    private void tickMovement(boolean debugMovement) {
         double throttle = inputThrottle;
         double steering = inputSteering;
         double brake = inputBrake;
         inputThrottle = 0;
         inputBrake = 0;
         inputSteering = 0;
+        tickMovement(throttle, brake, steering, debugMovement);
+    }
+
+    private void tickMovement(double throttle, double brake, double steering, boolean debugMovement) {
 
         Vec3 delta = getDeltaMovement();
         double horizontalSpeed = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
@@ -546,9 +603,34 @@ public class OpenwheelCarEntity extends Entity {
         delta = new Vec3(delta.x * drag, newY, delta.z * drag);
 
         setDeltaMovement(delta);
-        move(MoverType.SELF, getDeltaMovement());
+        Vec3 beforeMove = position();
+        move(MoverType.SELF, delta);
+        Vec3 actualMovement = position().subtract(beforeMove);
+        setDeltaMovement(actualMovement);
 
-        double newSpeed = Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
+        boolean shouldDebugMovement = debugMovement && (getControllingPassenger() != null || throttle != 0.0 || brake != 0.0 || steering != 0.0 || horizontalSpeed > 0.01 || actualMovement.horizontalDistance() > 0.01);
+        if (shouldDebugMovement && level().getGameTime() - lastMovementDebugAt >= 20L) {
+            lastMovementDebugAt = level().getGameTime();
+            LOGGER.info("OWR car move id={} passenger={} posBefore={} posAfter={} requested={} actual={} input=({}, {}, {}) gear={} surface={} collisions(h={}, v={}) onGround={} speedBefore={} speedAfter={}",
+                getId(),
+                getControllingPassenger() == null ? "none" : getControllingPassenger().getScoreboardName(),
+                formatVec(beforeMove),
+                formatVec(position()),
+                formatVec(delta),
+                formatVec(actualMovement),
+                String.format("%.2f", throttle),
+                String.format("%.2f", brake),
+                String.format("%.2f", steering),
+                gear,
+                surface,
+                horizontalCollision,
+                verticalCollision,
+                onGround(),
+                String.format("%.4f", horizontalSpeed),
+                String.format("%.4f", actualMovement.horizontalDistance()));
+        }
+
+        double newSpeed = Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z);
         entityData.set(SPEED, (float)(newSpeed * 72.0));
         entityData.set(RPM, Math.max(900, Math.min(12500, (int)(900 + newSpeed * 7200 * gearRatio / Math.max(0.15, GEAR_RATIOS[6])))));
         previousHorizontalSpeed = horizontalSpeed;
@@ -606,9 +688,29 @@ public class OpenwheelCarEntity extends Entity {
         return personalBest;
     }
 
-    private void syncPlayerBestLap(Player player) {
+    public void syncPlayerBestLap(Player player) {
         if (level() instanceof ServerLevel serverLevel) {
             entityData.set(BEST_LAP_TICKS, OWRLapRecords.get(serverLevel).getBestLap(player.getUUID()));
+        }
+    }
+
+    public void prepareForDriver(Player player) {
+        syncPlayerBestLap(player);
+        double speed = Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
+        if (speed < 0.04) {
+            entityData.set(GEAR, 1);
+        }
+        if (!level().isClientSide()) {
+            LOGGER.info("OWR car mounted id={} player={} pos=({}, {}, {}) delta={} gear={} speed={} bbox={}",
+                getId(),
+                player.getScoreboardName(),
+                String.format("%.3f", getX()),
+                String.format("%.3f", getY()),
+                String.format("%.3f", getZ()),
+                formatVec(getDeltaMovement()),
+                getGear(),
+                String.format("%.4f", speed),
+                getBoundingBox());
         }
     }
 
@@ -665,6 +767,10 @@ public class OpenwheelCarEntity extends Entity {
         int seconds = totalCentiseconds / 100 % 60;
         int centiseconds = totalCentiseconds % 100;
         return String.format("%d:%02d.%02d", minutes, seconds, centiseconds);
+    }
+
+    private static String formatVec(Vec3 vec) {
+        return String.format("(%.4f, %.4f, %.4f)", vec.x, vec.y, vec.z);
     }
 
     private void playImpactFeedback(float severity) {

@@ -1,37 +1,40 @@
 {
   "stats": {
-    "minecraft:custom": {
-      "minecraft:sprint_one_cm": 8068,
-      "minecraft:time_since_rest": 29863,
-      "minecraft:walk_one_cm": 102856,
-      "minecraft:total_world_time": 46904,
-      "minecraft:leave_game": 13,
-      "minecraft:fly_one_cm": 96851,
-      "minecraft:crouch_one_cm": 1175,
-      "minecraft:sneak_time": 236,
-      "minecraft:play_time": 29863,
-      "minecraft:jump": 232,
-      "minecraft:time_since_death": 29863,
-      "minecraft:drop": 4
-    },
     "minecraft:used": {
-      "openwheelracing:car_assembly_workstation": 2,
-      "openwheelracing:start_finish": 29,
-      "openwheelracing:barrier": 17,
-      "openwheelracing:prototype_car_spawn": 48,
+      "openwheelracing:car_assembly_workstation": 9,
+      "minecraft:acacia_boat": 1,
+      "openwheelracing:start_finish": 35,
+      "openwheelracing:barrier": 48,
+      "openwheelracing:prototype_car_spawn": 69,
       "minecraft:copper_pickaxe": 1,
+      "openwheelracing:checkpoint": 7,
       "openwheelracing:refinery": 7,
-      "openwheelracing:pit_lane": 10,
-      "openwheelracing:asphalt_track": 217,
-      "openwheelracing:kerb": 324
+      "openwheelracing:pit_lane": 34,
+      "openwheelracing:asphalt_track": 239,
+      "openwheelracing:kerb": 379
+    },
+    "minecraft:custom": {
+      "minecraft:time_since_rest": 58340,
+      "minecraft:walk_one_cm": 147909,
+      "minecraft:leave_game": 23,
+      "minecraft:boat_one_cm": 7325,
+      "minecraft:play_time": 58340,
+      "minecraft:jump": 312,
+      "minecraft:time_since_death": 58340,
+      "minecraft:drop": 6,
+      "minecraft:sprint_one_cm": 19518,
+      "minecraft:total_world_time": 91358,
+      "minecraft:fly_one_cm": 291712,
+      "minecraft:crouch_one_cm": 2396,
+      "minecraft:sneak_time": 812
     },
     "minecraft:dropped": {
       "openwheelracing:tires": 1,
-      "openwheelracing:prototype_car_spawn": 3
+      "openwheelracing:prototype_car_spawn": 5
     },
     "minecraft:picked_up": {
       "openwheelracing:tires": 1,
-      "openwheelracing:prototype_car_spawn": 3
+      "openwheelracing:prototype_car_spawn": 4
     }
   },
   "DataVersion": 4671

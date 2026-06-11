@@ -1,178 +1,353 @@
-[11Jun2026 13:33:46.367] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forge_userdev_client, --version, MOD_DEV, --assetIndex, 29, --assetsDir, /Users/leolong/Library/Application Support/minecraft/assets, --gameDir, .]
-[11Jun2026 13:33:46.368] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Oracle Corporation Java HotSpot(TM) 64-Bit Server VM 21.0.10+8-LTS-217
-[11Jun2026 13:33:46.368] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 10.2.4 starting: java version 21.0.10 by Oracle Corporation; OS Mac OS X arch aarch64 version 26.3.1
-[11Jun2026 13:33:46.425] [main/INFO] [net.minecraftforge.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
-[11Jun2026 13:33:46.642] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
-[11Jun2026 13:33:46.798] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.5
-[11Jun2026 13:33:46.892] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.4
-[11Jun2026 13:33:46.907] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.3
-[11Jun2026 13:33:46.917] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.2
-[11Jun2026 13:33:46.930] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.1
-[11Jun2026 13:33:46.960] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.1 got version 4.1
-[11Jun2026 13:33:47.247] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=jar:file:///Users/leolong/.gradle/caches/modules-2/files-2.1/org.spongepowered/mixin/0.8.7/8ab114ac385e6dbdad5efafe28aba4df8120915f/mixin-0.8.7.jar!/ Service=ModLauncher Env=CLIENT
-[11Jun2026 13:33:47.638] [EarlyDisplay/INFO] [EARLYDISPLAY/]: GL info: Apple M4 GL version 4.1 Metal - 90.5, Apple
-[11Jun2026 13:33:48.322] [main/INFO] [net.minecraftforge.fml.loading.moddiscovery.JarInJarDependencyLocator/]: No dependencies to load found. Skipping!
-[11Jun2026 13:33:48.523] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forge_userdev_client' with arguments [--version, MOD_DEV, --gameDir, ., --assetsDir, /Users/leolong/Library/Application Support/minecraft/assets, --assetIndex, 29]
-[11Jun2026 13:33:49.450] [Datafixer Bootstrap/INFO] [com.mojang.datafixers.DataFixerBuilder/]: 287 Datafixer optimizations took 359 milliseconds
-[11Jun2026 13:33:52.762] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/Users/leolong/Openwheel-Racing-1.21.11/.gradle/mavenizer/repo/net/minecraftforge/forge/1.21.11-61.1.0/forge-1.21.11-61.1.0.jar%230!/assets/.mcassetsroot' uses unexpected schema
-[11Jun2026 13:33:52.763] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/Users/leolong/Openwheel-Racing-1.21.11/.gradle/mavenizer/repo/net/minecraftforge/forge/1.21.11-61.1.0/forge-1.21.11-61.1.0.jar%230!/data/.mcassetsroot' uses unexpected schema
-[11Jun2026 13:33:52.776] [Render thread/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, profilesHost=https://api.mojang.com, name=PROD]
-[11Jun2026 13:33:52.788] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Setting user: Dev
-[11Jun2026 13:33:52.886] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Backend library: LWJGL version 3.3.3+5
-[11Jun2026 13:33:53.238] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Using optional rendering extensions: GL_EXT_texture_filter_anisotropic
-[11Jun2026 13:33:53.312] [modloading-worker-0/INFO] [net.minecraftforge.common.ForgeMod/FORGEMOD]: Forge mod loading, version 61.1.0, for MC 1.21.11 with MCP 20251223.124241
-[11Jun2026 13:33:53.313] [modloading-worker-0/INFO] [net.minecraftforge.common.MinecraftForge/FORGE]: MinecraftForge v61.1.0 Initialized
-[11Jun2026 13:33:53.321] [modloading-worker-0/INFO] [net.minecraftforge.common.ForgeMod/FORGEMOD]: Opening jdk.naming.dns/com.sun.jndi.dns to java.naming
-[11Jun2026 13:33:53.718] [Render thread/WARN] [net.minecraftforge.client.gui.overlay.ForgeLayeredDraw/]: Expected layer openwheelracing:car_hud was not found in stack minecraft:vanilla_root, no layer modifications have been made.
-[11Jun2026 13:33:54.314] [Download-2/INFO] [com.mojang.realmsclient.client.RealmsClient/]: Could not authorize you against Realms server: java.lang.RuntimeException: Failed to parse into SignedJWT: 0
-[11Jun2026 13:33:54.315] [Download-2/ERROR] [com.mojang.realmsclient.client.RealmsClient/]: Failed to fetch Realms feature flags
-com.mojang.realmsclient.exception.RealmsServiceException: Realms authentication error with message 'java.lang.RuntimeException: Failed to parse into SignedJWT: 0'
-	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.execute(RealmsClient.java:515) ~[forge-1.21.11-61.1.0.jar%230!/:?]
+[12Jun2026 07:28:27.359] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forge_userdev_client, --version, MOD_DEV, --assetIndex, 29, --assetsDir, /Users/leolong/Library/Application Support/minecraft/assets, --gameDir, .]
+[12Jun2026 07:28:27.362] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Oracle Corporation Java HotSpot(TM) 64-Bit Server VM 21.0.10+8-LTS-217
+[12Jun2026 07:28:27.362] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 10.2.4 starting: java version 21.0.10 by Oracle Corporation; OS Mac OS X arch aarch64 version 26.3.1
+[12Jun2026 07:28:27.443] [main/INFO] [net.minecraftforge.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
+[12Jun2026 07:28:27.602] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
+[12Jun2026 07:28:27.672] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.5
+[12Jun2026 07:28:27.687] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.4
+[12Jun2026 07:28:27.700] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.3
+[12Jun2026 07:28:27.716] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.2
+[12Jun2026 07:28:27.731] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.1
+[12Jun2026 07:28:27.751] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.1 got version 4.1
+[12Jun2026 07:28:28.174] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=jar:file:///Users/leolong/.gradle/caches/modules-2/files-2.1/org.spongepowered/mixin/0.8.7/8ab114ac385e6dbdad5efafe28aba4df8120915f/mixin-0.8.7.jar!/ Service=ModLauncher Env=CLIENT
+[12Jun2026 07:28:28.382] [EarlyDisplay/INFO] [EARLYDISPLAY/]: GL info: Apple M4 GL version 4.1 Metal - 90.5, Apple
+[12Jun2026 07:28:29.092] [main/INFO] [net.minecraftforge.fml.loading.moddiscovery.JarInJarDependencyLocator/]: No dependencies to load found. Skipping!
+[12Jun2026 07:28:59.275] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forge_userdev_client' with arguments [--version, MOD_DEV, --gameDir, ., --assetsDir, /Users/leolong/Library/Application Support/minecraft/assets, --assetIndex, 29]
+[12Jun2026 07:29:00.259] [Datafixer Bootstrap/INFO] [com.mojang.datafixers.DataFixerBuilder/]: 287 Datafixer optimizations took 317 milliseconds
+[12Jun2026 07:29:03.778] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/Users/leolong/Openwheel-Racing-1.21.11/.gradle/mavenizer/repo/net/minecraftforge/forge/1.21.11-61.1.0/forge-1.21.11-61.1.0.jar%230!/assets/.mcassetsroot' uses unexpected schema
+[12Jun2026 07:29:03.779] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/Users/leolong/Openwheel-Racing-1.21.11/.gradle/mavenizer/repo/net/minecraftforge/forge/1.21.11-61.1.0/forge-1.21.11-61.1.0.jar%230!/data/.mcassetsroot' uses unexpected schema
+[12Jun2026 07:29:03.792] [Render thread/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, profilesHost=https://api.mojang.com, name=PROD]
+[12Jun2026 07:29:03.804] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Setting user: Dev
+[12Jun2026 07:29:03.871] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Backend library: LWJGL version 3.3.3+5
+[12Jun2026 07:29:04.246] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Using optional rendering extensions: GL_EXT_texture_filter_anisotropic
+[12Jun2026 07:29:04.317] [modloading-worker-0/INFO] [net.minecraftforge.common.ForgeMod/FORGEMOD]: Forge mod loading, version 61.1.0, for MC 1.21.11 with MCP 20251223.124241
+[12Jun2026 07:29:04.318] [modloading-worker-0/INFO] [net.minecraftforge.common.MinecraftForge/FORGE]: MinecraftForge v61.1.0 Initialized
+[12Jun2026 07:29:04.325] [modloading-worker-0/INFO] [net.minecraftforge.common.ForgeMod/FORGEMOD]: Opening jdk.naming.dns/com.sun.jndi.dns to java.naming
+[12Jun2026 07:29:05.691] [Render thread/INFO] [net.minecraft.server.packs.resources.ReloadableResourceManager/]: Reloading ResourceManager: vanilla, mod_resources
+[12Jun2026 07:29:05.949] [Worker-Main-4/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_pua-17.0.01.hex, loading
+[12Jun2026 07:29:05.949] [Worker-Main-7/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_all_no_pua-17.0.01.hex, loading
+[12Jun2026 07:29:06.065] [Worker-Main-2/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_jp_patch-17.0.01.hex, loading
+[12Jun2026 07:29:06.274] [Worker-Main-2/INFO] [com.openwheelracing.OpenwheelRacing/]: Openwheel Racing initialized
+[12Jun2026 07:29:06.288] [Forge Version Check/INFO] [net.minecraftforge.fml.VersionChecker/]: [forge] Starting version check at https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json
+[12Jun2026 07:29:06.329] [Forge Version Check/WARN] [net.minecraftforge.fml.VersionChecker/]: Failed to process update information
+java.net.ConnectException
+	at java.net.http/jdk.internal.net.http.HttpClientImpl.send(HttpClientImpl.java:955) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.HttpClientFacade.send(HttpClientFacade.java:133) ~[java.net.http:?]
+	at LAYER PLUGIN/net.minecraftforge.fmlcore@1.21.11-61.1.0/net.minecraftforge.fml.VersionChecker$1.openUrlString(VersionChecker.java:123) [fmlcore-1.21.11-61.1.0.jar!/:1.0]
+	at LAYER PLUGIN/net.minecraftforge.fmlcore@1.21.11-61.1.0/net.minecraftforge.fml.VersionChecker$1.process(VersionChecker.java:156) [fmlcore-1.21.11-61.1.0.jar!/:1.0]
+	at java.base/java.lang.Iterable.forEach(Iterable.java:75) [?:?]
+	at LAYER PLUGIN/net.minecraftforge.fmlcore@1.21.11-61.1.0/net.minecraftforge.fml.VersionChecker$1.run(VersionChecker.java:104) [fmlcore-1.21.11-61.1.0.jar!/:1.0]
+Caused by: java.net.ConnectException
+	at java.net.http/jdk.internal.net.http.common.Utils.toConnectException(Utils.java:1065) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.PlainHttpConnection.connectAsync(PlainHttpConnection.java:227) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.AsyncSSLConnection.connectAsync(AsyncSSLConnection.java:56) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.Http2Connection.createAsync(Http2Connection.java:529) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.Http2ClientImpl.getConnectionFor(Http2ClientImpl.java:140) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.ExchangeImpl.get(ExchangeImpl.java:98) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.Exchange.establishExchange(Exchange.java:391) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.Exchange.responseAsyncImpl0(Exchange.java:584) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.Exchange.responseAsyncImpl(Exchange.java:428) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.Exchange.responseAsync(Exchange.java:420) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.MultiExchange.responseAsyncImpl(MultiExchange.java:435) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.MultiExchange.lambda$responseAsyncImpl$7(MultiExchange.java:476) ~[java.net.http:?]
+	at java.base/java.util.concurrent.CompletableFuture.uniHandle(CompletableFuture.java:934) ~[?:?]
+	at java.base/java.util.concurrent.CompletableFuture.uniHandleStage(CompletableFuture.java:950) ~[?:?]
+	at java.base/java.util.concurrent.CompletableFuture.handle(CompletableFuture.java:2372) ~[?:?]
+	at java.net.http/jdk.internal.net.http.MultiExchange.responseAsyncImpl(MultiExchange.java:466) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.MultiExchange.lambda$responseAsync0$2(MultiExchange.java:355) ~[java.net.http:?]
+	at java.base/java.util.concurrent.CompletableFuture$UniCompose.tryFire(CompletableFuture.java:1150) ~[?:?]
+	at java.base/java.util.concurrent.CompletableFuture.postComplete(CompletableFuture.java:510) ~[?:?]
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1773) ~[?:?]
+	at java.net.http/jdk.internal.net.http.HttpClientImpl$DelegatingExecutor.execute(HttpClientImpl.java:177) ~[java.net.http:?]
+	at java.base/java.util.concurrent.CompletableFuture.completeAsync(CompletableFuture.java:2719) ~[?:?]
+	at java.net.http/jdk.internal.net.http.MultiExchange.responseAsync(MultiExchange.java:308) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.HttpClientImpl.sendAsync(HttpClientImpl.java:1053) ~[java.net.http:?]
+	at java.net.http/jdk.internal.net.http.HttpClientImpl.send(HttpClientImpl.java:933) ~[java.net.http:?]
+	... 5 more
+Caused by: java.nio.channels.UnresolvedAddressException
+	at java.base/sun.nio.ch.Net.checkAddress(Net.java:143) ~[?:?]
+	at java.base/sun.nio.ch.Net.checkAddress(Net.java:151) ~[?:?]
+	at java.base/sun.nio.ch.SocketChannelImpl.checkRemote(SocketChannelImpl.java:842) ~[?:?]
+	at java.base/sun.nio.ch.SocketChannelImpl.connect(SocketChannelImpl.java:865) ~[?:?]
+	at java.net.http/jdk.internal.net.http.PlainHttpConnection.lambda$connectAsync$1(PlainHttpConnection.java:210) ~[java.net.http:?]
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:571) ~[?:?]
+	at java.net.http/jdk.internal.net.http.PlainHttpConnection.connectAsync(PlainHttpConnection.java:212) ~[java.net.http:?]
+	... 28 more
+[12Jun2026 07:29:07.557] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_beacon_beam and FS minecraft:core/rendertype_beacon_beam. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.571] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[12Jun2026 07:29:07.587] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[12Jun2026 07:29:07.593] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_entity_alpha and FS minecraft:core/rendertype_entity_alpha. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Output of vertex shader 'texCoord1' not read by fragment shader
+WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
+
+[12Jun2026 07:29:07.596] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[12Jun2026 07:29:07.599] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_translucent_moving_block and FS minecraft:core/rendertype_translucent_moving_block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.601] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_see_through and FS minecraft:core/rendertype_text_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.603] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_entity_shadow and FS minecraft:core/rendertype_entity_shadow. Log output: WARNING: Could not find vertex shader attribute 'UV1' to match BindAttributeLocation request.
+WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.607] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.610] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.621] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_beacon_beam and FS minecraft:core/rendertype_beacon_beam. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.631] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/animate_sprite and FS minecraft:core/animate_sprite_blit. Log output: WARNING: Output of vertex shader 'fAnimationProgress' not read by fragment shader
+
+[12Jun2026 07:29:07.634] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[12Jun2026 07:29:07.637] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.647] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_item_entity_translucent_cull and FS minecraft:core/rendertype_item_entity_translucent_cull. Log output: WARNING: Output of vertex shader 'texCoord1' not read by fragment shader
+WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
+
+[12Jun2026 07:29:07.653] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[12Jun2026 07:29:07.656] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_crumbling and FS minecraft:core/rendertype_crumbling. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
+
+[12Jun2026 07:29:07.659] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[12Jun2026 07:29:07.668] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_background_see_through and FS minecraft:core/rendertype_text_background_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.675] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.678] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.687] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.691] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[12Jun2026 07:29:07.698] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_intensity_see_through and FS minecraft:core/rendertype_text_intensity_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.701] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.706] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:07.709] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[12Jun2026 07:29:09.332] [Render thread/INFO] [com.mojang.blaze3d.audio.Library/]: OpenAL initialized on device MacBook Pro Speakers
+[12Jun2026 07:29:09.334] [Render thread/INFO] [net.minecraft.client.sounds.SoundEngine/SOUNDS]: Sound engine started
+[12Jun2026 07:29:09.334] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[12Jun2026 07:29:09.346] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x128x0 minecraft:textures/atlas/decorated_pot.png-atlas
+[12Jun2026 07:29:09.352] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 2048x1024x0 minecraft:textures/atlas/armor_trims.png-atlas
+[12Jun2026 07:29:09.366] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[12Jun2026 07:29:09.368] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/shield_patterns.png-atlas
+[12Jun2026 07:29:09.369] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 2048x2048x4 minecraft:textures/atlas/blocks.png-atlas
+[12Jun2026 07:29:09.430] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/chest.png-atlas
+[12Jun2026 07:29:09.432] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x128x0 minecraft:textures/atlas/celestials.png-atlas
+[12Jun2026 07:29:09.432] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/banner_patterns.png-atlas
+[12Jun2026 07:29:09.434] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/beds.png-atlas
+[12Jun2026 07:29:09.434] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/items.png-atlas
+[12Jun2026 07:29:09.446] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x1024x0 minecraft:textures/atlas/gui.png-atlas
+[12Jun2026 07:29:09.455] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[12Jun2026 07:29:09.456] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/signs.png-atlas
+[12Jun2026 07:29:09.456] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/shulker_boxes.png-atlas
+[12Jun2026 07:29:33.927] [Download-1/WARN] [com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService/]: Couldn't look up profile properties for 380df991-f603-344c-a090-369bad2a924a
+com.mojang.authlib.exceptions.MinecraftClientException: Failed to read from https://sessionserver.mojang.com/session/minecraft/profile/380df991f603344ca090369bad2a924a?unsigned=false due to sessionserver.mojang.com
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.minecraft.client.MinecraftClient.readInputStream(MinecraftClient.java:111) ~[authlib-7.0.61.jar!/:?]
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.minecraft.client.MinecraftClient.get(MinecraftClient.java:56) ~[authlib-7.0.61.jar!/:?]
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService.fetchProfileUncached(YggdrasilMinecraftSessionService.java:197) ~[authlib-7.0.61.jar!/:?]
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.yggdrasil.YggdrasilMinecraftSessionService.fetchProfile(YggdrasilMinecraftSessionService.java:167) ~[authlib-7.0.61.jar!/:?]
+	at TRANSFORMER/minecraft@1.21.11/net.minecraft.client.Minecraft.lambda$new$0(Minecraft.java:423) ~[forge-1.21.11-61.1.0.jar%230!/:?]
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768) ~[?:?]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
+	at java.base/java.lang.Thread.run(Thread.java:1583) [?:?]
+Caused by: java.net.UnknownHostException: sessionserver.mojang.com
+	at java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:567) ~[?:?]
+	at java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:327) ~[?:?]
+	at java.base/java.net.Socket.connect(Socket.java:751) ~[?:?]
+	at java.base/sun.security.ssl.SSLSocketImpl.connect(SSLSocketImpl.java:304) ~[?:?]
+	at java.base/sun.net.NetworkClient.doConnect(NetworkClient.java:178) ~[?:?]
+	at java.base/sun.net.www.http.HttpClient.openServer(HttpClient.java:531) ~[?:?]
+	at java.base/sun.net.www.http.HttpClient.openServer(HttpClient.java:636) ~[?:?]
+	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(HttpsClient.java:264) ~[?:?]
+	at java.base/sun.net.www.protocol.https.HttpsClient.New(HttpsClient.java:377) ~[?:?]
+	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(AbstractDelegateHttpsURLConnection.java:193) ~[?:?]
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(HttpURLConnection.java:1298) ~[?:?]
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(HttpURLConnection.java:1139) ~[?:?]
+	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(AbstractDelegateHttpsURLConnection.java:179) ~[?:?]
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream0(HttpURLConnection.java:1691) ~[?:?]
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream(HttpURLConnection.java:1615) ~[?:?]
+	at java.base/java.net.HttpURLConnection.getResponseCode(HttpURLConnection.java:531) ~[?:?]
+	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.getResponseCode(HttpsURLConnectionImpl.java:307) ~[?:?]
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.minecraft.client.MinecraftClient.readInputStream(MinecraftClient.java:82) ~[authlib-7.0.61.jar!/:?]
+	... 8 more
+[12Jun2026 07:29:33.926] [Yggdrasil Key Fetcher/ERROR] [com.mojang.authlib.yggdrasil.YggdrasilServicesKeyInfo/]: Failed to request yggdrasil public key
+com.mojang.authlib.exceptions.MinecraftClientException: Failed to read from https://api.minecraftservices.com/publickeys due to api.minecraftservices.com
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.minecraft.client.MinecraftClient.readInputStream(MinecraftClient.java:111) ~[authlib-7.0.61.jar!/:?]
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.minecraft.client.MinecraftClient.get(MinecraftClient.java:56) ~[authlib-7.0.61.jar!/:?]
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.yggdrasil.YggdrasilServicesKeyInfo.fetch(YggdrasilServicesKeyInfo.java:114) ~[authlib-7.0.61.jar!/:?]
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.yggdrasil.YggdrasilServicesKeyInfo$1.run(YggdrasilServicesKeyInfo.java:89) ~[authlib-7.0.61.jar!/:?]
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:572) ~[?:?]
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:317) ~[?:?]
+	at java.base/java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:304) ~[?:?]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
+	at java.base/java.lang.Thread.run(Thread.java:1583) [?:?]
+Caused by: java.net.UnknownHostException: api.minecraftservices.com
+	at java.base/sun.nio.ch.NioSocketImpl.connect(NioSocketImpl.java:567) ~[?:?]
+	at java.base/java.net.SocksSocketImpl.connect(SocksSocketImpl.java:327) ~[?:?]
+	at java.base/java.net.Socket.connect(Socket.java:751) ~[?:?]
+	at java.base/sun.security.ssl.SSLSocketImpl.connect(SSLSocketImpl.java:304) ~[?:?]
+	at java.base/sun.net.NetworkClient.doConnect(NetworkClient.java:178) ~[?:?]
+	at java.base/sun.net.www.http.HttpClient.openServer(HttpClient.java:531) ~[?:?]
+	at java.base/sun.net.www.http.HttpClient.openServer(HttpClient.java:636) ~[?:?]
+	at java.base/sun.net.www.protocol.https.HttpsClient.<init>(HttpsClient.java:264) ~[?:?]
+	at java.base/sun.net.www.protocol.https.HttpsClient.New(HttpsClient.java:377) ~[?:?]
+	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.getNewHttpClient(AbstractDelegateHttpsURLConnection.java:193) ~[?:?]
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect0(HttpURLConnection.java:1298) ~[?:?]
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.plainConnect(HttpURLConnection.java:1139) ~[?:?]
+	at java.base/sun.net.www.protocol.https.AbstractDelegateHttpsURLConnection.connect(AbstractDelegateHttpsURLConnection.java:179) ~[?:?]
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream0(HttpURLConnection.java:1691) ~[?:?]
+	at java.base/sun.net.www.protocol.http.HttpURLConnection.getInputStream(HttpURLConnection.java:1615) ~[?:?]
+	at java.base/java.net.HttpURLConnection.getResponseCode(HttpURLConnection.java:531) ~[?:?]
+	at java.base/sun.net.www.protocol.https.HttpsURLConnectionImpl.getResponseCode(HttpsURLConnectionImpl.java:307) ~[?:?]
+	at SECURE-BOOTSTRAP/authlib@7.0.61/com.mojang.authlib.minecraft.client.MinecraftClient.readInputStream(MinecraftClient.java:82) ~[authlib-7.0.61.jar!/:?]
+	... 9 more
+[12Jun2026 07:29:34.754] [Download-2/ERROR] [com.mojang.realmsclient.client.RealmsClient/]: Failed to fetch Realms feature flags
+com.mojang.realmsclient.exception.RealmsServiceException: Realms service error (500) with message 'Could not connect to Realms: pc.realms.minecraft.net'
+	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.execute(RealmsClient.java:530) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.fetchFeatureFlags(RealmsClient.java:160) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768) ~[?:?]
 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.base/java.lang.Thread.run(Thread.java:1583) [?:?]
-[11Jun2026 13:33:54.654] [Render thread/INFO] [net.minecraft.server.packs.resources.ReloadableResourceManager/]: Reloading ResourceManager: vanilla, mod_resources
-[11Jun2026 13:33:54.865] [Worker-Main-2/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_all_no_pua-17.0.01.hex, loading
-[11Jun2026 13:33:54.872] [Worker-Main-5/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_pua-17.0.01.hex, loading
-[11Jun2026 13:33:55.116] [Worker-Main-2/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_jp_patch-17.0.01.hex, loading
-[11Jun2026 13:33:55.151] [Worker-Main-5/INFO] [com.openwheelracing.OpenwheelRacing/]: Openwheel Racing initialized
-[11Jun2026 13:33:55.184] [Forge Version Check/INFO] [net.minecraftforge.fml.VersionChecker/]: [forge] Starting version check at https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json
-[11Jun2026 13:33:55.914] [Forge Version Check/INFO] [net.minecraftforge.fml.VersionChecker/]: [forge] Found status: UP_TO_DATE Current: 61.1.0 Target: null
-[11Jun2026 13:33:56.523] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_crumbling and FS minecraft:core/rendertype_crumbling. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
-
-[11Jun2026 13:33:56.530] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_beacon_beam and FS minecraft:core/rendertype_beacon_beam. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.534] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.535] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_beacon_beam and FS minecraft:core/rendertype_beacon_beam. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.538] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_entity_shadow and FS minecraft:core/rendertype_entity_shadow. Log output: WARNING: Could not find vertex shader attribute 'UV1' to match BindAttributeLocation request.
-WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.543] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
-
-[11Jun2026 13:33:56.548] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_background_see_through and FS minecraft:core/rendertype_text_background_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.556] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
-
-[11Jun2026 13:33:56.566] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.574] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.576] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
-
-[11Jun2026 13:33:56.578] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/animate_sprite and FS minecraft:core/animate_sprite_blit. Log output: WARNING: Output of vertex shader 'fAnimationProgress' not read by fragment shader
-
-[11Jun2026 13:33:56.587] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.594] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.597] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_translucent_moving_block and FS minecraft:core/rendertype_translucent_moving_block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.599] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_intensity_see_through and FS minecraft:core/rendertype_text_intensity_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.603] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
-
-[11Jun2026 13:33:56.607] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_see_through and FS minecraft:core/rendertype_text_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.613] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.615] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_entity_alpha and FS minecraft:core/rendertype_entity_alpha. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Output of vertex shader 'texCoord1' not read by fragment shader
-WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
-
-[11Jun2026 13:33:56.619] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
-
-[11Jun2026 13:33:56.625] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.628] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.633] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_item_entity_translucent_cull and FS minecraft:core/rendertype_item_entity_translucent_cull. Log output: WARNING: Output of vertex shader 'texCoord1' not read by fragment shader
-WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
-
-[11Jun2026 13:33:56.638] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
-
-[11Jun2026 13:33:56.642] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[11Jun2026 13:33:56.653] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
-
-[11Jun2026 13:33:58.260] [Render thread/INFO] [com.mojang.blaze3d.audio.Library/]: OpenAL initialized on device MacBook Pro Speakers
-[11Jun2026 13:33:58.262] [Render thread/INFO] [net.minecraft.client.sounds.SoundEngine/SOUNDS]: Sound engine started
-[11Jun2026 13:33:58.262] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
-[11Jun2026 13:33:58.273] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x128x0 minecraft:textures/atlas/decorated_pot.png-atlas
-[11Jun2026 13:33:58.278] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 2048x1024x0 minecraft:textures/atlas/armor_trims.png-atlas
-[11Jun2026 13:33:58.291] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
-[11Jun2026 13:33:58.292] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/shield_patterns.png-atlas
-[11Jun2026 13:33:58.294] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 2048x2048x4 minecraft:textures/atlas/blocks.png-atlas
-[11Jun2026 13:33:58.354] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/chest.png-atlas
-[11Jun2026 13:33:58.355] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x128x0 minecraft:textures/atlas/celestials.png-atlas
-[11Jun2026 13:33:58.356] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/banner_patterns.png-atlas
-[11Jun2026 13:33:58.357] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/beds.png-atlas
-[11Jun2026 13:33:58.358] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/items.png-atlas
-[11Jun2026 13:33:58.372] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x1024x0 minecraft:textures/atlas/gui.png-atlas
-[11Jun2026 13:33:58.380] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x64x0 minecraft:textures/atlas/map_decorations.png-atlas
-[11Jun2026 13:33:58.381] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/signs.png-atlas
-[11Jun2026 13:33:58.382] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/shulker_boxes.png-atlas
-[11Jun2026 13:33:58.769] [IO-Worker-1/INFO] [com.mojang.realmsclient.client.RealmsClient/]: Could not authorize you against Realms server: java.lang.RuntimeException: Failed to parse into SignedJWT: 0
-[11Jun2026 13:33:58.769] [IO-Worker-1/ERROR] [com.mojang.realmsclient.RealmsAvailability/]: Couldn't connect to realms
-com.mojang.realmsclient.exception.RealmsServiceException: Realms authentication error with message 'java.lang.RuntimeException: Failed to parse into SignedJWT: 0'
-	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.execute(RealmsClient.java:515) ~[forge-1.21.11-61.1.0.jar%230!/:?]
+[12Jun2026 07:29:34.756] [IO-Worker-1/ERROR] [com.mojang.realmsclient.RealmsAvailability/]: Couldn't connect to realms
+com.mojang.realmsclient.exception.RealmsServiceException: Realms service error (500) with message 'Could not connect to Realms: pc.realms.minecraft.net'
+	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.execute(RealmsClient.java:530) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.clientCompatible(RealmsClient.java:283) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.RealmsAvailability.lambda$check$0(RealmsAvailability.java:50) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768) ~[?:?]
 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.base/java.lang.Thread.run(Thread.java:1583) [?:?]
-[11Jun2026 13:34:03.262] [Render thread/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1489 recipes
-[11Jun2026 13:34:03.272] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1589 advancements
-[11Jun2026 13:34:05.139] [Render thread/WARN] [net.minecraft.world.item.crafting.RecipeManager/]: Recipe openwheelracing:prototype_car_spawn can't be placed due to empty ingredients and will be ignored
-[11Jun2026 13:34:05.158] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Starting integrated minecraft server version 1.21.11
-[11Jun2026 13:34:05.159] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
-[11Jun2026 13:34:05.363] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Loading 0 persistent chunks...
-[11Jun2026 13:34:05.377] [Server thread/INFO] [net.minecraftforge.server.permission.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
-[11Jun2026 13:34:05.668] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Loading 49 chunks for player spawn...
-[11Jun2026 13:34:05.668] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Preparing spawn area: 16%
-[11Jun2026 13:34:05.865] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Preparing spawn area: 98%
-[11Jun2026 13:34:05.881] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Time elapsed: 517 ms
-[11Jun2026 13:34:06.002] [Render thread/INFO] [net.minecraftforge.common.ForgeHooks/]: Connected to a modded server.
-[11Jun2026 13:34:06.075] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: Dev[local:E:a5765ad6] logged in with entity id 7 at (31.999111698674923, -47.506864492779904, 18.273048053989623)
-[11Jun2026 13:34:06.105] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev joined the game
-[11Jun2026 13:34:06.204] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing view distance to 16, from 10
-[11Jun2026 13:34:06.208] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing simulation distance to 12, from 0
-[11Jun2026 13:34:06.218] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 2 reached during a single frame. New capacity will be 4.
-[11Jun2026 13:34:06.242] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 13 advancements
-[11Jun2026 13:34:06.311] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 4 reached during a single frame. New capacity will be 8.
-[11Jun2026 13:34:06.436] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 2 reached during a single frame. New capacity will be 4.
-[11Jun2026 13:34:06.453] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 4 reached during a single frame. New capacity will be 8.
-[11Jun2026 13:34:06.501] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
-[11Jun2026 13:34:06.559] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 16 reached during a single frame. New capacity will be 32.
-[11Jun2026 13:34:06.700] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 32 reached during a single frame. New capacity will be 64.
-[11Jun2026 13:34:07.070] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 64 reached during a single frame. New capacity will be 128.
-[11Jun2026 13:34:14.216] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 128 reached during a single frame. New capacity will be 256.
-[11Jun2026 13:34:14.376] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 256 reached during a single frame. New capacity will be 512.
-[11Jun2026 13:35:35.129] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Saving and pausing game...
-[11Jun2026 13:35:35.145] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
-[11Jun2026 13:35:35.162] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
-[11Jun2026 13:35:35.162] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
-[11Jun2026 13:35:50.403] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
-[11Jun2026 13:37:46.033] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Saving and pausing game...
-[11Jun2026 13:37:46.044] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
-[11Jun2026 13:37:46.053] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
-[11Jun2026 13:37:46.053] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
-[11Jun2026 13:38:30.165] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [Dev: Set the time to 1]
-[11Jun2026 13:38:30.169] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Set the time to 1
-[11Jun2026 13:39:03.786] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Saving and pausing game...
-[11Jun2026 13:39:03.795] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
-[11Jun2026 13:39:03.804] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
-[11Jun2026 13:39:03.804] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
+[12Jun2026 07:30:02.470] [Render thread/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1489 recipes
+[12Jun2026 07:30:02.479] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1589 advancements
+[12Jun2026 07:30:04.738] [Render thread/WARN] [net.minecraft.world.item.crafting.RecipeManager/]: Recipe openwheelracing:prototype_car_spawn can't be placed due to empty ingredients and will be ignored
+[12Jun2026 07:30:04.757] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Starting integrated minecraft server version 1.21.11
+[12Jun2026 07:30:04.758] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
+[12Jun2026 07:30:05.113] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Loading 0 persistent chunks...
+[12Jun2026 07:30:05.127] [Server thread/INFO] [net.minecraftforge.server.permission.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
+[12Jun2026 07:30:05.469] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Loading 49 chunks for player spawn...
+[12Jun2026 07:30:05.470] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Preparing spawn area: 16%
+[12Jun2026 07:30:05.632] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Preparing spawn area: 100%
+[12Jun2026 07:30:05.633] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Time elapsed: 519 ms
+[12Jun2026 07:30:05.769] [Render thread/INFO] [net.minecraftforge.common.ForgeHooks/]: Connected to a modded server.
+[12Jun2026 07:30:05.830] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: Dev[local:E:d1d43e83] logged in with entity id 7 at (86.9580892834982, -59.0, 485.5993006710297)
+[12Jun2026 07:30:05.861] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev joined the game
+[12Jun2026 07:30:05.966] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing view distance to 16, from 10
+[12Jun2026 07:30:05.970] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing simulation distance to 12, from 0
+[12Jun2026 07:30:05.975] [Render thread/WARN] [net.minecraft.client.multiplayer.ClientPacketListener/]: Ignoring chat session from Dev due to missing Services public key
+[12Jun2026 07:30:05.976] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 23 advancements
+[12Jun2026 07:30:06.021] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 2 reached during a single frame. New capacity will be 4.
+[12Jun2026 07:30:06.085] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 4 reached during a single frame. New capacity will be 8.
+[12Jun2026 07:30:06.152] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 2 reached during a single frame. New capacity will be 4.
+[12Jun2026 07:30:06.183] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 4 reached during a single frame. New capacity will be 8.
+[12Jun2026 07:30:06.250] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
+[12Jun2026 07:30:06.338] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 16 reached during a single frame. New capacity will be 32.
+[12Jun2026 07:30:06.508] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 32 reached during a single frame. New capacity will be 64.
+[12Jun2026 07:30:06.768] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 64 reached during a single frame. New capacity will be 128.
+[12Jun2026 07:30:07.362] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 128 reached during a single frame. New capacity will be 256.
+[12Jun2026 07:30:08.040] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 256 reached during a single frame. New capacity will be 512.
+[12Jun2026 07:30:08.382] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car rider id=1 carPos=(80.651, -59.000, 484.966) riderPos=(80.551, -59.620, 484.973) seat=(-0.0997, -0.6200, 0.0074) carDelta=(0.0000, 0.0000, 0.0000)
+[12Jun2026 07:30:08.387] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car mounted id=1 player=Dev pos=(80.651, -59.000, 484.966) delta=(0.0000, 0.0000, 0.0000) gear=1 speed=0.0000 bbox=AABB[79.85085146103157, -59.0, 484.1660745804355] -> [81.45085148487343, -58.10000002384186, 485.7660746042774]
+[12Jun2026 07:30:08.406] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(80.6509, -59.0000, 484.9661) posAfter=(80.6509, -59.0000, 484.9661) requested=(0.0000, 0.0000, 0.0000) actual=(0.0000, 0.0000, 0.0000) input=(0.00, 0.00, 0.00) gear=1 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0000 speedAfter=0.0000
+[12Jun2026 07:30:09.411] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(80.0939, -59.0000, 485.0072) posAfter=(79.8873, -59.0000, 485.0225) requested=(-0.2066, -0.0400, 0.0153) actual=(-0.2066, 0.0000, 0.0153) input=(1.00, 0.00, 0.00) gear=1 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1828 speedAfter=0.2072
+[12Jun2026 07:30:10.389] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(73.1822, -59.0000, 485.5179) posAfter=(72.7052, -59.0000, 485.5531) requested=(-0.4770, -0.0400, 0.0352) actual=(-0.4770, 0.0000, 0.0352) input=(1.00, 0.00, 0.00) gear=1 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.4712 speedAfter=0.4783
+[12Jun2026 07:30:11.401] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(62.8234, -59.0000, 486.2830) posAfter=(62.2680, -59.0000, 486.3240) requested=(-0.5554, -0.0400, 0.0410) actual=(-0.5554, 0.0000, 0.0410) input=(1.00, 0.00, 0.00) gear=1 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.5549 speedAfter=0.5569
+[12Jun2026 07:30:12.382] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(53.3633, -59.0000, 489.0306) posAfter=(53.2075, -59.0000, 489.2092) requested=(-0.1558, -0.0400, 0.1787) actual=(-0.1558, 0.0000, 0.1787) input=(0.00, 0.00, 1.00) gear=1 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.2705 speedAfter=0.2371
+[12Jun2026 07:30:13.387] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(52.3628, -60.0000, 490.5170) posAfter=(52.3611, -60.0000, 490.5197) requested=(-0.0017, 0.0000, 0.0027) actual=(-0.0017, 0.0000, 0.0027) input=(0.00, 0.00, 1.00) gear=1 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0035 speedAfter=0.0032
+[12Jun2026 07:30:14.387] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(52.3466, -60.0000, 490.5431) posAfter=(52.3464, -60.0000, 490.5434) requested=(-0.0002, 0.0000, 0.0003) actual=(-0.0002, 0.0000, 0.0003) input=(0.00, 0.00, 1.00) gear=1 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0004 speedAfter=0.0004
+[12Jun2026 07:30:15.384] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(52.3461, -60.0000, 490.5441) posAfter=(52.3461, -60.0000, 490.5441) requested=(0.0000, 0.0000, 0.0000) actual=(0.0000, 0.0000, 0.0000) input=(0.00, 0.00, 1.00) gear=1 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0000 speedAfter=0.0000
+[12Jun2026 07:30:15.662] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
+[12Jun2026 07:30:16.382] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(51.9982, -60.0000, 492.2692) posAfter=(51.9570, -60.0000, 492.5064) requested=(-0.0412, 0.0000, 0.2372) actual=(-0.0412, 0.0000, 0.2372) input=(1.00, 0.00, 0.00) gear=1 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.2307 speedAfter=0.2408
+[12Jun2026 07:30:17.385] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(51.7560, -60.0000, 494.6363) posAfter=(51.7557, -60.0000, 494.6434) requested=(-0.0003, 0.0000, 0.0070) actual=(-0.0003, 0.0000, 0.0070) input=(0.00, 0.00, 1.00) gear=1 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0078 speedAfter=0.0070
+[12Jun2026 07:30:18.385] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(51.7529, -60.0000, 494.7039) posAfter=(51.7529, -60.0000, 494.7047) requested=(-0.0000, 0.0000, 0.0008) actual=(-0.0000, 0.0000, 0.0008) input=(0.00, 0.00, -1.00) gear=1 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0009 speedAfter=0.0008
+[12Jun2026 07:30:19.384] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(51.7526, -60.0000, 494.7093) posAfter=(51.7526, -60.0000, 494.7093) requested=(0.0000, 0.0000, 0.0000) actual=(0.0000, 0.0000, 0.0000) input=(0.00, 1.00, 0.00) gear=1 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0000 speedAfter=0.0000
+[12Jun2026 07:30:20.386] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=1 passenger=Dev posBefore=(51.8222, -60.0000, 494.9527) posAfter=(51.8601, -60.0000, 495.0850) requested=(0.0379, 0.0000, 0.1323) actual=(0.0379, 0.0000, 0.1323) input=(1.00, 0.00, 0.00) gear=1 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.1157 speedAfter=0.1376
+[12Jun2026 07:30:20.885] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car dismounted id=1 pos=(52.240, -60.000, 496.410) delta=(0.0278, 0.0000, 0.0971) speedKmh=7.27 horizontalCollision=false verticalCollision=true onGround=true
+[12Jun2026 07:30:25.365] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [Dev: Killed 2 entities]
+[12Jun2026 07:30:25.370] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Killed 2 entities
+[12Jun2026 07:30:31.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car rider id=51 carPos=(30.500, -59.000, 502.500) riderPos=(30.600, -59.620, 502.500) seat=(0.1000, -0.6200, -0.0002) carDelta=(0.0000, 0.0000, 0.0000)
+[12Jun2026 07:30:31.435] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car mounted id=51 player=Dev pos=(30.500, -59.000, 502.500) delta=(0.0000, 0.0000, 0.0000) gear=1 speed=0.0000 bbox=AABB[29.69999998807907, -59.0, 501.69999998807907] -> [31.30000001192093, -58.10000002384186, 503.30000001192093]
+[12Jun2026 07:30:31.440] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(30.5000, -59.0000, 502.5000) posAfter=(30.5000, -59.0000, 502.5000) requested=(0.0000, -0.0400, 0.0000) actual=(0.0000, 0.0000, 0.0000) input=(0.00, 0.00, 0.00) gear=1 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0000 speedAfter=0.0000
+[12Jun2026 07:30:32.435] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(30.5000, -59.0000, 502.5000) posAfter=(30.5000, -59.0000, 502.5000) requested=(0.0000, 0.0000, 0.0000) actual=(0.0000, 0.0000, 0.0000) input=(0.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0000 speedAfter=0.0000
+[12Jun2026 07:30:33.438] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(30.5000, -59.0000, 502.5000) posAfter=(30.5000, -59.0000, 502.5000) requested=(0.0000, 0.0000, 0.0000) actual=(0.0000, 0.0000, 0.0000) input=(0.00, 0.00, -1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0000 speedAfter=0.0000
+[12Jun2026 07:30:34.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(30.5000, -59.0000, 502.5000) posAfter=(30.5000, -59.0000, 502.5000) requested=(0.0000, 0.0000, 0.0000) actual=(0.0000, 0.0000, 0.0000) input=(0.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0000 speedAfter=0.0000
+[12Jun2026 07:30:35.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(31.4402, -59.0000, 502.4756) posAfter=(31.5133, -59.0000, 502.4726) requested=(0.0730, 0.0000, -0.0030) actual=(0.0730, 0.0000, -0.0030) input=(0.00, 0.00, 1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0976 speedAfter=0.0731
+[12Jun2026 07:30:36.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(31.7468, -59.0000, 502.4636) posAfter=(31.7497, -59.0000, 502.4635) requested=(0.0028, 0.0000, -0.0001) actual=(0.0028, 0.0000, -0.0001) input=(0.00, 0.00, -1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0030 speedAfter=0.0028
+[12Jun2026 07:30:37.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(32.0213, -59.0000, 502.4092) posAfter=(32.0213, -59.0000, 502.4092) requested=(0.0000, 0.0000, 0.0000) actual=(0.0000, 0.0000, 0.0000) input=(0.00, 0.00, -1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0000 speedAfter=0.0000
+[12Jun2026 07:30:38.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(32.7668, -59.0000, 502.2871) posAfter=(32.8602, -59.0000, 502.2753) requested=(0.0934, 0.0000, -0.0119) actual=(0.0934, 0.0000, -0.0119) input=(1.00, 0.00, -1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0906 speedAfter=0.0941
+[12Jun2026 07:30:39.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(34.0066, -59.0000, 502.1973) posAfter=(34.0079, -59.0000, 502.1972) requested=(0.0013, 0.0000, -0.0000) actual=(0.0013, 0.0000, -0.0000) input=(0.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0014 speedAfter=0.0013
+[12Jun2026 07:30:40.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(34.3132, -59.0000, 502.2741) posAfter=(34.3806, -59.0000, 502.2914) requested=(0.0674, 0.0000, 0.0173) actual=(0.0674, 0.0000, 0.0173) input=(1.00, 0.00, 1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.0644 speedAfter=0.0696
+[12Jun2026 07:30:41.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(36.2629, -59.0000, 502.6260) posAfter=(36.3874, -59.0000, 502.6463) requested=(0.1246, 0.0000, 0.0204) actual=(0.1246, 0.0000, 0.0204) input=(1.00, 0.00, -1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1248 speedAfter=0.1262
+[12Jun2026 07:30:42.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(38.9065, -59.0000, 503.1050) posAfter=(39.0470, -59.0000, 503.1142) requested=(0.1405, 0.0000, 0.0092) actual=(0.1405, 0.0000, 0.0092) input=(1.00, 0.00, -1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1404 speedAfter=0.1408
+[12Jun2026 07:30:43.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(41.7673, -59.0000, 503.3271) posAfter=(41.9113, -59.0000, 503.3510) requested=(0.1440, 0.0000, 0.0239) actual=(0.1440, 0.0000, 0.0239) input=(1.00, 0.00, 1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1457 speedAfter=0.1460
+[12Jun2026 07:30:44.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(44.6867, -59.0000, 503.6284) posAfter=(44.8345, -59.0000, 503.6383) requested=(0.1477, 0.0000, 0.0099) actual=(0.1477, 0.0000, 0.0099) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1480 speedAfter=0.1481
+[12Jun2026 07:30:45.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(47.6500, -59.0000, 503.8844) posAfter=(47.7981, -59.0000, 503.9023) requested=(0.1481, 0.0000, 0.0179) actual=(0.1481, 0.0000, 0.0179) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1492 speedAfter=0.1492
+[12Jun2026 07:30:46.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(50.5959, -59.0000, 504.3644) posAfter=(50.7410, -59.0000, 504.3988) requested=(0.1450, 0.0000, 0.0344) actual=(0.1450, 0.0000, 0.0344) input=(1.00, 0.00, 1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1492 speedAfter=0.1491
+[12Jun2026 07:30:47.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(53.5088, -59.0000, 504.9468) posAfter=(53.6562, -59.0000, 504.9589) requested=(0.1475, 0.0000, 0.0121) actual=(0.1475, 0.0000, 0.0121) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1480 speedAfter=0.1480
+[12Jun2026 07:30:48.431] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(56.4745, -59.0000, 505.0449) posAfter=(56.6236, -59.0000, 505.0474) requested=(0.1491, 0.0000, 0.0025) actual=(0.1491, 0.0000, 0.0025) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1490 speedAfter=0.1491
+[12Jun2026 07:30:49.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(59.4535, -59.0000, 504.9712) posAfter=(59.6019, -59.0000, 504.9568) requested=(0.1484, 0.0000, -0.0143) actual=(0.1484, 0.0000, -0.0143) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1491 speedAfter=0.1491
+[12Jun2026 07:30:50.435] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(62.4166, -59.0000, 504.6016) posAfter=(62.5646, -59.0000, 504.5793) requested=(0.1479, 0.0000, -0.0223) actual=(0.1479, 0.0000, -0.0223) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1496 speedAfter=0.1496
+[12Jun2026 07:30:51.436] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(65.3739, -59.0000, 504.1324) posAfter=(65.5217, -59.0000, 504.1079) requested=(0.1478, 0.0000, -0.0246) actual=(0.1478, 0.0000, -0.0246) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1498 speedAfter=0.1498
+[12Jun2026 07:30:52.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(68.3295, -59.0000, 503.6341) posAfter=(68.4772, -59.0000, 503.6089) requested=(0.1478, 0.0000, -0.0252) actual=(0.1478, 0.0000, -0.0252) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1499 speedAfter=0.1499
+[12Jun2026 07:30:53.431] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(71.2847, -59.0000, 503.1272) posAfter=(71.4324, -59.0000, 503.1018) requested=(0.1477, 0.0000, -0.0254) actual=(0.1477, 0.0000, -0.0254) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1499 speedAfter=0.1499
+[12Jun2026 07:30:54.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(74.2395, -59.0000, 502.6167) posAfter=(74.3868, -59.0000, 502.5894) requested=(0.1473, 0.0000, -0.0273) actual=(0.1473, 0.0000, -0.0273) input=(1.00, 0.00, 1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1499 speedAfter=0.1499
+[12Jun2026 07:30:55.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(77.1365, -59.0000, 501.8882) posAfter=(77.2774, -59.0000, 501.8397) requested=(0.1409, 0.0000, -0.0486) actual=(0.1409, 0.0000, -0.0486) input=(1.00, 0.00, 1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1492 speedAfter=0.1490
+[12Jun2026 07:30:56.435] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(79.8048, -59.0000, 500.6173) posAfter=(79.9329, -59.0000, 500.5422) requested=(0.1281, 0.0000, -0.0751) actual=(0.1281, 0.0000, -0.0751) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1484 speedAfter=0.1485
+[12Jun2026 07:30:57.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(82.3681, -59.0000, 499.1199) posAfter=(82.5035, -59.0000, 499.0659) requested=(0.1354, 0.0000, -0.0540) actual=(0.1354, 0.0000, -0.0540) input=(1.00, 0.00, -1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1465 speedAfter=0.1457
+[12Jun2026 07:30:58.432] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(84.6131, -59.0000, 498.9749) posAfter=(84.7013, -59.0000, 498.9928) requested=(0.0883, 0.0000, 0.0179) actual=(0.0883, 0.0000, 0.0179) input=(1.00, 0.00, 0.00) gear=6 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0909 speedAfter=0.0901
+[12Jun2026 07:30:59.435] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(86.7276, -59.0000, 499.5815) posAfter=(86.8516, -59.0000, 499.6237) requested=(0.1240, 0.0000, 0.0422) actual=(0.1240, 0.0000, 0.0422) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1298 speedAfter=0.1310
+[12Jun2026 07:31:00.435] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(89.3295, -59.0000, 500.5031) posAfter=(89.4651, -59.0000, 500.5526) requested=(0.1357, 0.0000, 0.0496) actual=(0.1357, 0.0000, 0.0496) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1441 speedAfter=0.1444
+[12Jun2026 07:31:01.440] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(92.0775, -59.0000, 501.5170) posAfter=(92.2166, -59.0000, 501.5687) requested=(0.1390, 0.0000, 0.0517) actual=(0.1390, 0.0000, 0.0517) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1482 speedAfter=0.1483
+[12Jun2026 07:31:02.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(94.8683, -59.0000, 502.5576) posAfter=(95.0083, -59.0000, 502.6099) requested=(0.1400, 0.0000, 0.0523) actual=(0.1400, 0.0000, 0.0523) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1494 speedAfter=0.1495
+[12Jun2026 07:31:03.435] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(97.6715, -59.0000, 503.6061) posAfter=(97.8117, -59.0000, 503.6586) requested=(0.1403, 0.0000, 0.0525) actual=(0.1403, 0.0000, 0.0525) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1498 speedAfter=0.1498
+[12Jun2026 07:31:04.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(100.3164, -59.0000, 504.9167) posAfter=(100.4400, -59.0000, 504.9971) requested=(0.1236, 0.0000, 0.0804) actual=(0.1236, 0.0000, 0.0804) input=(1.00, 0.00, 1.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1473 speedAfter=0.1475
+[12Jun2026 07:31:05.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(102.9464, -59.0000, 506.0292) posAfter=(103.0756, -59.0000, 506.0437) requested=(0.1292, 0.0000, 0.0145) actual=(0.1292, 0.0000, 0.0145) input=(1.00, 0.00, 0.00) gear=6 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.1354 speedAfter=0.1300
+[12Jun2026 07:31:06.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(105.0562, -59.0000, 506.2109) posAfter=(105.1444, -59.0000, 506.2224) requested=(0.0882, 0.0000, 0.0115) actual=(0.0882, 0.0000, 0.0115) input=(1.00, 0.00, 1.00) gear=6 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0896 speedAfter=0.0890
+[12Jun2026 07:31:07.431] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(106.7720, -59.0000, 506.2956) posAfter=(106.8554, -59.0000, 506.2867) requested=(0.0834, 0.0000, -0.0089) actual=(0.0834, 0.0000, -0.0089) input=(1.00, 0.00, 0.00) gear=6 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0839 speedAfter=0.0838
+[12Jun2026 07:31:08.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(108.4260, -59.0000, 506.0302) posAfter=(108.5082, -59.0000, 506.0139) requested=(0.0822, 0.0000, -0.0163) actual=(0.0822, 0.0000, -0.0163) input=(1.00, 0.00, 0.00) gear=6 surface=DIRT collisions(h=false, v=true) onGround=true speedBefore=0.0838 speedAfter=0.0838
+[12Jun2026 07:31:09.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(110.5168, -59.0000, 505.6020) posAfter=(110.6436, -59.0000, 505.5755) requested=(0.1268, 0.0000, -0.0264) actual=(0.1268, 0.0000, -0.0264) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1282 speedAfter=0.1295
+[12Jun2026 07:31:10.434] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(113.2071, -59.0000, 505.0830) posAfter=(113.3494, -59.0000, 505.0628) requested=(0.1423, 0.0000, -0.0202) actual=(0.1423, 0.0000, -0.0202) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1434 speedAfter=0.1437
+[12Jun2026 07:31:11.432] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(116.0965, -59.0000, 504.6861) posAfter=(116.2411, -59.0000, 504.6570) requested=(0.1445, 0.0000, -0.0291) actual=(0.1445, 0.0000, -0.0291) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1474 speedAfter=0.1474
+[12Jun2026 07:31:12.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(118.9940, -59.0000, 504.0746) posAfter=(119.1409, -59.0000, 504.0515) requested=(0.1469, 0.0000, -0.0231) actual=(0.1469, 0.0000, -0.0231) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1486 speedAfter=0.1487
+[12Jun2026 07:31:13.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(121.9512, -59.0000, 503.7046) posAfter=(122.0999, -59.0000, 503.6902) requested=(0.1488, 0.0000, -0.0143) actual=(0.1488, 0.0000, -0.0143) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1494 speedAfter=0.1495
+[12Jun2026 07:31:14.433] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car move id=51 passenger=Dev posBefore=(124.9321, -59.0000, 503.4442) posAfter=(125.0814, -59.0000, 503.4324) requested=(0.1493, 0.0000, -0.0118) actual=(0.1493, 0.0000, -0.0118) input=(1.00, 0.00, 0.00) gear=6 surface=ASPHALT collisions(h=false, v=true) onGround=true speedBefore=0.1498 speedAfter=0.1498
+[12Jun2026 07:31:15.384] [Server thread/INFO] [com.openwheelracing.content.entity.OpenwheelCarEntity/]: OWR car dismounted id=51 pos=(126.645, -59.000, 503.319) delta=(0.0052, 0.0000, -0.0003) speedKmh=0.37 horizontalCollision=false verticalCollision=true onGround=true
+[12Jun2026 07:31:18.557] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [Dev: Killed Prototype Openwheel Car]
+[12Jun2026 07:31:18.575] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Killed Prototype Openwheel Car
+[12Jun2026 07:31:19.379] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Saving and pausing game...
+[12Jun2026 07:31:19.392] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
+[12Jun2026 07:31:19.430] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
+[12Jun2026 07:31:19.431] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
+[12Jun2026 07:31:42.944] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Stopping!
+[12Jun2026 07:31:42.994] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: Dev lost connection: Disconnected
+[12Jun2026 07:31:42.995] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev left the game
+[12Jun2026 07:31:43.009] [Server thread/INFO] [net.minecraft.server.network.ServerCommonPacketListenerImpl/]: Stopping singleplayer server as player logged out
+[12Jun2026 07:31:43.029] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping server
+[12Jun2026 07:31:43.029] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving players
+[12Jun2026 07:31:43.029] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving worlds
+[12Jun2026 07:31:43.136] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
+[12Jun2026 07:31:43.176] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
+[12Jun2026 07:31:43.178] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
+[12Jun2026 07:31:43.210] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (TestGame): All chunks are saved
+[12Jun2026 07:31:43.211] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[12Jun2026 07:31:43.211] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[12Jun2026 07:31:43.211] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage: All dimensions are saved

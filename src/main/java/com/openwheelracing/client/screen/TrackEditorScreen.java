@@ -4,6 +4,7 @@ import com.openwheelracing.content.track.TrackEditorMaterial;
 import com.openwheelracing.content.track.TrackEditorMode;
 import com.openwheelracing.content.track.TrackEditorOperation;
 import com.openwheelracing.network.OWRNetwork;
+import com.openwheelracing.registry.OWRBlocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -12,8 +13,10 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
@@ -39,12 +42,24 @@ public class TrackEditorScreen extends Screen {
         TrackEditorMaterial.KERB,
         TrackEditorMaterial.BARRIER
     };
+    private static final double[] ZOOM_LEVELS = {0.5, 1.0, 2.0, 4.0, 8.0};
+    private static final int SIDE_PANEL_WIDTH = 320;
+    private static final int PANEL_GAP = 12;
+    private static final int OUTER_MARGIN = 20;
 
     private final List<BlockPos> points = new ArrayList<>();
     private int modeIndex;
     private int pavementIndex;
     private int edgeIndex;
+    private int zoomIndex = 2;
     private int width = 3;
+    private int editY;
+    private double centerX;
+    private double centerZ;
+    private boolean initialized;
+    private boolean dragging;
+    private double lastDragX;
+    private double lastDragY;
 
     public TrackEditorScreen() {
         super(Component.translatable("screen.openwheelracing.track_editor"));
@@ -56,16 +71,63 @@ public class TrackEditorScreen extends Screen {
     }
 
     @Override
+    protected void init() {
+        super.init();
+        if (!initialized && minecraft != null && minecraft.player != null) {
+            centerX = minecraft.player.getX();
+            centerZ = minecraft.player.getZ();
+            editY = minecraft.player.blockPosition().getY();
+            initialized = true;
+        }
+    }
+
+    @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-            addPointFromCrosshair();
+        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && isInsideMap(event.x(), event.y())) {
+            addPoint(screenToBlock(event.x(), event.y()));
             return true;
         }
         if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
             removeLastPoint();
             return true;
         }
+        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_MIDDLE && isInsideMap(event.x(), event.y())) {
+            dragging = true;
+            lastDragX = event.x();
+            lastDragY = event.y();
+            return true;
+        }
         return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
+    public boolean mouseReleased(MouseButtonEvent event) {
+        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
+            dragging = false;
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
+    @Override
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        if (dragging) {
+            centerX -= (event.x() - lastDragX) * blocksPerPixel();
+            centerZ -= (event.y() - lastDragY) * blocksPerPixel();
+            lastDragX = event.x();
+            lastDragY = event.y();
+            return true;
+        }
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (isInsideMap(mouseX, mouseY)) {
+            zoomIndex = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, zoomIndex + (scrollY > 0 ? -1 : 1)));
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
 
     @Override
@@ -103,6 +165,34 @@ public class TrackEditorScreen extends Screen {
                 removeLastPoint();
                 return true;
             }
+            case GLFW.GLFW_KEY_R -> {
+                recenterOnPlayer();
+                return true;
+            }
+            case GLFW.GLFW_KEY_PAGE_UP, GLFW.GLFW_KEY_RIGHT_BRACKET -> {
+                editY++;
+                return true;
+            }
+            case GLFW.GLFW_KEY_PAGE_DOWN, GLFW.GLFW_KEY_LEFT_BRACKET -> {
+                editY--;
+                return true;
+            }
+            case GLFW.GLFW_KEY_LEFT, GLFW.GLFW_KEY_A -> {
+                centerX -= panStep();
+                return true;
+            }
+            case GLFW.GLFW_KEY_RIGHT, GLFW.GLFW_KEY_D -> {
+                centerX += panStep();
+                return true;
+            }
+            case GLFW.GLFW_KEY_UP, GLFW.GLFW_KEY_W -> {
+                centerZ -= panStep();
+                return true;
+            }
+            case GLFW.GLFW_KEY_DOWN, GLFW.GLFW_KEY_S -> {
+                centerZ += panStep();
+                return true;
+            }
             default -> {
             }
         }
@@ -111,44 +201,121 @@ public class TrackEditorScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        int x = 8;
-        int y = 8;
-        int width = 226;
-        int height = 104;
-        graphics.fill(x, y, x + width, y + height, 0xAA000000);
-        graphics.renderOutline(x, y, width, height, 0xFFDA1A20);
+        renderMap(graphics);
+        renderPendingGeometry(graphics);
+        renderPlayerMarker(graphics);
+        renderSidePanel(graphics);
+    }
+
+    private void renderMap(GuiGraphics graphics) {
+        MapBounds map = mapBounds();
+        graphics.fill(map.left, map.top, map.right, map.bottom, 0xEE101214);
+        renderTerrainSamples(graphics, map);
+        renderGrid(graphics, map);
+        graphics.renderOutline(map.left, map.top, map.width(), map.height(), 0xFFDA1A20);
+    }
+
+    private void renderTerrainSamples(GuiGraphics graphics, MapBounds map) {
+        Minecraft minecraft = Minecraft.getInstance();
+        Level level = minecraft.level;
+        if (level == null) {
+            return;
+        }
+        double bpp = blocksPerPixel();
+        int sampleBlocks = Math.max(1, (int) Math.ceil(bpp));
+        int pixelStep = Math.max(2, (int) Math.round(sampleBlocks / bpp));
+        for (int sx = map.left; sx < map.right; sx += pixelStep) {
+            for (int sy = map.top; sy < map.bottom; sy += pixelStep) {
+                BlockPos pos = screenToBlock(sx + pixelStep * 0.5, sy + pixelStep * 0.5);
+                int color = surfaceColor(level, pos.getX(), pos.getZ());
+                graphics.fill(sx, sy, Math.min(map.right, sx + pixelStep), Math.min(map.bottom, sy + pixelStep), color);
+            }
+        }
+    }
+
+    private void renderGrid(GuiGraphics graphics, MapBounds map) {
+        double bpp = blocksPerPixel();
+        int minorStep = gridStep();
+        int startX = floorToStep(screenToBlock(map.left, map.top).getX(), minorStep) - minorStep;
+        int endX = screenToBlock(map.right, map.top).getX() + minorStep;
+        int startZ = floorToStep(screenToBlock(map.left, map.top).getZ(), minorStep) - minorStep;
+        int endZ = screenToBlock(map.left, map.bottom).getZ() + minorStep;
+        for (int x = startX; x <= endX; x += minorStep) {
+            int sx = worldToScreenX(x);
+            int color = x % 16 == 0 ? 0x88666666 : 0x44333333;
+            graphics.fill(sx, map.top, sx + 1, map.bottom, color);
+        }
+        for (int z = startZ; z <= endZ; z += minorStep) {
+            int sy = worldToScreenY(z);
+            int color = z % 16 == 0 ? 0x88666666 : 0x44333333;
+            graphics.fill(map.left, sy, map.right, sy + 1, color);
+        }
+    }
+
+    private void renderPendingGeometry(GuiGraphics graphics) {
+        for (int i = 0; i < points.size(); i++) {
+            BlockPos point = points.get(i);
+            int x = worldToScreenX(point.getX());
+            int y = worldToScreenY(point.getZ());
+            graphics.fill(x - 3, y - 3, x + 4, y + 4, 0xFFFFDD55);
+            if (i > 0) {
+                drawLine(graphics, points.get(i - 1), point, 0xFFFFDD55);
+            }
+        }
+        if (mode() == TrackEditorMode.POLYGON && points.size() > 2) {
+            drawLine(graphics, points.get(points.size() - 1), points.get(0), 0x99FFDD55);
+        }
+    }
+
+    private void renderPlayerMarker(GuiGraphics graphics) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            return;
+        }
+        int x = worldToScreenX(minecraft.player.getX());
+        int y = worldToScreenY(minecraft.player.getZ());
+        graphics.fill(x - 3, y - 3, x + 4, y + 4, 0xFF55AAFF);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.player"), x + 6, y - 4, 0xFF55AAFF, false);
+    }
+
+    private void renderSidePanel(GuiGraphics graphics) {
+        int panelWidth = SIDE_PANEL_WIDTH;
+        MapBounds map = mapBounds();
+        int x = map.right + PANEL_GAP;
+        int y = map.top;
+        int h = 166;
+        graphics.fill(x, y, x + panelWidth, y + h, 0xCC000000);
+        graphics.renderOutline(x, y, panelWidth, h, 0xFFDA1A20);
         graphics.drawString(font, title, x + 8, y + 8, 0xFFFFFFFF, false);
         graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.mode", mode().name()), x + 8, y + 22, 0xFFE6E6E6, false);
         graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.material", material().name()), x + 8, y + 34, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.width", this.width), x + 8, y + 46, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.points", points.size(), requiredPointsText()), x + 8, y + 58, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.help1"), x + 8, y + 74, 0xFFB7FFB7, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.help2"), x + 8, y + 86, 0xFFB7FFB7, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.width", width), x + 8, y + 46, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.zoom", blocksPerPixel()), x + 8, y + 58, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.y_level", editY), x + 8, y + 70, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.points", points.size(), requiredPointsText()), x + 8, y + 82, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help1"), x + 8, y + 98, 0xFFB7FFB7, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help2"), x + 8, y + 110, 0xFFB7FFB7, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help3"), x + 8, y + 122, 0xFFB7FFB7, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help4"), x + 8, y + 134, 0xFFB7FFB7, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help5"), x + 8, y + 146, 0xFFB7FFB7, false);
     }
 
-    private void addPointFromCrosshair() {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (!(minecraft.hitResult instanceof BlockHitResult hit) || hit.getType() == HitResult.Type.MISS) {
-            return;
-        }
-        points.add(hit.getBlockPos().immutable());
+    private void addPoint(BlockPos point) {
+        points.add(point.immutable());
         if (mode() != TrackEditorMode.POLYGON) {
             commitIfReady();
         }
     }
 
     private void commitIfReady() {
-        int required = requiredPoints();
-        if (points.size() < required) {
+        if (points.size() < requiredPoints()) {
             return;
         }
         TrackEditorMode mode = mode();
         if (mode == TrackEditorMode.POLYGON && points.size() < 3) {
             return;
         }
-        List<BlockPos> operationPoints = new ArrayList<>(points);
-        OWRNetwork.CHANNEL.send(new OWRNetwork.TrackEditorPlaceMessage(new TrackEditorOperation(mode, material(), width, operationPoints, facing())), PacketDistributor.SERVER.noArg());
+        OWRNetwork.CHANNEL.send(new OWRNetwork.TrackEditorPlaceMessage(new TrackEditorOperation(mode, material(), width, new ArrayList<>(points), facing())), PacketDistributor.SERVER.noArg());
         if (mode == TrackEditorMode.FREEHAND || mode == TrackEditorMode.EDGE) {
             BlockPos last = points.get(points.size() - 1);
             points.clear();
@@ -164,6 +331,22 @@ public class TrackEditorScreen extends Screen {
         }
     }
 
+    private void cycleMaterial() {
+        if (mode() == TrackEditorMode.EDGE) {
+            edgeIndex = (edgeIndex + 1) % EDGE_MATERIALS.length;
+        } else {
+            pavementIndex = (pavementIndex + 1) % PAVEMENT_MATERIALS.length;
+        }
+    }
+
+    private void recenterOnPlayer() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player != null) {
+            centerX = minecraft.player.getX();
+            centerZ = minecraft.player.getZ();
+        }
+    }
+
     private int requiredPoints() {
         return switch (mode()) {
             case STRAIGHT, FREEHAND, EDGE -> 2;
@@ -176,14 +359,6 @@ public class TrackEditorScreen extends Screen {
         return mode() == TrackEditorMode.POLYGON ? "3+" : Integer.toString(requiredPoints());
     }
 
-    private void cycleMaterial() {
-        if (mode() == TrackEditorMode.EDGE) {
-            edgeIndex = (edgeIndex + 1) % EDGE_MATERIALS.length;
-        } else {
-            pavementIndex = (pavementIndex + 1) % PAVEMENT_MATERIALS.length;
-        }
-    }
-
     private TrackEditorMode mode() {
         return MODES[modeIndex];
     }
@@ -194,9 +369,138 @@ public class TrackEditorScreen extends Screen {
 
     private Direction facing() {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null) {
-            return Direction.NORTH;
+        return minecraft.player == null ? Direction.NORTH : minecraft.player.getDirection();
+    }
+
+    private double blocksPerPixel() {
+        return ZOOM_LEVELS[zoomIndex];
+    }
+
+    private int panStep() {
+        return (int) Math.round(blocksPerPixel() * 24.0);
+    }
+
+    private int gridStep() {
+        double bpp = blocksPerPixel();
+        if (bpp <= 0.5) {
+            return 4;
         }
-        return minecraft.player.getDirection();
+        if (bpp <= 2.0) {
+            return 8;
+        }
+        return 16;
+    }
+
+    private boolean isInsideMap(double x, double y) {
+        MapBounds map = mapBounds();
+        return x >= map.left && x < map.right && y >= map.top && y < map.bottom;
+    }
+
+    private BlockPos screenToBlock(double x, double y) {
+        MapBounds map = mapBounds();
+        int worldX = (int) Math.floor(centerX + (x - (map.left + map.width() / 2.0)) * blocksPerPixel());
+        int worldZ = (int) Math.floor(centerZ + (y - (map.top + map.height() / 2.0)) * blocksPerPixel());
+        return new BlockPos(worldX, editY, worldZ);
+    }
+
+    private int worldToScreenX(double worldX) {
+        MapBounds map = mapBounds();
+        return (int) Math.round(map.left + map.width() / 2.0 + (worldX - centerX) / blocksPerPixel());
+    }
+
+    private int worldToScreenY(double worldZ) {
+        MapBounds map = mapBounds();
+        return (int) Math.round(map.top + map.height() / 2.0 + (worldZ - centerZ) / blocksPerPixel());
+    }
+
+    private void drawLine(GuiGraphics graphics, BlockPos a, BlockPos b, int color) {
+        int ax = worldToScreenX(a.getX());
+        int ay = worldToScreenY(a.getZ());
+        int bx = worldToScreenX(b.getX());
+        int by = worldToScreenY(b.getZ());
+        int steps = Math.max(Math.abs(bx - ax), Math.abs(by - ay));
+        if (steps == 0) {
+            graphics.fill(ax, ay, ax + 1, ay + 1, color);
+            return;
+        }
+        for (int i = 0; i <= steps; i++) {
+            int x = Math.round(ax + (bx - ax) * (i / (float) steps));
+            int y = Math.round(ay + (by - ay) * (i / (float) steps));
+            graphics.fill(x, y, x + 1, y + 1, color);
+        }
+    }
+
+    private int surfaceColor(Level level, int x, int z) {
+        if (!level.hasChunkAt(new BlockPos(x, editY, z))) {
+            return 0xFF181A1C;
+        }
+        int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+        if (y < level.getMinY()) {
+            return 0xFF101214;
+        }
+        Block block = level.getBlockState(new BlockPos(x, y, z)).getBlock();
+        int color = colorFor(block);
+        return color == 0 ? 0xFF2B352B : color;
+    }
+
+    private int colorFor(Block block) {
+        if (block == OWRBlocks.ASPHALT_TRACK.get()) {
+            return 0xFF202020;
+        }
+        if (block == OWRBlocks.PIT_LANE.get()) {
+            return 0xFF4A4A4A;
+        }
+        if (block == OWRBlocks.KERB.get()) {
+            return 0xFFCC3333;
+        }
+        if (block == OWRBlocks.BARRIER.get()) {
+            return 0xFF888888;
+        }
+        if (block == Blocks.GRASS_BLOCK) {
+            return 0xFF4B7D3A;
+        }
+        if (block == Blocks.DIRT) {
+            return 0xFF74543A;
+        }
+        if (block == Blocks.SAND) {
+            return 0xFFC8B77B;
+        }
+        if (block == Blocks.GRAVEL) {
+            return 0xFF737373;
+        }
+        if (block == Blocks.WHITE_CONCRETE || block == Blocks.LIGHT_GRAY_CONCRETE) {
+            return 0xFFBEBEBE;
+        }
+        if (block == Blocks.GRAY_CONCRETE || block == Blocks.BLACK_CONCRETE) {
+            return 0xFF505050;
+        }
+        if (block == Blocks.RED_CONCRETE) {
+            return 0xFF8F2B25;
+        }
+        return 0;
+    }
+
+    private int floorToStep(int value, int step) {
+        return Math.floorDiv(value, step) * step;
+    }
+
+    private MapBounds mapBounds() {
+        int availableWidth = Math.max(240, this.width - OUTER_MARGIN * 2);
+        int availableHeight = Math.max(160, this.height - OUTER_MARGIN * 2);
+        int mapWidth = Math.max(160, availableWidth - SIDE_PANEL_WIDTH - PANEL_GAP);
+        int totalWidth = mapWidth + PANEL_GAP + SIDE_PANEL_WIDTH;
+        int left = Math.max(OUTER_MARGIN, (this.width - totalWidth) / 2);
+        int top = Math.max(OUTER_MARGIN, (this.height - availableHeight) / 2);
+        return new MapBounds(left, top, left + mapWidth, top + availableHeight);
+    }
+
+    private record MapBounds(int left, int top, int right, int bottom) {
+        int width() {
+            return right - left;
+        }
+
+        int height() {
+            return bottom - top;
+        }
     }
 }

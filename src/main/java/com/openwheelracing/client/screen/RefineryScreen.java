@@ -22,7 +22,7 @@ public class RefineryScreen extends AbstractContainerScreen<RefineryMenu> {
         int x = leftPos;
         int y = topPos;
 
-        graphics.blit(BG, x, y, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
+        graphics.blit(BG, x, y, x + imageWidth, y + imageHeight, 0.0f, 1.0f, 0.0f, 1.0f);
 
         int progress = menu.getScaledProgress();
         if (progress > 0) {

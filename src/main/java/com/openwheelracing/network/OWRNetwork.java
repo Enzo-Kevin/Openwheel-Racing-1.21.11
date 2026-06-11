@@ -245,6 +245,7 @@ public final class OWRNetwork {
 
                 if (best != null) {
                     player.startRiding(best);
+                    best.prepareForDriver(player);
                 }
             });
             context.setPacketHandled(true);

@@ -15,7 +15,7 @@ import java.util.Map;
 
 public final class TrackEditorPlacementService {
     private static final int MAX_BLOCKS_PER_OPERATION = 4096;
-    private static final int MAX_DISTANCE_FROM_PLAYER = 192;
+    private static final int MAX_DISTANCE_FROM_PLAYER = 512;
     private static final int MAX_POLYGON_AREA = 16384;
 
     private TrackEditorPlacementService() {
