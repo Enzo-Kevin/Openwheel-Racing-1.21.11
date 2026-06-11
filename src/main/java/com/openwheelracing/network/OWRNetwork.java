@@ -1,5 +1,6 @@
 package com.openwheelracing.network;
 
+import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
@@ -9,7 +10,10 @@ import com.openwheelracing.registry.OWRItems;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.network.CustomPayloadEvent;
 import net.minecraftforge.network.ChannelBuilder;
 import net.minecraftforge.network.SimpleChannel;
@@ -34,6 +38,26 @@ public final class OWRNetwork {
             .encoder(RepairCarMessage::encode)
             .decoder(RepairCarMessage::decode)
             .consumerMainThread(RepairCarMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(ShiftMessage.class)
+            .encoder(ShiftMessage::encode)
+            .decoder(ShiftMessage::decode)
+            .consumerMainThread(ShiftMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(ExitCarMessage.class)
+            .encoder(ExitCarMessage::encode)
+            .decoder(ExitCarMessage::decode)
+            .consumerMainThread(ExitCarMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(DriveInputMessage.class)
+            .encoder(DriveInputMessage::encode)
+            .decoder(DriveInputMessage::decode)
+            .consumerMainThread(DriveInputMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(MountCarMessage.class)
+            .encoder(MountCarMessage::encode)
+            .decoder(MountCarMessage::decode)
+            .consumerMainThread(MountCarMessage::handle)
             .add();
     }
 
@@ -97,6 +121,114 @@ public final class OWRNetwork {
                 player.getInventory().clearOrCountMatchingItems(item -> item.is(OWRItems.RUBBER.get()), 1, player.inventoryMenu.getCraftSlots());
                 stack.set(OWRDataComponents.CAR_DAMAGE.get(), Math.max(0, damage - 25));
                 menu.slotsChanged(menu.getContainer());
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record ShiftMessage(int direction) {
+        private static void encode(ShiftMessage message, FriendlyByteBuf buffer) {
+            buffer.writeInt(message.direction);
+        }
+
+        private static ShiftMessage decode(FriendlyByteBuf buffer) {
+            return new ShiftMessage(buffer.readInt());
+        }
+
+        private static void handle(ShiftMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.getVehicle() instanceof OpenwheelCarEntity car)) {
+                    return;
+                }
+                if (message.direction > 0) {
+                    car.shiftUp();
+                } else {
+                    car.shiftDown();
+                }
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record ExitCarMessage() {
+        private static void encode(ExitCarMessage message, FriendlyByteBuf buffer) {
+        }
+
+        private static ExitCarMessage decode(FriendlyByteBuf buffer) {
+            return new ExitCarMessage();
+        }
+
+        private static void handle(ExitCarMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player != null) {
+                    player.stopRiding();
+                }
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record DriveInputMessage(float throttle, float brake, float steering) {
+        private static void encode(DriveInputMessage message, FriendlyByteBuf buffer) {
+            buffer.writeFloat(message.throttle);
+            buffer.writeFloat(message.brake);
+            buffer.writeFloat(message.steering);
+        }
+
+        private static DriveInputMessage decode(FriendlyByteBuf buffer) {
+            return new DriveInputMessage(buffer.readFloat(), buffer.readFloat(), buffer.readFloat());
+        }
+
+        private static void handle(DriveInputMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.getVehicle() instanceof OpenwheelCarEntity car)) {
+                    return;
+                }
+                car.applyDriveInput(message.throttle, message.brake, message.steering);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record MountCarMessage() {
+        private static void encode(MountCarMessage message, FriendlyByteBuf buffer) {
+        }
+
+        private static MountCarMessage decode(FriendlyByteBuf buffer) {
+            return new MountCarMessage();
+        }
+
+        private static void handle(MountCarMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || player.getVehicle() != null) {
+                    return;
+                }
+
+                Vec3 eye = player.getEyePosition();
+                Vec3 look = player.getLookAngle();
+                Vec3 reach = eye.add(look.scale(5.0));
+                AABB search = player.getBoundingBox().inflate(5.0);
+
+                OpenwheelCarEntity best = null;
+                double bestDistance = Double.MAX_VALUE;
+                for (Entity entity : player.level().getEntities(player, search, e -> e instanceof OpenwheelCarEntity && e.getPassengers().isEmpty())) {
+                    AABB box = entity.getBoundingBox().inflate(0.35);
+                    if (box.clip(eye, reach).isPresent()) {
+                        double distance = entity.distanceToSqr(player);
+                        if (distance < bestDistance) {
+                            bestDistance = distance;
+                            best = (OpenwheelCarEntity) entity;
+                        }
+                    }
+                }
+
+                if (best != null) {
+                    player.startRiding(best);
+                }
             });
             context.setPacketHandled(true);
         }

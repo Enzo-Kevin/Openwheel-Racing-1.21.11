@@ -38,8 +38,13 @@ public class OpenwheelCarEntity extends Entity {
     private static final EntityDataAccessor<Integer> CURRENT_LAP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> BEST_LAP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> CHECKPOINT_ARMED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> PIT_STOP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
 
-    private static final Vec3 SEAT_OFFSET = new Vec3(0.0, 0.45, 0.0);
+    private static final int PIT_STOP_DURATION = 60; // 3 seconds
+    private static final int PIT_RUBBER_COST = 2;    // rubber items consumed per stop
+
+    // Seat offset: eye height = car Y + (-0.62) + player eye height (1.62) ≈ 1.0 above ground
+    private static final Vec3 SEAT_OFFSET = new Vec3(0.0, -0.62, 0.1);
     private static final Vec3[] DISMOUNT_OFFSETS = {
         new Vec3(1.1, 0.0, 0.15),
         new Vec3(-1.1, 0.0, 0.15),
@@ -51,15 +56,26 @@ public class OpenwheelCarEntity extends Entity {
     private static final double STEERING_DEADZONE = 0.08;
     private static final double MIN_STEERING_SPEED = 0.04;
     private static final double BASE_MAX_SPEED = 1.32;
-    private static final double BASE_ACCELERATION = 0.031;
-    private static final double BASE_BRAKE_FORCE = 0.072;
-    private static final double AIR_DRAG = 0.965;
-    private static final double GROUND_DRAG = 0.99;
+    private static final double BASE_ACCELERATION = 0.038;
+    private static final double BASE_BRAKE_FORCE = 0.10;
+    private static final double ENGINE_BRAKE = 0.018; // deceleration per tick when off throttle
+    private static final double AIR_DRAG = 0.978;
+    private static final double GROUND_DRAG = 0.985;  // lateral-only side-slip cancel, not forward drag
     private PrototypeCarSetup setup = PrototypeCarSetup.DEFAULT;
     private double previousHorizontalSpeed;
     private long lapStartedAt = -1L;
     private long lastLowTyreWarningAt = -200L;
     private long lastDamageWarningAt = -200L;
+    // Last driver input received from client; cleared each tick after use
+    private float inputThrottle;
+    private float inputBrake;
+    private float inputSteering;
+
+    public void applyDriveInput(float throttle, float brake, float steering) {
+        this.inputThrottle = throttle;
+        this.inputBrake = brake;
+        this.inputSteering = steering;
+    }
 
     public OpenwheelCarEntity(EntityType<? extends OpenwheelCarEntity> entityType, Level level) {
         super(entityType, level);
@@ -76,6 +92,7 @@ public class OpenwheelCarEntity extends Entity {
         builder.define(CURRENT_LAP_TICKS, 0);
         builder.define(BEST_LAP_TICKS, 0);
         builder.define(CHECKPOINT_ARMED, false);
+        builder.define(PIT_STOP_TICKS, 0);
     }
 
     public void setSetup(PrototypeCarSetup setup) {
@@ -124,6 +141,38 @@ public class OpenwheelCarEntity extends Entity {
 
     public boolean hasCheckpoint() {
         return entityData.get(CHECKPOINT_ARMED);
+    }
+
+    public boolean isInPitStop() {
+        return entityData.get(PIT_STOP_TICKS) > 0;
+    }
+
+    public int getPitStopTicks() {
+        return entityData.get(PIT_STOP_TICKS);
+    }
+
+    public boolean tryStartPitStop(Player player) {
+        if (!isPitLane()) {
+            messageDriver(Component.literal("Pit stop only available in pit lane"));
+            return false;
+        }
+        double speed = Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
+        if (speed > 0.05) {
+            messageDriver(Component.literal("Come to a stop before pit service"));
+            return false;
+        }
+        if (isInPitStop()) {
+            return false;
+        }
+        int rubberAvailable = player.getInventory().countItem(OWRItems.RUBBER.get());
+        if (rubberAvailable < PIT_RUBBER_COST) {
+            messageDriver(Component.literal("Need " + PIT_RUBBER_COST + " rubber for pit stop"));
+            return false;
+        }
+        player.getInventory().clearOrCountMatchingItems(item -> item.is(OWRItems.RUBBER.get()), PIT_RUBBER_COST, player.inventoryMenu.getCraftSlots());
+        entityData.set(PIT_STOP_TICKS, PIT_STOP_DURATION);
+        messageDriver(Component.literal("Pit stop: servicing..."));
+        return true;
     }
 
     public void crossStartFinishLine(Direction markerFacing) {
@@ -181,6 +230,7 @@ public class OpenwheelCarEntity extends Entity {
 
         if (!level().isClientSide()) {
             tickLapTimer();
+            tickPitStop();
             tickMovement();
             tickImpactDamage();
             tickWarnings();
@@ -188,9 +238,26 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     @Override
+    public boolean isPickable() {
+        return true;
+    }
+
+    @Override
+    public boolean isAttackable() {
+        return true;
+    }
+
+    @Override
     public InteractionResult interact(Player player, InteractionHand hand) {
+        // Return PASS on client so the server-side packet is always sent
         if (level().isClientSide()) {
-            return getPassengers().isEmpty() ? InteractionResult.SUCCESS : InteractionResult.CONSUME;
+            return InteractionResult.PASS;
+        }
+
+        // Seated driver sneak-right-clicks to request pit stop
+        if (hasPassenger(player) && player.isShiftKeyDown()) {
+            tryStartPitStop(player);
+            return InteractionResult.CONSUME;
         }
 
         return getPassengers().isEmpty() && player.startRiding(this) ? InteractionResult.CONSUME : InteractionResult.PASS;
@@ -270,6 +337,26 @@ public class OpenwheelCarEntity extends Entity {
         output.putLong("LapStartedAt", lapStartedAt);
     }
 
+    private void tickPitStop() {
+        int ticks = entityData.get(PIT_STOP_TICKS);
+        if (ticks <= 0) {
+            return;
+        }
+        // Block inputs during service
+        inputThrottle = 0;
+        inputBrake = 0;
+        inputSteering = 0;
+
+        ticks--;
+        entityData.set(PIT_STOP_TICKS, ticks);
+
+        if (ticks == 0) {
+            entityData.set(DAMAGE, 0.0f);
+            entityData.set(TYRE_WEAR, 0.0f);
+            messageDriver(Component.literal("Pit stop complete — car serviced"));
+        }
+    }
+
     private void tickLapTimer() {
         if (lapStartedAt >= 0L) {
             Entity passenger = getControllingPassenger();
@@ -314,14 +401,12 @@ public class OpenwheelCarEntity extends Entity {
     private boolean isOnTrackSurface() {
         double yaw = Math.toRadians(getYRot());
         Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
-        Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
-        for (double side : new double[] {-0.72, 0.72}) {
-            for (double length : new double[] {-0.82, 0.82}) {
+        Vec3 right   = new Vec3(forward.z, 0.0, -forward.x);
+        // Check the four tyre corners (scaled to 2.4 wide × ~3.8 long)
+        for (double side : new double[]{-0.95, 0.95}) {
+            for (double length : new double[]{-1.25, 1.25}) {
                 BlockPos pos = BlockPos.containing(position().add(right.scale(side)).add(forward.scale(length))).below();
-                Block block = level().getBlockState(pos).getBlock();
-                if (isTrackBlock(block)) {
-                    return true;
-                }
+                if (isTrackBlock(level().getBlockState(pos).getBlock())) return true;
             }
         }
         return false;
@@ -336,69 +421,95 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     private void tickMovement() {
-        Entity passenger = getControllingPassenger();
-        double throttle = 0.0;
-        double steering = 0.0;
-        double brake = 0.0;
-
-        if (passenger instanceof Player player) {
-            throttle = Math.max(0.0f, player.zza);
-            brake = Math.max(0.0f, -player.zza);
-            steering = player.xxa;
-        }
+        double throttle = inputThrottle;
+        double steering = inputSteering;
+        double brake = inputBrake;
+        inputThrottle = 0;
+        inputBrake = 0;
+        inputSteering = 0;
 
         Vec3 delta = getDeltaMovement();
         double horizontalSpeed = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
-        double damageFactor = 1.0 - getDamagePercent() / 140.0;
-        double tyreFactor = 1.0 - getTyreWearPercent() / 180.0;
-        double gearRatio = GEAR_RATIOS[getGear()];
-        double maxSpeed = BASE_MAX_SPEED * setup.gearingMultiplier() * setup.aeroMultiplier() * damageFactor;
-        if (isPitLane()) {
-            maxSpeed = Math.min(maxSpeed, 0.52);
-        }
-        double acceleration = BASE_ACCELERATION * setup.powerMultiplier() * setup.accelerationMultiplier() * gearRatio * damageFactor;
-        double brakeForce = BASE_BRAKE_FORCE * tyreFactor * getTrackSurfaceGrip();
 
+        double damageFactor    = 1.0 - getDamagePercent()   / 140.0;
+        double tyreFactor      = 1.0 - getTyreWearPercent() / 180.0;
+        // Gear ratio: low gear = high torque + low top speed, high gear = low torque + high top speed
+        int gear = getGear();
+        double gearRatio       = GEAR_RATIOS[gear];                         // 0.28 (1st) → 1.10 (6th)
+        double torqueMultiplier = (GEAR_RATIOS[1] + GEAR_RATIOS[6]) - gearRatio; // inverted: more in low gears
+        double maxSpeed = BASE_MAX_SPEED * setup.gearingMultiplier() * setup.aeroMultiplier() * damageFactor;
+        if (isPitLane()) maxSpeed = Math.min(maxSpeed, 0.52);
+
+        double acceleration = BASE_ACCELERATION * setup.powerMultiplier() * torqueMultiplier * damageFactor;
+
+        // --- Throttle ---
         if (throttle > 0.0 && horizontalSpeed < maxSpeed) {
             Vec3 forward = Vec3.directionFromRotation(0.0f, getYRot()).scale(acceleration * throttle);
             delta = delta.add(forward.x, 0.0, forward.z);
         }
 
+        // --- Engine brake (off throttle) ---
+        if (throttle == 0.0 && brake == 0.0 && horizontalSpeed > 0.01) {
+            double engineBrake = ENGINE_BRAKE * gearRatio * damageFactor;
+            double newSpeed = Math.max(0.0, horizontalSpeed - engineBrake);
+            double scale = horizontalSpeed > 0 ? newSpeed / horizontalSpeed : 0;
+            delta = new Vec3(delta.x * scale, delta.y, delta.z * scale);
+        }
+
+        // --- Foot brake ---
         if (brake > 0.0) {
-            delta = new Vec3(delta.x * (1.0 - brakeForce * brake), delta.y, delta.z * (1.0 - brakeForce * brake));
+            double brakeForce = BASE_BRAKE_FORCE * tyreFactor * getTrackSurfaceGrip();
+            double brakeScale = Math.max(0.0, 1.0 - brakeForce * brake);
+            delta = new Vec3(delta.x * brakeScale, delta.y, delta.z * brakeScale);
         }
 
+        // --- Steering + lateral grip ---
         if (Math.abs(steering) > STEERING_DEADZONE && horizontalSpeed > MIN_STEERING_SPEED) {
-            float speedFactor = (float) Math.min(1.0, horizontalSpeed / 0.65);
-            float turn = (float) (-steering * (0.9 + 2.0 * tyreFactor * setup.gripMultiplier()) * speedFactor);
+            // Max turn rate decreases at high speed (stability)
+            double speedNorm     = Math.min(1.0, horizontalSpeed / maxSpeed);
+            double maxTurnPerTick = 4.5 - speedNorm * 3.2;   // 4.5° at crawl, 1.3° at top speed (degrees)
+            float turn = (float) (-steering * maxTurnPerTick * Math.min(1.0, horizontalSpeed / 0.3));
             setYRot(getYRot() + turn);
+
             double surfaceWear = level().getBlockState(blockPosition().below()).is(OWRBlocks.KERB.get()) ? 1.8 : 1.0;
-            addTyreWear((float) (Math.abs(steering) * horizontalSpeed * 0.012 * setup.tyreWearMultiplier() * surfaceWear));
+            addTyreWear((float)(Math.abs(steering) * horizontalSpeed * 0.012 * setup.tyreWearMultiplier() * surfaceWear));
         }
 
+        // --- Lateral grip / understeer ---
         if (horizontalSpeed > 0.01) {
-            Vec3 forward = Vec3.directionFromRotation(0.0f, getYRot());
+            Vec3 forward     = Vec3.directionFromRotation(0.0f, getYRot());
             double forwardSpeed = delta.x * forward.x + delta.z * forward.z;
-            double sideX = delta.x - forward.x * forwardSpeed;
-            double sideZ = delta.z - forward.z * forwardSpeed;
-            double surfaceGrip = getTrackSurfaceGrip();
-            double grip = (0.35 + 0.45 * tyreFactor * setup.gripMultiplier()) * surfaceGrip;
-            grip = Math.min(grip, 1.0);
-            delta = new Vec3(forward.x * forwardSpeed + sideX * (1.0 - grip), delta.y, forward.z * forwardSpeed + sideZ * (1.0 - grip));
+            double sideX     = delta.x - forward.x * forwardSpeed;
+            double sideZ     = delta.z - forward.z * forwardSpeed;
+            double sideSpeed = Math.sqrt(sideX * sideX + sideZ * sideZ);
+
+            // Cornering force available; high speed reduces grip (understeer)
+            double corneringLoad = horizontalSpeed / maxSpeed;
+            double gripBase      = (0.55 + 0.45 * tyreFactor * setup.gripMultiplier()) * getTrackSurfaceGrip();
+            double gripEffective = gripBase * (1.0 - 0.35 * corneringLoad);
+            gripEffective = Math.max(0.1, Math.min(1.0, gripEffective));
+
+            // Allow some lateral slip — kill sideSpeed above available grip
+            double sideKill = Math.min(sideSpeed, Math.max(0.0, sideSpeed - gripEffective * 0.04));
+            double killScale = sideSpeed > 0 ? (sideSpeed - sideKill) / sideSpeed : 1.0;
+            delta = new Vec3(
+                forward.x * forwardSpeed + sideX * killScale,
+                delta.y,
+                forward.z * forwardSpeed + sideZ * killScale
+            );
         }
 
+        // --- Drag & gravity ---
         double drag = AIR_DRAG * setup.dragMultiplier() * getTrackSurfaceDrag();
-        delta = new Vec3(delta.x * drag, delta.y - 0.04, delta.z * drag);
-        if (onGround()) {
-            delta = new Vec3(delta.x * GROUND_DRAG, 0.0, delta.z * GROUND_DRAG);
-        }
+        double newY = onGround() ? 0.0 : delta.y - 0.04;
+        delta = new Vec3(delta.x * drag, newY, delta.z * drag);
 
         setDeltaMovement(delta);
         move(MoverType.SELF, getDeltaMovement());
 
         double newSpeed = Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
-        entityData.set(SPEED, (float) (newSpeed * 72.0));
-        entityData.set(RPM, Math.max(900, Math.min(12500, (int) (900 + newSpeed * 7800 / Math.max(0.22, gearRatio)))));
+        entityData.set(SPEED, (float)(newSpeed * 72.0));
+        entityData.set(RPM, Math.max(900, Math.min(12500, (int)(900 + newSpeed * 7200 * gearRatio / Math.max(0.15, GEAR_RATIOS[6])))));
         previousHorizontalSpeed = horizontalSpeed;
     }
 

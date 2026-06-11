@@ -1,0 +1,27 @@
+{
+  "parent": "openwheelracing:progression/root",
+  "display": {
+    "icon": {
+      "id": "openwheelracing:rubber"
+    },
+    "title": {
+      "translate": "advancements.openwheelracing.refine_rubber.title"
+    },
+    "description": {
+      "translate": "advancements.openwheelracing.refine_rubber.description"
+    },
+    "frame": "task"
+  },
+  "criteria": {
+    "has_rubber": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "openwheelracing:rubber"
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "parent": "openwheelracing:progression/refine_rubber",
+  "display": {
+    "icon": {
+      "id": "openwheelracing:asphalt_track"
+    },
+    "title": {
+      "translate": "advancements.openwheelracing.make_asphalt.title"
+    },
+    "description": {
+      "translate": "advancements.openwheelracing.make_asphalt.description"
+    },
+    "frame": "task"
+  },
+  "criteria": {
+    "has_asphalt_track": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "openwheelracing:asphalt_track"
+          }
+        ]
+      }
+    }
+  }
+}

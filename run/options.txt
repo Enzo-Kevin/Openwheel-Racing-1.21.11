@@ -168,6 +168,7 @@ key_key.debug.networkCharts:key.keyboard.3
 key_key.openwheelracing.shift_up:key.keyboard.space
 key_key.openwheelracing.shift_down:key.keyboard.left.shift
 key_key.openwheelracing.exit_car:key.keyboard.r
+key_key.openwheelracing.mount_car:key.keyboard.g
 soundCategory_master:1.0
 soundCategory_music:1.0
 soundCategory_record:1.0

@@ -1,186 +1,205 @@
-[10Jun2026 16:19:32.274] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forge_userdev_client, --version, MOD_DEV, --assetIndex, 29, --assetsDir, /Users/leolong/Library/Application Support/minecraft/assets, --gameDir, .]
-[10Jun2026 16:19:32.275] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Oracle Corporation Java HotSpot(TM) 64-Bit Server VM 21.0.10+8-LTS-217
-[10Jun2026 16:19:32.275] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 10.2.4 starting: java version 21.0.10 by Oracle Corporation; OS Mac OS X arch aarch64 version 26.3.1
-[10Jun2026 16:19:32.330] [main/INFO] [net.minecraftforge.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
-[10Jun2026 16:19:32.502] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
-[10Jun2026 16:19:32.569] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.5
-[10Jun2026 16:19:32.586] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.4
-[10Jun2026 16:19:32.602] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.3
-[10Jun2026 16:19:32.615] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.2
-[10Jun2026 16:19:32.628] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.1
-[10Jun2026 16:19:32.663] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.1 got version 4.1
-[10Jun2026 16:19:33.049] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=jar:file:///Users/leolong/.gradle/caches/modules-2/files-2.1/org.spongepowered/mixin/0.8.7/8ab114ac385e6dbdad5efafe28aba4df8120915f/mixin-0.8.7.jar!/ Service=ModLauncher Env=CLIENT
-[10Jun2026 16:19:33.278] [EarlyDisplay/INFO] [EARLYDISPLAY/]: GL info: Apple M4 GL version 4.1 Metal - 90.5, Apple
-[10Jun2026 16:19:33.964] [main/INFO] [net.minecraftforge.fml.loading.moddiscovery.JarInJarDependencyLocator/]: No dependencies to load found. Skipping!
-[10Jun2026 16:19:34.180] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forge_userdev_client' with arguments [--version, MOD_DEV, --gameDir, ., --assetsDir, /Users/leolong/Library/Application Support/minecraft/assets, --assetIndex, 29]
-[10Jun2026 16:19:35.133] [Datafixer Bootstrap/INFO] [com.mojang.datafixers.DataFixerBuilder/]: 287 Datafixer optimizations took 371 milliseconds
-[10Jun2026 16:19:38.446] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/Users/leolong/Openwheel-Racing-1.21.11/.gradle/mavenizer/repo/net/minecraftforge/forge/1.21.11-61.1.0/forge-1.21.11-61.1.0.jar%230!/assets/.mcassetsroot' uses unexpected schema
-[10Jun2026 16:19:38.447] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/Users/leolong/Openwheel-Racing-1.21.11/.gradle/mavenizer/repo/net/minecraftforge/forge/1.21.11-61.1.0/forge-1.21.11-61.1.0.jar%230!/data/.mcassetsroot' uses unexpected schema
-[10Jun2026 16:19:38.465] [Render thread/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, profilesHost=https://api.mojang.com, name=PROD]
-[10Jun2026 16:19:38.477] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Setting user: Dev
-[10Jun2026 16:19:38.538] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Backend library: LWJGL version 3.3.3+5
-[10Jun2026 16:19:38.886] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Using optional rendering extensions: GL_EXT_texture_filter_anisotropic
-[10Jun2026 16:19:38.947] [modloading-worker-0/INFO] [net.minecraftforge.common.ForgeMod/FORGEMOD]: Forge mod loading, version 61.1.0, for MC 1.21.11 with MCP 20251223.124241
-[10Jun2026 16:19:38.948] [modloading-worker-0/INFO] [net.minecraftforge.common.MinecraftForge/FORGE]: MinecraftForge v61.1.0 Initialized
-[10Jun2026 16:19:38.954] [modloading-worker-0/INFO] [net.minecraftforge.common.ForgeMod/FORGEMOD]: Opening jdk.naming.dns/com.sun.jndi.dns to java.naming
-[10Jun2026 16:19:40.076] [Download-2/INFO] [com.mojang.realmsclient.client.RealmsClient/]: Could not authorize you against Realms server: java.lang.RuntimeException: Failed to parse into SignedJWT: 0
-[10Jun2026 16:19:40.077] [Download-2/ERROR] [com.mojang.realmsclient.client.RealmsClient/]: Failed to fetch Realms feature flags
-com.mojang.realmsclient.exception.RealmsServiceException: Realms authentication error with message 'java.lang.RuntimeException: Failed to parse into SignedJWT: 0'
-	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.execute(RealmsClient.java:515) ~[forge-1.21.11-61.1.0.jar%230!/:?]
+[11Jun2026 09:20:39.826] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forge_userdev_client, --version, MOD_DEV, --assetIndex, 29, --assetsDir, /Users/leolong/Library/Application Support/minecraft/assets, --gameDir, .]
+[11Jun2026 09:20:39.828] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Oracle Corporation Java HotSpot(TM) 64-Bit Server VM 21.0.10+8-LTS-217
+[11Jun2026 09:20:39.828] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 10.2.4 starting: java version 21.0.10 by Oracle Corporation; OS Mac OS X arch aarch64 version 26.3.1
+[11Jun2026 09:20:39.882] [main/INFO] [net.minecraftforge.fml.loading.ImmediateWindowHandler/]: Loading ImmediateWindowProvider fmlearlywindow
+[11Jun2026 09:20:40.045] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.6
+[11Jun2026 09:20:40.111] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.5
+[11Jun2026 09:20:40.126] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.4
+[11Jun2026 09:20:40.138] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.3
+[11Jun2026 09:20:40.150] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.2
+[11Jun2026 09:20:40.160] [main/INFO] [EARLYDISPLAY/]: Trying GL version 4.1
+[11Jun2026 09:20:40.232] [main/INFO] [EARLYDISPLAY/]: Requested GL version 4.1 got version 4.1
+[11Jun2026 09:20:40.388] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=jar:file:///Users/leolong/.gradle/caches/modules-2/files-2.1/org.spongepowered/mixin/0.8.7/8ab114ac385e6dbdad5efafe28aba4df8120915f/mixin-0.8.7.jar!/ Service=ModLauncher Env=CLIENT
+[11Jun2026 09:20:40.666] [EarlyDisplay/INFO] [EARLYDISPLAY/]: GL info: Apple M4 GL version 4.1 Metal - 90.5, Apple
+[11Jun2026 09:20:41.353] [main/INFO] [net.minecraftforge.fml.loading.moddiscovery.JarInJarDependencyLocator/]: No dependencies to load found. Skipping!
+[11Jun2026 09:20:41.502] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forge_userdev_client' with arguments [--version, MOD_DEV, --gameDir, ., --assetsDir, /Users/leolong/Library/Application Support/minecraft/assets, --assetIndex, 29]
+[11Jun2026 09:20:42.497] [Datafixer Bootstrap/INFO] [com.mojang.datafixers.DataFixerBuilder/]: 287 Datafixer optimizations took 410 milliseconds
+[11Jun2026 09:20:45.942] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/Users/leolong/Openwheel-Racing-1.21.11/.gradle/mavenizer/repo/net/minecraftforge/forge/1.21.11-61.1.0/forge-1.21.11-61.1.0.jar%230!/assets/.mcassetsroot' uses unexpected schema
+[11Jun2026 09:20:45.942] [Render thread/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/Users/leolong/Openwheel-Racing-1.21.11/.gradle/mavenizer/repo/net/minecraftforge/forge/1.21.11-61.1.0/forge-1.21.11-61.1.0.jar%230!/data/.mcassetsroot' uses unexpected schema
+[11Jun2026 09:20:45.956] [Render thread/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, profilesHost=https://api.mojang.com, name=PROD]
+[11Jun2026 09:20:45.970] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Setting user: Dev
+[11Jun2026 09:20:46.037] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Backend library: LWJGL version 3.3.3+5
+[11Jun2026 09:20:46.374] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Using optional rendering extensions: GL_EXT_texture_filter_anisotropic
+[11Jun2026 09:20:46.438] [modloading-worker-0/INFO] [net.minecraftforge.common.ForgeMod/FORGEMOD]: Forge mod loading, version 61.1.0, for MC 1.21.11 with MCP 20251223.124241
+[11Jun2026 09:20:46.439] [modloading-worker-0/INFO] [net.minecraftforge.common.MinecraftForge/FORGE]: MinecraftForge v61.1.0 Initialized
+[11Jun2026 09:20:46.446] [modloading-worker-0/INFO] [net.minecraftforge.common.ForgeMod/FORGEMOD]: Opening jdk.naming.dns/com.sun.jndi.dns to java.naming
+[11Jun2026 09:20:46.970] [Download-2/ERROR] [com.mojang.realmsclient.client.RealmsClient/]: Failed to fetch Realms feature flags
+com.mojang.realmsclient.exception.RealmsServiceException: Realms service error (500) with message 'Could not connect to Realms: Connection reset'
+	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.execute(RealmsClient.java:530) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.fetchFeatureFlags(RealmsClient.java:160) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768) ~[?:?]
 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.base/java.lang.Thread.run(Thread.java:1583) [?:?]
-[10Jun2026 16:19:40.266] [Render thread/INFO] [net.minecraft.server.packs.resources.ReloadableResourceManager/]: Reloading ResourceManager: vanilla, mod_resources
-[10Jun2026 16:19:40.482] [Worker-Main-2/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_all_no_pua-17.0.01.hex, loading
-[10Jun2026 16:19:40.486] [Worker-Main-8/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_pua-17.0.01.hex, loading
-[10Jun2026 16:19:40.668] [Worker-Main-5/INFO] [com.openwheelracing.OpenwheelRacing/]: Openwheel Racing initialized
-[10Jun2026 16:19:40.689] [Forge Version Check/INFO] [net.minecraftforge.fml.VersionChecker/]: [forge] Starting version check at https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json
-[10Jun2026 16:19:40.746] [Worker-Main-5/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_jp_patch-17.0.01.hex, loading
-[10Jun2026 16:19:41.232] [Worker-Main-5/WARN] [net.minecraft.client.resources.model.ModelManager/]: Missing textures in model openwheelracing:block/crude_oil_deposit:
-    minecraft:block_or_item:openwheelracing:block/crude_oil_deposit
-[10Jun2026 16:19:41.232] [Worker-Main-5/WARN] [net.minecraft.client.resources.model.ModelManager/]: Missing textures in model openwheelracing:block/refinery:
-    minecraft:block_or_item:openwheelracing:block/refinery
-[10Jun2026 16:19:41.462] [Forge Version Check/INFO] [net.minecraftforge.fml.VersionChecker/]: [forge] Found status: UP_TO_DATE Current: 61.1.0 Target: null
-[10Jun2026 16:19:42.101] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_translucent_moving_block and FS minecraft:core/rendertype_translucent_moving_block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+[11Jun2026 09:20:47.810] [Render thread/INFO] [net.minecraft.server.packs.resources.ReloadableResourceManager/]: Reloading ResourceManager: vanilla, mod_resources
+[11Jun2026 09:20:48.021] [Worker-Main-4/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_all_no_pua-17.0.01.hex, loading
+[11Jun2026 09:20:48.024] [Worker-Main-5/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_pua-17.0.01.hex, loading
+[11Jun2026 09:20:48.118] [Worker-Main-7/INFO] [net.minecraft.client.gui.font.providers.UnihexProvider/]: Found unifont_jp_patch-17.0.01.hex, loading
+[11Jun2026 09:20:48.128] [Worker-Main-3/INFO] [com.openwheelracing.OpenwheelRacing/]: Openwheel Racing initialized
+[11Jun2026 09:20:48.166] [Forge Version Check/INFO] [net.minecraftforge.fml.VersionChecker/]: [forge] Starting version check at https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json
+[11Jun2026 09:20:48.711] [Forge Version Check/INFO] [net.minecraftforge.fml.VersionChecker/]: [forge] Found status: UP_TO_DATE Current: 61.1.0 Target: null
+[11Jun2026 09:20:49.586] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.111] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+[11Jun2026 09:20:49.589] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_item_entity_translucent_cull and FS minecraft:core/rendertype_item_entity_translucent_cull. Log output: WARNING: Output of vertex shader 'texCoord1' not read by fragment shader
+WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
 
-[10Jun2026 16:19:42.116] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.593] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.119] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_beacon_beam and FS minecraft:core/rendertype_beacon_beam. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[10Jun2026 16:19:42.134] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[10Jun2026 16:19:42.143] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_beacon_beam and FS minecraft:core/rendertype_beacon_beam. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[10Jun2026 16:19:42.148] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[10Jun2026 16:19:42.150] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[10Jun2026 16:19:42.159] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
-
-[10Jun2026 16:19:42.161] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_background_see_through and FS minecraft:core/rendertype_text_background_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
-
-[10Jun2026 16:19:42.164] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_entity_alpha and FS minecraft:core/rendertype_entity_alpha. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.604] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_entity_alpha and FS minecraft:core/rendertype_entity_alpha. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 WARNING: Output of vertex shader 'texCoord1' not read by fragment shader
 WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
 
-[10Jun2026 16:19:42.169] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.617] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_intensity_see_through and FS minecraft:core/rendertype_text_intensity_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.172] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+[11Jun2026 09:20:49.627] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.183] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.641] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.186] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_see_through and FS minecraft:core/rendertype_text_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.644] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.187] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+[11Jun2026 09:20:49.648] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
 
-[10Jun2026 16:19:42.194] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.652] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[11Jun2026 09:20:49.656] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/animate_sprite and FS minecraft:core/animate_sprite_blit. Log output: WARNING: Output of vertex shader 'fAnimationProgress' not read by fragment shader
+
+[11Jun2026 09:20:49.659] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
 WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
 
-[10Jun2026 16:19:42.197] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_crumbling and FS minecraft:core/rendertype_crumbling. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.664] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[11Jun2026 09:20:49.673] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_beacon_beam and FS minecraft:core/rendertype_beacon_beam. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+
+[11Jun2026 09:20:49.679] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/block and FS minecraft:core/block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[11Jun2026 09:20:49.682] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_crumbling and FS minecraft:core/rendertype_crumbling. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
 
-[10Jun2026 16:19:42.200] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.684] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_translucent_moving_block and FS minecraft:core/rendertype_translucent_moving_block. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+
+[11Jun2026 09:20:49.687] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
 
-[10Jun2026 16:19:42.209] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.690] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_background_see_through and FS minecraft:core/rendertype_text_background_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.213] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_intensity_see_through and FS minecraft:core/rendertype_text_intensity_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.694] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.217] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_item_entity_translucent_cull and FS minecraft:core/rendertype_item_entity_translucent_cull. Log output: WARNING: Output of vertex shader 'texCoord1' not read by fragment shader
-WARNING: Output of vertex shader 'texCoord2' not read by fragment shader
+[11Jun2026 09:20:49.699] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_text_see_through and FS minecraft:core/rendertype_text_see_through. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.218] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+[11Jun2026 09:20:49.705] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
 
-[10Jun2026 16:19:42.223] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.706] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.236] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_entity_shadow and FS minecraft:core/rendertype_entity_shadow. Log output: WARNING: Could not find vertex shader attribute 'UV1' to match BindAttributeLocation request.
+[11Jun2026 09:20:49.711] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_beacon_beam and FS minecraft:core/rendertype_beacon_beam. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+
+[11Jun2026 09:20:49.720] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
+WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
+WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[11Jun2026 09:20:49.726] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/entity and FS minecraft:core/entity. Log output: WARNING: Output of vertex shader 'overlayColor' not read by fragment shader
+
+[11Jun2026 09:20:49.729] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/rendertype_entity_shadow and FS minecraft:core/rendertype_entity_shadow. Log output: WARNING: Could not find vertex shader attribute 'UV1' to match BindAttributeLocation request.
 WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
 WARNING: Could not find vertex shader attribute 'UV2' to match BindAttributeLocation request.
 
-[10Jun2026 16:19:42.237] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/animate_sprite and FS minecraft:core/animate_sprite_blit. Log output: WARNING: Output of vertex shader 'fAnimationProgress' not read by fragment shader
-
-[10Jun2026 16:19:42.248] [Render thread/INFO] [com.mojang.blaze3d.opengl.GlProgram/]: Info log when linking program containing VS minecraft:core/terrain and FS minecraft:core/terrain. Log output: WARNING: Could not find vertex shader attribute 'Normal' to match BindAttributeLocation request.
-
-[10Jun2026 16:19:43.759] [Render thread/INFO] [com.mojang.blaze3d.audio.Library/]: OpenAL initialized on device MacBook Pro Speakers
-[10Jun2026 16:19:43.761] [Render thread/INFO] [net.minecraft.client.sounds.SoundEngine/SOUNDS]: Sound engine started
-[10Jun2026 16:19:43.762] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
-[10Jun2026 16:19:43.777] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x128x0 minecraft:textures/atlas/decorated_pot.png-atlas
-[10Jun2026 16:19:43.783] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 2048x1024x0 minecraft:textures/atlas/armor_trims.png-atlas
-[10Jun2026 16:19:43.797] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
-[10Jun2026 16:19:43.799] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/shield_patterns.png-atlas
-[10Jun2026 16:19:43.800] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 2048x2048x4 minecraft:textures/atlas/blocks.png-atlas
-[10Jun2026 16:19:43.868] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/chest.png-atlas
-[10Jun2026 16:19:43.870] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x128x0 minecraft:textures/atlas/celestials.png-atlas
-[10Jun2026 16:19:43.870] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/banner_patterns.png-atlas
-[10Jun2026 16:19:43.871] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/beds.png-atlas
-[10Jun2026 16:19:43.872] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/items.png-atlas
-[10Jun2026 16:19:43.883] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x1024x0 minecraft:textures/atlas/gui.png-atlas
-[10Jun2026 16:19:43.891] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x64x0 minecraft:textures/atlas/map_decorations.png-atlas
-[10Jun2026 16:19:43.892] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/signs.png-atlas
-[10Jun2026 16:19:43.893] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/shulker_boxes.png-atlas
-[10Jun2026 16:19:44.360] [IO-Worker-1/INFO] [com.mojang.realmsclient.client.RealmsClient/]: Could not authorize you against Realms server: java.lang.RuntimeException: Failed to parse into SignedJWT: 0
-[10Jun2026 16:19:44.360] [IO-Worker-1/ERROR] [com.mojang.realmsclient.RealmsAvailability/]: Couldn't connect to realms
-com.mojang.realmsclient.exception.RealmsServiceException: Realms authentication error with message 'java.lang.RuntimeException: Failed to parse into SignedJWT: 0'
-	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.execute(RealmsClient.java:515) ~[forge-1.21.11-61.1.0.jar%230!/:?]
+[11Jun2026 09:20:50.165] [Render thread/INFO] [com.mojang.blaze3d.audio.Library/]: OpenAL initialized on device MacBook Pro Speakers
+[11Jun2026 09:20:50.167] [Render thread/INFO] [net.minecraft.client.sounds.SoundEngine/SOUNDS]: Sound engine started
+[11Jun2026 09:20:50.167] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[11Jun2026 09:20:50.178] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x128x0 minecraft:textures/atlas/decorated_pot.png-atlas
+[11Jun2026 09:20:50.179] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 2048x1024x0 minecraft:textures/atlas/armor_trims.png-atlas
+[11Jun2026 09:20:50.193] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[11Jun2026 09:20:50.194] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/shield_patterns.png-atlas
+[11Jun2026 09:20:50.196] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 2048x2048x4 minecraft:textures/atlas/blocks.png-atlas
+[11Jun2026 09:20:50.258] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/chest.png-atlas
+[11Jun2026 09:20:50.260] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 256x128x0 minecraft:textures/atlas/celestials.png-atlas
+[11Jun2026 09:20:50.260] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/banner_patterns.png-atlas
+[11Jun2026 09:20:50.263] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/beds.png-atlas
+[11Jun2026 09:20:50.264] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x512x0 minecraft:textures/atlas/items.png-atlas
+[11Jun2026 09:20:50.277] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 1024x1024x0 minecraft:textures/atlas/gui.png-atlas
+[11Jun2026 09:20:50.287] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 128x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[11Jun2026 09:20:50.288] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x256x0 minecraft:textures/atlas/signs.png-atlas
+[11Jun2026 09:20:50.289] [Render thread/INFO] [net.minecraft.client.renderer.texture.TextureAtlas/]: Created: 512x512x0 minecraft:textures/atlas/shulker_boxes.png-atlas
+[11Jun2026 09:20:50.515] [IO-Worker-1/ERROR] [com.mojang.realmsclient.RealmsAvailability/]: Couldn't connect to realms
+com.mojang.realmsclient.exception.RealmsServiceException: Realms service error (500) with message 'Could not connect to Realms: Connection reset'
+	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.execute(RealmsClient.java:530) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.clientCompatible(RealmsClient.java:283) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.RealmsAvailability.lambda$check$0(RealmsAvailability.java:50) ~[forge-1.21.11-61.1.0.jar%230!/:?]
 	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768) ~[?:?]
 	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
 	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
 	at java.base/java.lang.Thread.run(Thread.java:1583) [?:?]
-[10Jun2026 16:19:53.010] [Render thread/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1489 recipes
-[10Jun2026 16:19:53.019] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1584 advancements
-[10Jun2026 16:19:55.485] [Render thread/WARN] [net.minecraft.world.item.crafting.RecipeManager/]: Recipe openwheelracing:prototype_car_spawn can't be placed due to empty ingredients and will be ignored
-[10Jun2026 16:19:55.504] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Starting integrated minecraft server version 1.21.11
-[10Jun2026 16:19:55.505] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
-[10Jun2026 16:19:55.730] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Loading 0 persistent chunks...
-[10Jun2026 16:19:55.730] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Preparing spawn area: 16%
-[10Jun2026 16:19:55.744] [Server thread/INFO] [net.minecraftforge.server.permission.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
-[10Jun2026 16:19:55.990] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Loading 49 chunks for player spawn...
-[10Jun2026 16:19:56.147] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Time elapsed: 417 ms
-[10Jun2026 16:19:56.287] [Render thread/INFO] [net.minecraftforge.common.ForgeHooks/]: Connected to a modded server.
-[10Jun2026 16:19:56.349] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: Dev[local:E:8b380770] logged in with entity id 1 at (7.142181450222245, -60.0, -34.571730045954574)
-[10Jun2026 16:19:56.379] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev joined the game
-[10Jun2026 16:19:56.457] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing view distance to 16, from 10
-[10Jun2026 16:19:56.461] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing simulation distance to 12, from 0
-[10Jun2026 16:19:56.465] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 5 advancements
-[10Jun2026 16:19:56.514] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 2 reached during a single frame. New capacity will be 4.
-[10Jun2026 16:19:56.542] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 4 reached during a single frame. New capacity will be 8.
-[10Jun2026 16:19:56.646] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 2 reached during a single frame. New capacity will be 8.
-[10Jun2026 16:19:56.712] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
-[10Jun2026 16:19:56.808] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 16 reached during a single frame. New capacity will be 32.
-[10Jun2026 16:19:56.912] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 32 reached during a single frame. New capacity will be 64.
-[10Jun2026 16:19:57.115] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 64 reached during a single frame. New capacity will be 128.
-[10Jun2026 16:19:57.536] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 128 reached during a single frame. New capacity will be 256.
-[10Jun2026 16:19:58.308] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 256 reached during a single frame. New capacity will be 512.
-[10Jun2026 16:20:42.000] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Saving and pausing game...
-[10Jun2026 16:20:42.021] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
-[10Jun2026 16:20:42.049] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
-[10Jun2026 16:20:42.050] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
-[10Jun2026 16:22:37.148] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Saving and pausing game...
-[10Jun2026 16:22:37.164] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
-[10Jun2026 16:22:37.179] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
-[10Jun2026 16:22:37.180] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
-[10Jun2026 16:22:38.097] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: Dev lost connection: Disconnected
-[10Jun2026 16:22:38.097] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev left the game
-[10Jun2026 16:22:38.106] [Server thread/INFO] [net.minecraft.server.network.ServerCommonPacketListenerImpl/]: Stopping singleplayer server as player logged out
-[10Jun2026 16:22:38.158] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping server
-[10Jun2026 16:22:38.159] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving players
-[10Jun2026 16:22:38.159] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving worlds
-[10Jun2026 16:22:38.295] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
-[10Jun2026 16:22:38.461] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
-[10Jun2026 16:22:38.462] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
-[10Jun2026 16:22:38.477] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (TestGame): All chunks are saved
-[10Jun2026 16:22:38.477] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[10Jun2026 16:22:38.477] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[10Jun2026 16:22:38.477] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage: All dimensions are saved
-[10Jun2026 16:22:39.513] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Stopping!
+[11Jun2026 09:20:55.654] [Render thread/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1489 recipes
+[11Jun2026 09:20:55.664] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1589 advancements
+[11Jun2026 09:20:56.616] [Render thread/WARN] [net.minecraft.world.item.crafting.RecipeManager/]: Recipe openwheelracing:prototype_car_spawn can't be placed due to empty ingredients and will be ignored
+[11Jun2026 09:20:56.635] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Starting integrated minecraft server version 1.21.11
+[11Jun2026 09:20:56.635] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
+[11Jun2026 09:20:56.954] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Loading 0 persistent chunks...
+[11Jun2026 09:20:56.954] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Preparing spawn area: 16%
+[11Jun2026 09:20:56.968] [Server thread/INFO] [net.minecraftforge.server.permission.PermissionAPI/]: Successfully initialized permission handler forge:default_handler
+[11Jun2026 09:20:57.256] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Loading 49 chunks for player spawn...
+[11Jun2026 09:20:57.473] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Preparing spawn area: 100%
+[11Jun2026 09:20:57.473] [Server thread/INFO] [net.minecraft.server.level.progress.LoggingLevelLoadListener/]: Time elapsed: 520 ms
+[11Jun2026 09:20:57.614] [Render thread/INFO] [net.minecraftforge.common.ForgeHooks/]: Connected to a modded server.
+[11Jun2026 09:20:57.668] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: Dev[local:E:71496525] logged in with entity id 40 at (6.826308234488593, -60.0, 49.46811919841342)
+[11Jun2026 09:20:57.698] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev joined the game
+[11Jun2026 09:20:57.794] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 10 advancements
+[11Jun2026 09:20:57.796] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing view distance to 16, from 10
+[11Jun2026 09:20:57.800] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Changing simulation distance to 12, from 0
+[11Jun2026 09:20:57.819] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 2 reached during a single frame. New capacity will be 4.
+[11Jun2026 09:20:57.929] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 4 reached during a single frame. New capacity will be 8.
+[11Jun2026 09:20:58.051] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 2 reached during a single frame. New capacity will be 8.
+[11Jun2026 09:20:58.106] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
+[11Jun2026 09:20:58.159] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 16 reached during a single frame. New capacity will be 32.
+[11Jun2026 09:20:58.253] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 32 reached during a single frame. New capacity will be 64.
+[11Jun2026 09:20:58.827] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 64 reached during a single frame. New capacity will be 128.
+[11Jun2026 09:20:59.250] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Dynamic Transforms UBO, capacity limit of 8 reached during a single frame. New capacity will be 16.
+[11Jun2026 09:21:03.087] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 128 reached during a single frame. New capacity will be 256.
+[11Jun2026 09:21:03.269] [Render thread/INFO] [net.minecraft.client.renderer.DynamicUniformStorage/]: Resizing Chunk Sections UBO, capacity limit of 256 reached during a single frame. New capacity will be 512.
+[11Jun2026 09:21:57.786] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 11 advancements
+[11Jun2026 09:22:09.273] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Saving and pausing game...
+[11Jun2026 09:22:09.292] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
+[11Jun2026 09:22:09.356] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
+[11Jun2026 09:22:09.356] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
+[11Jun2026 09:23:43.232] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [Dev: Set own game mode to Survival Mode]
+[11Jun2026 09:23:43.236] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Set own game mode to Survival Mode
+[11Jun2026 09:23:56.620] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [Dev: Gave 1 [Copper Pickaxe] to Dev]
+[11Jun2026 09:23:56.628] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Gave 1 [Copper Pickaxe] to Dev
+[11Jun2026 09:23:56.628] [Render thread/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 13 advancements
+[11Jun2026 09:24:44.823] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [Dev: Set own game mode to Creative Mode]
+[11Jun2026 09:24:44.824] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Set own game mode to Creative Mode
+[11Jun2026 09:25:41.097] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [Dev: Killed 41 entities]
+[11Jun2026 09:25:41.105] [Render thread/INFO] [net.minecraft.client.gui.components.ChatComponent/]: [System] [CHAT] Killed 41 entities
+[11Jun2026 09:26:04.769] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Saving and pausing game...
+[11Jun2026 09:26:04.777] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
+[11Jun2026 09:26:04.786] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
+[11Jun2026 09:26:04.786] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
+[11Jun2026 09:28:25.818] [Server thread/INFO] [net.minecraft.client.server.IntegratedServer/]: Saving and pausing game...
+[11Jun2026 09:28:25.835] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
+[11Jun2026 09:28:25.859] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
+[11Jun2026 09:28:25.859] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
+[11Jun2026 09:28:26.473] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: Dev lost connection: Disconnected
+[11Jun2026 09:28:26.473] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Dev left the game
+[11Jun2026 09:28:26.484] [Server thread/INFO] [net.minecraft.server.network.ServerCommonPacketListenerImpl/]: Stopping singleplayer server as player logged out
+[11Jun2026 09:28:26.537] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping server
+[11Jun2026 09:28:26.537] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving players
+[11Jun2026 09:28:26.537] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving worlds
+[11Jun2026 09:28:26.627] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:overworld
+[11Jun2026 09:28:26.706] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_nether
+[11Jun2026 09:28:26.707] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[TestGame]'/minecraft:the_end
+[11Jun2026 09:28:26.722] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (TestGame): All chunks are saved
+[11Jun2026 09:28:26.722] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[11Jun2026 09:28:26.722] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[11Jun2026 09:28:26.722] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage: All dimensions are saved
+[11Jun2026 09:28:27.563] [IO-Worker-16/ERROR] [com.mojang.realmsclient.RealmsAvailability/]: Couldn't connect to realms
+com.mojang.realmsclient.exception.RealmsServiceException: Realms service error (500) with message 'Could not connect to Realms: Connection reset'
+	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.execute(RealmsClient.java:530) ~[forge-1.21.11-61.1.0.jar%230!/:?]
+	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.client.RealmsClient.clientCompatible(RealmsClient.java:283) ~[forge-1.21.11-61.1.0.jar%230!/:?]
+	at TRANSFORMER/minecraft@1.21.11/com.mojang.realmsclient.RealmsAvailability.lambda$check$0(RealmsAvailability.java:50) ~[forge-1.21.11-61.1.0.jar%230!/:?]
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768) ~[?:?]
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144) ~[?:?]
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642) ~[?:?]
+	at java.base/java.lang.Thread.run(Thread.java:1583) [?:?]
+[11Jun2026 09:28:27.778] [Render thread/INFO] [net.minecraft.client.Minecraft/]: Stopping!

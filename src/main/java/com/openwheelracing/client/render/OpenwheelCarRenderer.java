@@ -15,12 +15,15 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 
 public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, OpenwheelCarRenderer.CarRenderState> {
-    private static final Identifier TEXTURE = Identifier.withDefaultNamespace("textures/misc/white.png");
-    private static final RenderType RENDER_TYPE = RenderTypes.entitySolid(TEXTURE);
-    private static final int BODY_COLOR = 0xFFE01B24;
-    private static final int NOSE_COLOR = 0xFFFFFFFF;
-    private static final int WING_COLOR = 0xFF202020;
-    private static final int WHEEL_COLOR = 0xFF080808;
+    private static final Identifier BODY_TEXTURE = Identifier.fromNamespaceAndPath("openwheelracing", "textures/entity/car_body.png");
+    private static final Identifier WHITE_TEXTURE = Identifier.fromNamespaceAndPath("openwheelracing", "textures/entity/car_white.png");
+    private static final Identifier DARK_TEXTURE = Identifier.fromNamespaceAndPath("openwheelracing", "textures/entity/car_dark.png");
+    private static final Identifier WHEEL_TEXTURE = Identifier.fromNamespaceAndPath("openwheelracing", "textures/entity/car_wheel.png");
+    private static final RenderType BODY_RENDER_TYPE = RenderTypes.entitySolid(BODY_TEXTURE);
+    private static final RenderType WHITE_RENDER_TYPE = RenderTypes.entitySolid(WHITE_TEXTURE);
+    private static final RenderType DARK_RENDER_TYPE = RenderTypes.entitySolid(DARK_TEXTURE);
+    private static final RenderType WHEEL_RENDER_TYPE = RenderTypes.entitySolid(WHEEL_TEXTURE);
+    private static final int WHITE_COLOR = 0xFFFFFFFF;
 
     public OpenwheelCarRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -36,6 +39,7 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     public void extractRenderState(OpenwheelCarEntity car, CarRenderState state, float partialTick) {
         super.extractRenderState(car, state, partialTick);
         state.yRot = car.getYRot(partialTick);
+        state.lightCoords = 15728880;
     }
 
     @Override
@@ -44,21 +48,28 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
 
         poseStack.pushPose();
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0f - state.yRot));
-        nodeCollector.submitCustomGeometry(poseStack, RENDER_TYPE, (pose, consumer) -> {
-            cuboid(consumer, pose, -0.45f, 0.15f, -0.85f, 0.45f, 0.45f, 0.65f, BODY_COLOR, state.lightCoords);
-            cuboid(consumer, pose, -0.18f, 0.22f, -1.55f, 0.18f, 0.34f, -0.85f, NOSE_COLOR, state.lightCoords);
-            cuboid(consumer, pose, -0.85f, 0.18f, -1.6f, 0.85f, 0.28f, -1.35f, WING_COLOR, state.lightCoords);
-            cuboid(consumer, pose, -0.8f, 0.28f, 0.45f, 0.8f, 0.42f, 0.8f, WING_COLOR, state.lightCoords);
-            wheel(consumer, pose, -0.62f, 0.18f, -1.05f, state.lightCoords);
-            wheel(consumer, pose, 0.62f, 0.18f, -1.05f, state.lightCoords);
-            wheel(consumer, pose, -0.62f, 0.18f, 0.55f, state.lightCoords);
-            wheel(consumer, pose, 0.62f, 0.18f, 0.55f, state.lightCoords);
+        int light = state.lightCoords;
+        nodeCollector.submitCustomGeometry(poseStack, BODY_RENDER_TYPE, (pose, consumer) ->
+            cuboid(consumer, pose, -0.55f, 0.10f, -1.0f, 0.55f, 0.42f, 0.8f, WHITE_COLOR, light)
+        );
+        nodeCollector.submitCustomGeometry(poseStack, WHITE_RENDER_TYPE, (pose, consumer) ->
+            cuboid(consumer, pose, -0.22f, 0.18f, -1.9f, 0.22f, 0.32f, -1.0f, WHITE_COLOR, light)
+        );
+        nodeCollector.submitCustomGeometry(poseStack, DARK_RENDER_TYPE, (pose, consumer) -> {
+            cuboid(consumer, pose, -1.1f, 0.14f, -2.0f, 1.1f, 0.26f, -1.6f, WHITE_COLOR, light);
+            cuboid(consumer, pose, -1.0f, 0.24f, 0.55f, 1.0f, 0.40f, 1.0f, WHITE_COLOR, light);
+        });
+        nodeCollector.submitCustomGeometry(poseStack, WHEEL_RENDER_TYPE, (pose, consumer) -> {
+            wheel(consumer, pose, -0.78f, 0.15f, -1.3f, light);
+            wheel(consumer, pose,  0.78f, 0.15f, -1.3f, light);
+            wheel(consumer, pose, -0.78f, 0.15f,  0.65f, light);
+            wheel(consumer, pose,  0.78f, 0.15f,  0.65f, light);
         });
         poseStack.popPose();
     }
 
     private static void wheel(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, int light) {
-        cuboid(consumer, pose, x - 0.14f, y - 0.18f, z - 0.22f, x + 0.14f, y + 0.18f, z + 0.22f, WHEEL_COLOR, light);
+        cuboid(consumer, pose, x - 0.17f, y - 0.22f, z - 0.27f, x + 0.17f, y + 0.22f, z + 0.27f, WHITE_COLOR, light);
     }
 
     private static void cuboid(VertexConsumer consumer, PoseStack.Pose pose, float minX, float minY, float minZ, float maxX, float maxY, float maxZ, int color, int light) {

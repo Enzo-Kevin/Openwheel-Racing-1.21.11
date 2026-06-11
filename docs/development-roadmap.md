@@ -19,38 +19,63 @@ The development strategy should prioritize playable vertical slices over large u
 Already implemented:
 
 - Mod rebrand to **Openwheel Racing**.
-- English prototype PRD.
-- Car assembly workstation.
-- Hybrid crafting chain:
+- English prototype PRD and mechanism specs.
+- Repository guidance in `CLAUDE.md`.
+- Asset checklist in `docs/asset-checklist.md`.
+- English and Simplified Chinese localization files with matching key sets.
+- Car assembly workstation with recipe-backed assembly.
+- Free setup tuning and basic repair controls in the car assembly UI.
+- Furnace-like refinery block with crude input, furnace-fuel input, and five output slots.
+- Hybrid crafting/progression chain:
+  - crude oil chunks/bucket
+  - gas, petrol, diesel
+  - crude rubber and rubber
+  - asphalt binder
   - carbon fiber
+  - racing electronics
   - chassis
   - engine
-  - tires
+  - tyres
   - aero kit
   - gearbox
   - steering controls
+- Crude oil deposit worldgen below Y=20, with oil-rich biome bonus generation.
 - Prototype car spawn item.
-- Item-stored car setup data.
-- Tooltip display for setup properties.
+- Item-stored car setup, damage, and tyre wear data.
+- Tooltip display for setup and condition properties.
 - Single-seat prototype car entity.
-- Basic WASD driving behavior.
-- Gear/RPM/speed/tyre/damage state.
-- Shift up/down keybinds.
-- Exit car keybind.
-- Text HUD via debug overlay.
-- Basic damage and tyre wear effects.
+- Visible placeholder open-wheel car renderer.
+- WASD driving behavior with gear/RPM/speed/tyre/damage state.
+- Shift up/down and exit-car keybinds.
+- Normal gameplay HUD overlay for speed, gear, RPM, tyres, damage, lap, best lap, and setup.
+- Track-building blocks:
+  - asphalt track
+  - kerb
+  - barrier
+  - pit lane
+  - directional start/finish
+  - directional checkpoint
+- Directional kerb/checkpoint/start-finish blockstates and 3D block item models.
+- Surface effects for track grip/drag, kerb grip/wear penalty, pit lane speed limit, and barrier impact absorption.
+- Basic lap timing with directional start/finish and checkpoint validation.
+- Lap invalidation for reverse marker passes, leaving track entirely, driver exit, or driver death.
+- Basic damage and tyre wear effects, warnings, crash feedback, and destruction material drops.
+- Block/item models and temporary textures sufficient to avoid missing-texture rendering.
 
 Known limitations:
 
-- Car currently uses a placeholder/no-op renderer.
-- Controls are prototype-level and need stronger server-authoritative networking for multiplayer.
-- No proper tuning UI yet.
-- No track blocks, race timing, checkpoints, or pit lane behavior yet.
-- No crude oil worldgen or refining chain yet.
+- Car renderer is still a placeholder code-rendered model, not a polished textured model.
+- Controls remain prototype-level and are not yet server-authoritative enough for multiplayer racing.
+- Lap timing is still coarse: one armed checkpoint flag, no ordered multi-checkpoint route, no sectors, no leaderboard, no persistent per-player best-lap storage beyond entity save data.
+- Pit lane only applies speed limiting; no pit-stop repair/refuel/tyre-change loop yet.
+- Refinery outputs are random item outputs; no fluid system or detailed ratios yet.
+- Crude oil is currently ore/deposit-like, not a real fluid pocket.
+- Survival progression has recipes, but lacks advancements/tutorial guidance.
+- Many item textures still use placeholders or need final art.
 
 ---
 
-## Phase 1: Drivable Prototype Hardening
+## Phase 1: Drivable Prototype Hardening — Mostly Complete
 
 **Goal**: Make the current prototype car visible, testable, and reliable enough for repeated single-player playtests.
 
@@ -76,7 +101,7 @@ Known limitations:
 
 ---
 
-## Phase 2: Car Setup and Tuning Loop
+## Phase 2: Car Setup and Tuning Loop — MVP Complete
 
 **Goal**: Turn setup data into a real gameplay system rather than static tooltip values.
 
@@ -104,7 +129,7 @@ Known limitations:
 
 ---
 
-## Phase 3: Track Building Blocks
+## Phase 3: Track Building Blocks — MVP Complete
 
 **Goal**: Let players build a dedicated racing circuit with mod blocks instead of relying on generic terrain.
 
@@ -130,7 +155,7 @@ Known limitations:
 
 ---
 
-## Phase 4: Timed Lap System
+## Phase 4: Timed Lap System — Prototype Complete
 
 **Goal**: Deliver the first real racing gameplay loop: build track, drive valid lap, receive lap time.
 
@@ -151,7 +176,7 @@ Known limitations:
 
 ---
 
-## Phase 5: Pit Lane and Wear Gameplay
+## Phase 5: Pit Lane and Wear Gameplay — Next Major Gap
 
 **Goal**: Make damage/wear management part of the racing loop.
 
@@ -172,7 +197,7 @@ Known limitations:
 
 ---
 
-## Phase 6: Crude Oil Resource and Refining Chain
+## Phase 6: Crude Oil Resource and Refining Chain — MVP Complete
 
 **Goal**: Add a Minecraft-native industrial supply chain for racing materials and track construction.
 
@@ -229,7 +254,7 @@ Possible first implementation:
 
 ---
 
-## Phase 7: Survival Progression Pass
+## Phase 7: Survival Progression Pass — In Progress
 
 **Goal**: Make the mod feel coherent in survival mode.
 
@@ -301,13 +326,16 @@ Possible first implementation:
 
 ## Near-Term Recommended Order
 
-1. Add visible car renderer.
-2. Move HUD out of debug overlay into normal gameplay HUD.
-3. Improve driving feel and gear behavior.
-4. Add track/asphalt blocks.
-5. Add start/finish and checkpoint lap timing.
-6. Add crude oil worldgen and basic refining.
-7. Replace placeholder tyre/track recipes with rubber/asphalt-based recipes.
+1. Add survival progression advancements/tutorial hooks.
+2. Add a real pit-stop loop for pit lane:
+   - repair damage
+   - restore/change tyres
+   - optionally refuel later
+3. Replace remaining placeholder item/block art and add a textured car model.
+4. Improve lap timing from one checkpoint flag to ordered checkpoints and per-player persistent best laps.
+5. Add a clear car recovery/pick-up flow that writes entity condition back to the item.
+6. Harden controls/networking for future small private multiplayer.
+7. Add config/datagen support once gameplay data stabilizes.
 
 ---
 

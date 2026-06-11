@@ -1,0 +1,27 @@
+{
+  "parent": "openwheelracing:progression/refine_rubber",
+  "display": {
+    "icon": {
+      "id": "openwheelracing:prototype_car_spawn"
+    },
+    "title": {
+      "translate": "advancements.openwheelracing.assemble_car.title"
+    },
+    "description": {
+      "translate": "advancements.openwheelracing.assemble_car.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "has_car": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "openwheelracing:prototype_car_spawn"
+          }
+        ]
+      }
+    }
+  }
+}

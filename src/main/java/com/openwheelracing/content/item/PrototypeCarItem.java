@@ -56,7 +56,10 @@ public class PrototypeCarItem extends Item {
         ItemStack stack = context.getItemInHand();
 
         if (!level.isClientSide() && player != null) {
+            // Spawn on top of the clicked face, entity origin at foot level
             Vec3 spawnPos = Vec3.atBottomCenterOf(context.getClickedPos().relative(context.getClickedFace()));
+            // Raise by 0.02 so the bounding box clears the surface it was placed on
+            spawnPos = spawnPos.add(0, 0.02, 0);
             OpenwheelCarEntity car = new OpenwheelCarEntity(OWREntities.PROTOTYPE_CAR.get(), level);
             car.setPos(spawnPos.x, spawnPos.y, spawnPos.z);
             car.setYRot(player.getYRot());

@@ -41,6 +41,17 @@ public final class CarHudOverlay {
         graphics.drawString(font, "TYRE C" + (car.getSetup().grip() + 1), setupX + 7, setupY + 18, 0xFFB7FFB7, false);
         graphics.drawString(font, "AERO " + car.getSetup().aero(), setupX + 7, setupY + 29, 0xFF99DDFF, false);
         graphics.drawString(font, "GEAR " + car.getSetup().gearing(), setupX + 52, setupY + 29, 0xFFFFDD88, false);
+
+        if (car.isInPitStop()) {
+            int remaining = car.getPitStopTicks();
+            int pct = 100 - (remaining * 100 / 60);
+            int barWidth = 116;
+            int barX = x - 54;
+            int barY = y - 20;
+            graphics.fill(barX, barY, barX + barWidth, barY + 12, 0x99000000);
+            graphics.fill(barX + 1, barY + 1, barX + 1 + barWidth * pct / 100, barY + 11, 0xFFDA1A20);
+            graphics.drawString(font, "PIT STOP  " + (remaining / 20 + 1) + "s", barX + 4, barY + 2, 0xFFFFFFFF, false);
+        }
     }
 
     private static String formatLapTime(int ticks) {

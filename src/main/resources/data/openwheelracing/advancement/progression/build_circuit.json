@@ -1,0 +1,23 @@
+{
+  "parent": "openwheelracing:progression/make_asphalt",
+  "display": {
+    "icon": {
+      "id": "openwheelracing:start_finish"
+    },
+    "title": {
+      "translate": "advancements.openwheelracing.build_circuit.title"
+    },
+    "description": {
+      "translate": "advancements.openwheelracing.build_circuit.description"
+    },
+    "frame": "goal"
+  },
+  "criteria": {
+    "place_start_finish": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "block": "openwheelracing:start_finish"
+      }
+    }
+  }
+}

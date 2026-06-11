@@ -1,0 +1,7 @@
+/gamemode survival
+/time set 1
+/gamemode creative
+/gamemode survival
+/give @s minecraft:copper_pickaxe
+/gamemode creative
+/kill @e[type=openwheelracing:prototype_car]

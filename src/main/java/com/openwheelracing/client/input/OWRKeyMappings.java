@@ -12,6 +12,7 @@ public final class OWRKeyMappings {
     public static final KeyMapping SHIFT_UP = new KeyMapping("key.openwheelracing.shift_up", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SPACE, CATEGORY);
     public static final KeyMapping SHIFT_DOWN = new KeyMapping("key.openwheelracing.shift_down", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_SHIFT, CATEGORY);
     public static final KeyMapping EXIT_CAR = new KeyMapping("key.openwheelracing.exit_car", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY);
+    public static final KeyMapping MOUNT_CAR = new KeyMapping("key.openwheelracing.mount_car", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY);
 
     private OWRKeyMappings() {
     }
@@ -20,5 +21,6 @@ public final class OWRKeyMappings {
         event.register(SHIFT_UP);
         event.register(SHIFT_DOWN);
         event.register(EXIT_CAR);
+        event.register(MOUNT_CAR);
     }
 }
