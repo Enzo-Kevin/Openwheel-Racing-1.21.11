@@ -21,7 +21,7 @@ public class LapMarkerBlock extends DirectionalTrackBlock {
             if (startFinish) {
                 car.crossStartFinishLine(state.getValue(HorizontalDirectionalBlock.FACING));
             } else {
-                car.crossCheckpoint(state.getValue(HorizontalDirectionalBlock.FACING));
+                car.crossCheckpoint(pos, state.getValue(HorizontalDirectionalBlock.FACING));
             }
         }
         super.stepOn(level, pos, state, entity);

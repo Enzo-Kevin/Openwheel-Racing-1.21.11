@@ -110,13 +110,13 @@ public class CarAssemblyMenu extends AbstractContainerMenu {
     }
 
     private void addWorkstationSlots(Container container) {
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_CHASSIS, 35, 17));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_ENGINE, 53, 17));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_TIRES, 71, 17));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_AERO_KIT, 35, 35));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_GEARBOX, 53, 35));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_STEERING_CONTROLS, 71, 35));
-        addSlot(new OutputSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_OUTPUT, 125, 26));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_CHASSIS, 44, 32));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_ENGINE, 44, 58));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_TIRES, 14, 42));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_AERO_KIT, 44, 8));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_GEARBOX, 64, 58));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_STEERING_CONTROLS, 64, 32));
+        addSlot(new OutputSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_OUTPUT, 98, 40));
     }
 
     private void addPlayerInventory(Inventory playerInventory) {

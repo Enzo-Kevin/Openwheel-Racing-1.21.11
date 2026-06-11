@@ -47,6 +47,12 @@
     },
     "done": true
   },
+  "minecraft:recipes/decorations/chest": {
+    "criteria": {
+      "has_lots_of_items": "2026-06-11 09:21:57 +0800"
+    },
+    "done": true
+  },
   "minecraft:recipes/misc/copper_nugget_from_smelting": {
     "criteria": {
       "has_copper_pickaxe": "2026-06-11 09:23:56 +0800"
@@ -56,12 +62,6 @@
   "minecraft:recipes/misc/copper_nugget_from_blasting": {
     "criteria": {
       "has_copper_pickaxe": "2026-06-11 09:23:56 +0800"
-    },
-    "done": true
-  },
-  "minecraft:recipes/decorations/chest": {
-    "criteria": {
-      "has_lots_of_items": "2026-06-11 09:21:57 +0800"
     },
     "done": true
   },

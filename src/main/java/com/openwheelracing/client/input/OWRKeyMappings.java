@@ -9,18 +9,29 @@ import org.lwjgl.glfw.GLFW;
 public final class OWRKeyMappings {
     public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Identifier.fromNamespaceAndPath("openwheelracing", "controls"));
 
-    public static final KeyMapping SHIFT_UP = new KeyMapping("key.openwheelracing.shift_up", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SPACE, CATEGORY);
-    public static final KeyMapping SHIFT_DOWN = new KeyMapping("key.openwheelracing.shift_down", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_SHIFT, CATEGORY);
-    public static final KeyMapping EXIT_CAR = new KeyMapping("key.openwheelracing.exit_car", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY);
-    public static final KeyMapping MOUNT_CAR = new KeyMapping("key.openwheelracing.mount_car", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY);
+    // Driving keys — default to WASD so players don't need to rebind
+    public static final KeyMapping THROTTLE    = new KeyMapping("key.openwheelracing.throttle",    InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_W,            CATEGORY);
+    public static final KeyMapping BRAKE       = new KeyMapping("key.openwheelracing.brake",       InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_S,            CATEGORY);
+    public static final KeyMapping STEER_LEFT  = new KeyMapping("key.openwheelracing.steer_left",  InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_A,            CATEGORY);
+    public static final KeyMapping STEER_RIGHT = new KeyMapping("key.openwheelracing.steer_right", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_D,            CATEGORY);
+    public static final KeyMapping SHIFT_UP    = new KeyMapping("key.openwheelracing.shift_up",    InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_SPACE,        CATEGORY);
+    public static final KeyMapping SHIFT_DOWN  = new KeyMapping("key.openwheelracing.shift_down",  InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_CONTROL, CATEGORY);
+    public static final KeyMapping EXIT_CAR    = new KeyMapping("key.openwheelracing.exit_car",    InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R,            CATEGORY);
+    public static final KeyMapping MOUNT_CAR   = new KeyMapping("key.openwheelracing.mount_car",   InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G,            CATEGORY);
+    public static final KeyMapping TRACK_EDITOR = new KeyMapping("key.openwheelracing.track_editor", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B,            CATEGORY);
 
     private OWRKeyMappings() {
     }
 
     public static void register(RegisterKeyMappingsEvent event) {
+        event.register(THROTTLE);
+        event.register(BRAKE);
+        event.register(STEER_LEFT);
+        event.register(STEER_RIGHT);
         event.register(SHIFT_UP);
         event.register(SHIFT_DOWN);
         event.register(EXIT_CAR);
         event.register(MOUNT_CAR);
+        event.register(TRACK_EDITOR);
     }
 }

@@ -7,9 +7,12 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 
 public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> {
+    private static final Identifier BG = Identifier.fromNamespaceAndPath("openwheelracing", "textures/gui/car_assembly_workstation.png");
+
     public CarAssemblyScreen(CarAssemblyMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
         imageHeight = 178;
@@ -25,7 +28,7 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
         addTuneButtons(2, 40);
         addTuneButtons(3, 53);
         addRenderableWidget(Button.builder(Component.literal("Repair"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.RepairCarMessage(), PacketDistributor.SERVER.noArg()))
-            .bounds(leftPos + 123, topPos + 70, 45, 14)
+            .bounds(leftPos + 126, topPos + 70, 42, 14)
             .build());
     }
 
@@ -34,28 +37,19 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
         int x = leftPos;
         int y = topPos;
 
-        graphics.fill(x, y, x + imageWidth, y + imageHeight, 0xFF222222);
-        graphics.fill(x + 4, y + 4, x + imageWidth - 4, y + 86, 0xFF303030);
-        graphics.fill(x + 4, y + 90, x + imageWidth - 4, y + imageHeight - 4, 0xFF303030);
-        graphics.hLine(x, x + imageWidth, y, 0xFF555555);
-        graphics.hLine(x, x + imageWidth, y + imageHeight, 0xFF111111);
+        graphics.blit(BG, x, y, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
 
-        drawSlot(graphics, x + 35, y + 17);
-        drawSlot(graphics, x + 53, y + 17);
-        drawSlot(graphics, x + 71, y + 17);
-        drawSlot(graphics, x + 35, y + 35);
-        drawSlot(graphics, x + 53, y + 35);
-        drawSlot(graphics, x + 71, y + 35);
-        drawSlot(graphics, x + 125, y + 26);
+        int progress = menu.getScaledProgress();
+        if (progress > 0) {
+            graphics.fill(x + 74, y + 44, x + 74 + progress, y + 49, 0xFF55AAFF);
+        }
 
-        graphics.fill(x + 95, y + 30, x + 119, y + 35, 0xFF111111);
-        graphics.fill(x + 95, y + 30, x + 95 + menu.getScaledProgress(), y + 35, 0xFF55AAFF);
-        graphics.drawString(font, "Assembly", x + 89, y + 20, 0xFFFFFFFF, false);
-        graphics.drawString(font, "Setup", x + 123, y + 5, 0xFFFFFFFF, false);
-        graphics.drawString(font, "P", x + 124, y + 16, 0xFFFFFFFF, false);
-        graphics.drawString(font, "T", x + 124, y + 29, 0xFFFFFFFF, false);
-        graphics.drawString(font, "A", x + 124, y + 42, 0xFFFFFFFF, false);
-        graphics.drawString(font, "G", x + 124, y + 55, 0xFFFFFFFF, false);
+        graphics.drawString(font, "Assembly", x + 78, y + 30, 0xFF404040, false);
+        graphics.drawString(font, "Setup", x + 126, y + 5, 0xFF404040, false);
+        graphics.drawString(font, "P", x + 127, y + 16, 0xFF404040, false);
+        graphics.drawString(font, "T", x + 127, y + 29, 0xFF404040, false);
+        graphics.drawString(font, "A", x + 127, y + 42, 0xFF404040, false);
+        graphics.drawString(font, "G", x + 127, y + 55, 0xFF404040, false);
     }
 
     @Override
@@ -67,15 +61,10 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
 
     private void addTuneButtons(int setupSlot, int yOffset) {
         addRenderableWidget(Button.builder(Component.literal("-"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.TuneCarMessage(setupSlot, -1), PacketDistributor.SERVER.noArg()))
-            .bounds(leftPos + 136, topPos + yOffset, 12, 11)
+            .bounds(leftPos + 139, topPos + yOffset, 12, 11)
             .build());
         addRenderableWidget(Button.builder(Component.literal("+"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.TuneCarMessage(setupSlot, 1), PacketDistributor.SERVER.noArg()))
-            .bounds(leftPos + 156, topPos + yOffset, 12, 11)
+            .bounds(leftPos + 158, topPos + yOffset, 12, 11)
             .build());
-    }
-
-    private static void drawSlot(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x - 1, y - 1, x + 17, y + 17, 0xFF111111);
-        graphics.fill(x, y, x + 16, y + 16, 0xFF777777);
     }
 }

@@ -38,13 +38,13 @@ public class RefineryMenu extends AbstractContainerMenu {
             ? ContainerLevelAccess.create(refinery.getLevel(), refinery.getBlockPos())
             : ContainerLevelAccess.NULL;
 
-        addSlot(new InputSlot(container, RefineryBlockEntity.SLOT_CRUDE, 35, 17));
-        addSlot(new InputSlot(container, RefineryBlockEntity.SLOT_FUEL, 35, 53));
-        addSlot(new OutputSlot(container, 2, 116, 8));
-        addSlot(new OutputSlot(container, 3, 98, 29));
-        addSlot(new OutputSlot(container, 4, 116, 29));
-        addSlot(new OutputSlot(container, 5, 134, 29));
-        addSlot(new OutputSlot(container, 6, 116, 50));
+        addSlot(new InputSlot(container, RefineryBlockEntity.SLOT_CRUDE, 35, 22));
+        addSlot(new InputSlot(container, RefineryBlockEntity.SLOT_FUEL, 35, 62));
+        addSlot(new OutputSlot(container, 2, 126, 8));
+        addSlot(new OutputSlot(container, 3, 126, 27));
+        addSlot(new OutputSlot(container, 4, 126, 46));
+        addSlot(new OutputSlot(container, 5, 126, 65));
+        addSlot(new OutputSlot(container, 6, 126, 84));
         addPlayerInventory(playerInventory);
         addPlayerHotbar(playerInventory);
         addDataSlots(data);
@@ -114,14 +114,14 @@ public class RefineryMenu extends AbstractContainerMenu {
     private void addPlayerInventory(Inventory playerInventory) {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
-                addSlot(new Slot(playerInventory, column + row * 9 + 9, 8 + column * 18, 84 + row * 18));
+                addSlot(new Slot(playerInventory, column + row * 9 + 9, 8 + column * 18, 110 + row * 18));
             }
         }
     }
 
     private void addPlayerHotbar(Inventory playerInventory) {
         for (int column = 0; column < 9; column++) {
-            addSlot(new Slot(playerInventory, column, 8 + column * 18, 142));
+            addSlot(new Slot(playerInventory, column, 8 + column * 18, 168));
         }
     }
 

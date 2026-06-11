@@ -5,3 +5,4 @@
 /give @s minecraft:copper_pickaxe
 /gamemode creative
 /kill @e[type=openwheelracing:prototype_car]
+/time set 1

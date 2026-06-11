@@ -4,14 +4,17 @@ import com.openwheelracing.content.menu.RefineryMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 
 public class RefineryScreen extends AbstractContainerScreen<RefineryMenu> {
+    private static final Identifier BG = Identifier.fromNamespaceAndPath("openwheelracing", "textures/gui/refinery.png");
+
     public RefineryScreen(RefineryMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
-        imageHeight = 166;
+        imageHeight = 192;
         imageWidth = 176;
-        inventoryLabelY = 72;
+        inventoryLabelY = 98;
     }
 
     @Override
@@ -19,24 +22,21 @@ public class RefineryScreen extends AbstractContainerScreen<RefineryMenu> {
         int x = leftPos;
         int y = topPos;
 
-        graphics.fill(x, y, x + imageWidth, y + imageHeight, 0xFF202020);
-        graphics.fill(x + 4, y + 4, x + imageWidth - 4, y + 72, 0xFF2C2C2C);
-        graphics.fill(x + 4, y + 78, x + imageWidth - 4, y + imageHeight - 4, 0xFF303030);
-        drawSlot(graphics, x + 35, y + 17);
-        drawSlot(graphics, x + 35, y + 53);
-        drawSlot(graphics, x + 116, y + 8);
-        drawSlot(graphics, x + 98, y + 29);
-        drawSlot(graphics, x + 116, y + 29);
-        drawSlot(graphics, x + 134, y + 29);
-        drawSlot(graphics, x + 116, y + 50);
+        graphics.blit(BG, x, y, 0, 0, imageWidth, imageHeight, imageWidth, imageHeight);
 
-        graphics.fill(x + 59, y + 31, x + 87, y + 37, 0xFF111111);
-        graphics.fill(x + 61, y + 33, x + 61 + menu.getScaledProgress(), y + 35, 0xFFFFB347);
-        graphics.fill(x + 38, y + 37, x + 52, y + 51, 0xFF111111);
-        graphics.fill(x + 38, y + 51 - menu.getScaledBurn(), x + 52, y + 51, 0xFFFF6A00);
-        graphics.drawString(font, "Crude", x + 28, y + 8, 0xFFFFFFFF, false);
-        graphics.drawString(font, "Fuel", x + 31, y + 44, 0xFFFFFFFF, false);
-        graphics.drawString(font, "Outputs", x + 107, y + 68, 0xFFFFFFFF, false);
+        int progress = menu.getScaledProgress();
+        if (progress > 0) {
+            graphics.fill(x + 74, y + 45, x + 74 + progress, y + 49, 0xFFFFB347);
+        }
+
+        int burn = menu.getScaledBurn();
+        if (burn > 0) {
+            graphics.fill(x + 39, y + 58 - burn, x + 51, y + 58, 0xFFFF6A00);
+        }
+
+        graphics.drawString(font, "Crude", x + 29, y + 12, 0xFF404040, false);
+        graphics.drawString(font, "Fuel", x + 33, y + 52, 0xFF404040, false);
+        graphics.drawString(font, "Tower", x + 80, y + 22, 0xFF404040, false);
     }
 
     @Override
@@ -44,10 +44,5 @@ public class RefineryScreen extends AbstractContainerScreen<RefineryMenu> {
         renderBackground(graphics, mouseX, mouseY, partialTick);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderTooltip(graphics, mouseX, mouseY);
-    }
-
-    private static void drawSlot(GuiGraphics graphics, int x, int y) {
-        graphics.fill(x - 1, y - 1, x + 17, y + 17, 0xFF111111);
-        graphics.fill(x, y, x + 16, y + 16, 0xFF777777);
     }
 }

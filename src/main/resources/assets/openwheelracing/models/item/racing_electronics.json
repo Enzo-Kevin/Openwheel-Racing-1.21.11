@@ -1,4 +1,6 @@
 {
-  "parent": "minecraft:item/generated",
-  "textures": {"layer0": "minecraft:item/repeater"}
+  "parent": "minecraft:item/handheld",
+  "textures": {
+    "layer0": "openwheelracing:item/racing_electronics"
+  }
 }

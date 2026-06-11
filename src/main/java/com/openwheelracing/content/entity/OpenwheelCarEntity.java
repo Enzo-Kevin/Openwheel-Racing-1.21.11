@@ -2,16 +2,21 @@ package com.openwheelracing.content.entity;
 
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
+import com.openwheelracing.content.race.OWRLapRecords;
 import com.openwheelracing.registry.OWRBlocks;
 import com.openwheelracing.registry.OWRItems;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
@@ -66,6 +71,9 @@ public class OpenwheelCarEntity extends Entity {
     private long lapStartedAt = -1L;
     private long lastLowTyreWarningAt = -200L;
     private long lastDamageWarningAt = -200L;
+    // Checkpoint positions (packed BlockPos longs) visited in the current lap, in order
+    private final java.util.LinkedList<Long> visitedCheckpoints = new java.util.LinkedList<>();
+    private final java.util.HashSet<Long> visitedCheckpointSet = new java.util.HashSet<>();
     // Last driver input received from client; cleared each tick after use
     private float inputThrottle;
     private float inputBrake;
@@ -183,31 +191,51 @@ public class OpenwheelCarEntity extends Entity {
 
         long gameTime = level().getGameTime();
         if (lapStartedAt >= 0L) {
-            int lapTicks = Math.max(1, (int) (gameTime - lapStartedAt));
-            int bestLapTicks = entityData.get(BEST_LAP_TICKS);
-            entityData.set(CURRENT_LAP_TICKS, lapTicks);
-            if (bestLapTicks == 0 || lapTicks < bestLapTicks) {
-                entityData.set(BEST_LAP_TICKS, lapTicks);
+            // Require at least one checkpoint to have been visited
+            if (visitedCheckpoints.isEmpty()) {
+                invalidateLap("no checkpoints crossed");
+                lapStartedAt = gameTime;
+                visitedCheckpoints.clear();
+                visitedCheckpointSet.clear();
+                entityData.set(CHECKPOINT_ARMED, false);
+                entityData.set(CURRENT_LAP_TICKS, 0);
+                messageDriver(Component.literal("Lap started — cross all checkpoints"));
+                return;
             }
-            messageDriver(Component.literal("Lap complete: " + formatLapTime(lapTicks)));
+            int lapTicks = Math.max(1, (int)(gameTime - lapStartedAt));
+            entityData.set(CURRENT_LAP_TICKS, lapTicks);
+            boolean personalBest = updatePlayerBestLap(lapTicks);
+            messageDriver(Component.literal("Lap: " + formatLapTime(lapTicks)
+                + " | CPs: " + visitedCheckpoints.size()
+                + (personalBest ? " | Personal best" : "")));
         } else {
             messageDriver(Component.literal("Lap started"));
         }
 
         lapStartedAt = gameTime;
+        visitedCheckpoints.clear();
+        visitedCheckpointSet.clear();
         entityData.set(CHECKPOINT_ARMED, false);
         entityData.set(CURRENT_LAP_TICKS, 0);
     }
 
-    public void crossCheckpoint(Direction markerFacing) {
+    public void crossCheckpoint(BlockPos pos, Direction markerFacing) {
         if (!isForwardPass(markerFacing)) {
             invalidateLap("reverse checkpoint pass");
             return;
         }
-        if (lapStartedAt >= 0L && !entityData.get(CHECKPOINT_ARMED)) {
-            entityData.set(CHECKPOINT_ARMED, true);
-            messageDriver(Component.literal("Checkpoint"));
+        if (lapStartedAt < 0L) {
+            return; // no lap in progress
         }
+        long packed = pos.asLong();
+        if (visitedCheckpointSet.contains(packed)) {
+            invalidateLap("checkpoint crossed twice");
+            return;
+        }
+        visitedCheckpoints.add(packed);
+        visitedCheckpointSet.add(packed);
+        entityData.set(CHECKPOINT_ARMED, true);
+        messageDriver(Component.literal("CP " + visitedCheckpoints.size()));
     }
 
     public void shiftUp() {
@@ -249,9 +277,18 @@ public class OpenwheelCarEntity extends Entity {
 
     @Override
     public InteractionResult interact(Player player, InteractionHand hand) {
-        // Return PASS on client so the server-side packet is always sent
         if (level().isClientSide()) {
             return InteractionResult.PASS;
+        }
+
+        // Sneak + empty hand on empty car → pick up as item
+        if (getPassengers().isEmpty() && player.isShiftKeyDown() && player.getItemInHand(hand).isEmpty()) {
+            ItemStack item = PrototypeCarItem.create(setup, getDamagePercent(), getTyreWearPercent());
+            if (!player.addItem(item)) {
+                player.drop(item, false);
+            }
+            discard();
+            return InteractionResult.CONSUME;
         }
 
         // Seated driver sneak-right-clicks to request pit stop
@@ -260,7 +297,12 @@ public class OpenwheelCarEntity extends Entity {
             return InteractionResult.CONSUME;
         }
 
-        return getPassengers().isEmpty() && player.startRiding(this) ? InteractionResult.CONSUME : InteractionResult.PASS;
+        if (getPassengers().isEmpty() && player.startRiding(this)) {
+            syncPlayerBestLap(player);
+            return InteractionResult.CONSUME;
+        }
+
+        return InteractionResult.PASS;
     }
 
     @Override
@@ -372,53 +414,59 @@ public class OpenwheelCarEntity extends Entity {
         }
     }
 
-    private double getTrackSurfaceGrip() {
-        Block block = level().getBlockState(blockPosition().below()).getBlock();
-        if (isFastTrackBlock(block)) {
-            return 1.18;
+    // ── Surface profiles ──────────────────────────────────────────────────────
+    private enum SurfaceProfile {
+        //                          grip   drag   wearMult  lapValid
+        ASPHALT(                    1.00,  0.997,  1.0,     true),
+        KERB(                       0.78,  0.991,  1.8,     true),
+        PIT_LANE(                   0.95,  0.996,  0.6,     true),  // low wear in pit
+        DIRT(                       0.58,  0.952,  1.4,     false),
+        GRAVEL(                     0.45,  0.940,  2.0,     false);
+
+        final double grip;
+        final double drag;
+        final double wearMult;
+        final boolean countsAsTrack;
+
+        SurfaceProfile(double grip, double drag, double wearMult, boolean countsAsTrack) {
+            this.grip           = grip;
+            this.drag           = drag;
+            this.wearMult       = wearMult;
+            this.countsAsTrack  = countsAsTrack;
         }
-        if (block == OWRBlocks.KERB.get()) {
-            return 0.88;
-        }
-        return 0.74;
     }
 
-    private double getTrackSurfaceDrag() {
-        Block block = level().getBlockState(blockPosition().below()).getBlock();
-        if (isFastTrackBlock(block)) {
-            return 0.996;
-        }
-        if (block == OWRBlocks.KERB.get()) {
-            return 0.990;
-        }
-        return 0.948;
+    private SurfaceProfile getSurface(BlockPos pos) {
+        Block block = level().getBlockState(pos.below()).getBlock();
+        if (block == OWRBlocks.ASPHALT_TRACK.get()
+                || block == OWRBlocks.START_FINISH.get()
+                || block == OWRBlocks.CHECKPOINT.get()) return SurfaceProfile.ASPHALT;
+        if (block == OWRBlocks.PIT_LANE.get())  return SurfaceProfile.PIT_LANE;
+        if (block == OWRBlocks.KERB.get())       return SurfaceProfile.KERB;
+        return SurfaceProfile.DIRT;
+    }
+
+    private SurfaceProfile getCurrentSurface() {
+        return getSurface(blockPosition());
     }
 
     private boolean isPitLane() {
-        return level().getBlockState(blockPosition().below()).is(OWRBlocks.PIT_LANE.get());
+        return getCurrentSurface() == SurfaceProfile.PIT_LANE;
     }
 
     private boolean isOnTrackSurface() {
         double yaw = Math.toRadians(getYRot());
         Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
         Vec3 right   = new Vec3(forward.z, 0.0, -forward.x);
-        // Check the four tyre corners (scaled to 2.4 wide × ~3.8 long)
         for (double side : new double[]{-0.95, 0.95}) {
             for (double length : new double[]{-1.25, 1.25}) {
-                BlockPos pos = BlockPos.containing(position().add(right.scale(side)).add(forward.scale(length))).below();
-                if (isTrackBlock(level().getBlockState(pos).getBlock())) return true;
+                BlockPos pos = BlockPos.containing(position().add(right.scale(side)).add(forward.scale(length)));
+                if (getSurface(pos).countsAsTrack) return true;
             }
         }
         return false;
     }
 
-    private static boolean isTrackBlock(Block block) {
-        return isFastTrackBlock(block) || block == OWRBlocks.KERB.get();
-    }
-
-    private static boolean isFastTrackBlock(Block block) {
-        return block == OWRBlocks.ASPHALT_TRACK.get() || block == OWRBlocks.PIT_LANE.get() || block == OWRBlocks.START_FINISH.get() || block == OWRBlocks.CHECKPOINT.get();
-    }
 
     private void tickMovement() {
         double throttle = inputThrottle;
@@ -458,39 +506,32 @@ public class OpenwheelCarEntity extends Entity {
 
         // --- Foot brake ---
         if (brake > 0.0) {
-            double brakeForce = BASE_BRAKE_FORCE * tyreFactor * getTrackSurfaceGrip();
+            double brakeForce = BASE_BRAKE_FORCE * tyreFactor * getCurrentSurface().grip;
             double brakeScale = Math.max(0.0, 1.0 - brakeForce * brake);
             delta = new Vec3(delta.x * brakeScale, delta.y, delta.z * brakeScale);
         }
 
         // --- Steering + lateral grip ---
+        SurfaceProfile surface = getCurrentSurface();
         if (Math.abs(steering) > STEERING_DEADZONE && horizontalSpeed > MIN_STEERING_SPEED) {
-            // Max turn rate decreases at high speed (stability)
-            double speedNorm     = Math.min(1.0, horizontalSpeed / maxSpeed);
-            double maxTurnPerTick = 4.5 - speedNorm * 3.2;   // 4.5° at crawl, 1.3° at top speed (degrees)
+            double speedNorm      = Math.min(1.0, horizontalSpeed / maxSpeed);
+            double maxTurnPerTick = 4.5 - speedNorm * 3.2;
             float turn = (float) (-steering * maxTurnPerTick * Math.min(1.0, horizontalSpeed / 0.3));
             setYRot(getYRot() + turn);
-
-            double surfaceWear = level().getBlockState(blockPosition().below()).is(OWRBlocks.KERB.get()) ? 1.8 : 1.0;
-            addTyreWear((float)(Math.abs(steering) * horizontalSpeed * 0.012 * setup.tyreWearMultiplier() * surfaceWear));
+            addTyreWear((float)(Math.abs(steering) * horizontalSpeed * 0.012 * setup.tyreWearMultiplier() * surface.wearMult));
         }
 
         // --- Lateral grip / understeer ---
         if (horizontalSpeed > 0.01) {
-            Vec3 forward     = Vec3.directionFromRotation(0.0f, getYRot());
+            Vec3 forward        = Vec3.directionFromRotation(0.0f, getYRot());
             double forwardSpeed = delta.x * forward.x + delta.z * forward.z;
-            double sideX     = delta.x - forward.x * forwardSpeed;
-            double sideZ     = delta.z - forward.z * forwardSpeed;
-            double sideSpeed = Math.sqrt(sideX * sideX + sideZ * sideZ);
-
-            // Cornering force available; high speed reduces grip (understeer)
-            double corneringLoad = horizontalSpeed / maxSpeed;
-            double gripBase      = (0.55 + 0.45 * tyreFactor * setup.gripMultiplier()) * getTrackSurfaceGrip();
-            double gripEffective = gripBase * (1.0 - 0.35 * corneringLoad);
-            gripEffective = Math.max(0.1, Math.min(1.0, gripEffective));
-
-            // Allow some lateral slip — kill sideSpeed above available grip
-            double sideKill = Math.min(sideSpeed, Math.max(0.0, sideSpeed - gripEffective * 0.04));
+            double sideX        = delta.x - forward.x * forwardSpeed;
+            double sideZ        = delta.z - forward.z * forwardSpeed;
+            double sideSpeed    = Math.sqrt(sideX * sideX + sideZ * sideZ);
+            double corneringLoad   = horizontalSpeed / maxSpeed;
+            double gripBase        = (0.55 + 0.45 * tyreFactor * setup.gripMultiplier()) * surface.grip;
+            double gripEffective   = Math.max(0.1, Math.min(1.0, gripBase * (1.0 - 0.35 * corneringLoad)));
+            double sideKill  = Math.min(sideSpeed, Math.max(0.0, sideSpeed - gripEffective * 0.04));
             double killScale = sideSpeed > 0 ? (sideSpeed - sideKill) / sideSpeed : 1.0;
             delta = new Vec3(
                 forward.x * forwardSpeed + sideX * killScale,
@@ -500,7 +541,7 @@ public class OpenwheelCarEntity extends Entity {
         }
 
         // --- Drag & gravity ---
-        double drag = AIR_DRAG * setup.dragMultiplier() * getTrackSurfaceDrag();
+        double drag = AIR_DRAG * setup.dragMultiplier() * surface.drag;
         double newY = onGround() ? 0.0 : delta.y - 0.04;
         delta = new Vec3(delta.x * drag, newY, delta.z * drag);
 
@@ -546,9 +587,28 @@ public class OpenwheelCarEntity extends Entity {
     private void invalidateLap(String reason) {
         if (lapStartedAt >= 0L) {
             lapStartedAt = -1L;
+            visitedCheckpoints.clear();
+            visitedCheckpointSet.clear();
             entityData.set(CURRENT_LAP_TICKS, 0);
             entityData.set(CHECKPOINT_ARMED, false);
-            messageDriver(Component.literal("INVALID LAP: " + reason));
+            showInvalidLap(reason);
+        }
+    }
+
+    private boolean updatePlayerBestLap(int lapTicks) {
+        Entity passenger = getControllingPassenger();
+        if (!(passenger instanceof Player player) || !(level() instanceof ServerLevel serverLevel)) {
+            return false;
+        }
+        OWRLapRecords records = OWRLapRecords.get(serverLevel);
+        boolean personalBest = records.setBestLapIfBetter(player.getUUID(), lapTicks);
+        entityData.set(BEST_LAP_TICKS, records.getBestLap(player.getUUID()));
+        return personalBest;
+    }
+
+    private void syncPlayerBestLap(Player player) {
+        if (level() instanceof ServerLevel serverLevel) {
+            entityData.set(BEST_LAP_TICKS, OWRLapRecords.get(serverLevel).getBestLap(player.getUUID()));
         }
     }
 
@@ -568,6 +628,7 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     private void destroyIntoMaterials(ServerLevel serverLevel) {
+        invalidateLap("car destroyed");
         spawnAtLocation(serverLevel, new ItemStack(OWRItems.CHASSIS.get()));
         spawnAtLocation(serverLevel, new ItemStack(OWRItems.ENGINE.get()));
         spawnAtLocation(serverLevel, new ItemStack(OWRItems.GEARBOX.get()));
@@ -585,6 +646,17 @@ public class OpenwheelCarEntity extends Entity {
         if (passenger instanceof Player player) {
             player.displayClientMessage(message, true);
         }
+    }
+
+    private void showInvalidLap(String reason) {
+        Component reasonMessage = Component.literal(reason);
+        Entity passenger = getControllingPassenger();
+        if (passenger instanceof ServerPlayer serverPlayer) {
+            serverPlayer.connection.send(new ClientboundSetTitlesAnimationPacket(5, 35, 10));
+            serverPlayer.connection.send(new ClientboundSetTitleTextPacket(Component.literal("INVALID LAP")));
+            serverPlayer.connection.send(new ClientboundSetSubtitleTextPacket(reasonMessage));
+        }
+        messageDriver(Component.literal("INVALID LAP: " + reason));
     }
 
     private static String formatLapTime(int ticks) {

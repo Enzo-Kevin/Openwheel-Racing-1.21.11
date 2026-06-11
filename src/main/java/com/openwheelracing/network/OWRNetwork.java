@@ -5,8 +5,15 @@ import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.menu.CarAssemblyMenu;
+import com.openwheelracing.content.track.TrackEditorMaterial;
+import com.openwheelracing.content.track.TrackEditorMode;
+import com.openwheelracing.content.track.TrackEditorOperation;
+import com.openwheelracing.content.track.TrackEditorPlacementService;
+import com.openwheelracing.content.track.TrackEditorUndoStore;
 import com.openwheelracing.registry.OWRDataComponents;
 import com.openwheelracing.registry.OWRItems;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -58,6 +65,16 @@ public final class OWRNetwork {
             .encoder(MountCarMessage::encode)
             .decoder(MountCarMessage::decode)
             .consumerMainThread(MountCarMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(TrackEditorPlaceMessage.class)
+            .encoder(TrackEditorPlaceMessage::encode)
+            .decoder(TrackEditorPlaceMessage::decode)
+            .consumerMainThread(TrackEditorPlaceMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(TrackEditorUndoMessage.class)
+            .encoder(TrackEditorUndoMessage::encode)
+            .decoder(TrackEditorUndoMessage::decode)
+            .consumerMainThread(TrackEditorUndoMessage::handle)
             .add();
     }
 
@@ -228,6 +245,65 @@ public final class OWRNetwork {
 
                 if (best != null) {
                     player.startRiding(best);
+                }
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record TrackEditorPlaceMessage(TrackEditorOperation operation) {
+        private static void encode(TrackEditorPlaceMessage message, FriendlyByteBuf buffer) {
+            buffer.writeEnum(message.operation.mode());
+            buffer.writeEnum(message.operation.material());
+            buffer.writeVarInt(message.operation.width());
+            buffer.writeEnum(message.operation.facing());
+            buffer.writeVarInt(message.operation.points().size());
+            for (BlockPos point : message.operation.points()) {
+                buffer.writeBlockPos(point);
+            }
+        }
+
+        private static TrackEditorPlaceMessage decode(FriendlyByteBuf buffer) {
+            TrackEditorMode mode = buffer.readEnum(TrackEditorMode.class);
+            TrackEditorMaterial material = buffer.readEnum(TrackEditorMaterial.class);
+            int width = buffer.readVarInt();
+            Direction facing = buffer.readEnum(Direction.class);
+            int declaredSize = buffer.readVarInt();
+            int size = Math.min(declaredSize, TrackEditorOperation.MAX_POINTS);
+            java.util.List<BlockPos> points = new java.util.ArrayList<>(size);
+            for (int i = 0; i < declaredSize; i++) {
+                BlockPos point = buffer.readBlockPos();
+                if (i < size) {
+                    points.add(point);
+                }
+            }
+            return new TrackEditorPlaceMessage(new TrackEditorOperation(mode, material, width, points, facing));
+        }
+
+        private static void handle(TrackEditorPlaceMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player != null) {
+                    TrackEditorPlacementService.place(player, message.operation());
+                }
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record TrackEditorUndoMessage() {
+        private static void encode(TrackEditorUndoMessage message, FriendlyByteBuf buffer) {
+        }
+
+        private static TrackEditorUndoMessage decode(FriendlyByteBuf buffer) {
+            return new TrackEditorUndoMessage();
+        }
+
+        private static void handle(TrackEditorUndoMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player != null) {
+                    TrackEditorUndoStore.undo(player);
                 }
             });
             context.setPacketHandled(true);
