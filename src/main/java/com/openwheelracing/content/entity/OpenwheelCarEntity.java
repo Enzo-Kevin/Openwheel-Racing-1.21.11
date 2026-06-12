@@ -43,6 +43,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final EntityDataAccessor<Float> SPEED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> DAMAGE = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Float> TYRE_WEAR = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> TYRE_SLIP = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> CURRENT_LAP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> BEST_LAP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> CHECKPOINT_ARMED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
@@ -60,15 +61,40 @@ public class OpenwheelCarEntity extends Entity {
         new Vec3(0.0, 0.0, -1.65)
     };
 
-    private static final double[] GEAR_RATIOS = {0.0, 0.28, 0.43, 0.58, 0.74, 0.91, 1.10};
+    private static final int MAX_GEAR = 8;
+    private static final double SPEED_TO_BLOCKS_PER_TICK = 1.0 / 72.0;
+    private static final double[] GEAR_TOP_SPEEDS = {0.0, 80.0 * SPEED_TO_BLOCKS_PER_TICK, 120.0 * SPEED_TO_BLOCKS_PER_TICK, 150.0 * SPEED_TO_BLOCKS_PER_TICK, 190.0 * SPEED_TO_BLOCKS_PER_TICK, 235.0 * SPEED_TO_BLOCKS_PER_TICK, 275.0 * SPEED_TO_BLOCKS_PER_TICK, 310.0 * SPEED_TO_BLOCKS_PER_TICK, 350.0 * SPEED_TO_BLOCKS_PER_TICK};
+    private static final double CAR_MASS_KG = 805.0;
+    private static final double GRAVITY = 9.81;
+    private static final double PHYSICS_DT = 1.0 / 20.0;
+    private static final double WHEELBASE = 3.60;
+    private static final double FRONT_AXLE_DISTANCE = WHEELBASE * (1.0 - 0.46);
+    private static final double REAR_AXLE_DISTANCE = WHEELBASE * 0.46;
+    private static final double YAW_INERTIA = 1100.0;
+    private static final double FRONT_STATIC_WEIGHT = 0.46;
+    private static final double CG_HEIGHT = 0.27;
+    private static final double AIR_DENSITY = 1.225;
+    private static final double DRAG_AREA = 1.45;
+    private static final double DOWNFORCE_AREA = 7.0;
+    private static final double FRONT_AERO_BALANCE = 0.43;
+    private static final double ROLLING_RESISTANCE = 0.012;
+    private static final double ASPHALT_MU_LATERAL = 2.0;
+    private static final double ASPHALT_MU_LONGITUDINAL = 2.1;
+    private static final double KINETIC_MU_RATIO = 0.90;
+    private static final double LOAD_SENSITIVITY = 0.035;
+    private static final double FRONT_CORNERING_STIFFNESS = 210_000.0;
+    private static final double REAR_CORNERING_STIFFNESS = 285_000.0;
+    private static final double MAX_BRAKE_FORCE = 40_000.0;
+    private static final double BRAKE_FRONT_BIAS = 0.58;
+    private static final double MIN_POWER_SPEED = 5.0;
+    private static final double PEAK_POWER_WATTS = 780_000.0;
+    private static final double IDLE_RPM = 900.0;
+    private static final double LAUNCH_RPM = 4000.0;
+    private static final double LAUNCH_CLUTCH_SPEED = 0.42;
+    private static final double REDLINE_RPM = 13000.0;
     private static final double STEERING_DEADZONE = 0.08;
-    private static final double MIN_STEERING_SPEED = 0.04;
-    private static final double BASE_MAX_SPEED = 1.32;
-    private static final double BASE_ACCELERATION = 0.038;
-    private static final double BASE_BRAKE_FORCE = 0.10;
-    private static final double ENGINE_BRAKE = 0.018; // deceleration per tick when off throttle
-    private static final double AIR_DRAG = 0.978;
-    private static final double GROUND_DRAG = 0.985;  // lateral-only side-slip cancel, not forward drag
+    private static final double MAX_STEER_ANGLE = Math.toRadians(20.0);
+    private static final double STEERING_RACK_RATE = Math.toRadians(260.0);
     private PrototypeCarSetup setup = PrototypeCarSetup.DEFAULT;
     private double previousHorizontalSpeed;
     private long lapStartedAt = -1L;
@@ -83,6 +109,8 @@ public class OpenwheelCarEntity extends Entity {
     private float inputSteering;
     private long lastMovementDebugAt = -20L;
     private boolean wasRiddenLastTick;
+    private double steeringAngle;
+    private double yawRate;
 
     public void applyDriveInput(float throttle, float brake, float steering) {
         this.inputThrottle = throttle;
@@ -115,6 +143,7 @@ public class OpenwheelCarEntity extends Entity {
         builder.define(SPEED, 0.0f);
         builder.define(DAMAGE, 0.0f);
         builder.define(TYRE_WEAR, 0.0f);
+        builder.define(TYRE_SLIP, 0.0f);
         builder.define(CURRENT_LAP_TICKS, 0);
         builder.define(BEST_LAP_TICKS, 0);
         builder.define(CHECKPOINT_ARMED, false);
@@ -155,6 +184,21 @@ public class OpenwheelCarEntity extends Entity {
 
     public float getTyreWearPercent() {
         return entityData.get(TYRE_WEAR);
+    }
+
+    public float getTyreSlipIntensity() {
+        return entityData.get(TYRE_SLIP);
+    }
+
+    public float getFrontWheelSteerDegrees() {
+        return (float) Math.toDegrees(steeringAngle);
+    }
+
+    public Vec3 getWheelSoundPosition(double sideOffset, double lengthOffset) {
+        double yaw = Math.toRadians(getYRot());
+        Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
+        Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
+        return position().add(right.scale(sideOffset)).add(forward.scale(lengthOffset)).add(0.0, 0.25, 0.0);
     }
 
     public int getCurrentLapTicks() {
@@ -257,9 +301,11 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     public void shiftUp() {
-        if (getGear() < 6) {
+        if (getGear() < MAX_GEAR) {
             entityData.set(GEAR, getGear() + 1);
             playShiftFeedback(1.1f);
+            messageDriver(Component.literal("Gear " + getGear()));
+            logShift("up");
         }
     }
 
@@ -267,6 +313,16 @@ public class OpenwheelCarEntity extends Entity {
         if (getGear() > 1) {
             entityData.set(GEAR, getGear() - 1);
             playShiftFeedback(0.8f);
+            messageDriver(Component.literal("Gear " + getGear()));
+            logShift("down");
+        }
+    }
+
+    public void shiftLocal(int direction) {
+        if (direction > 0 && getGear() < MAX_GEAR) {
+            entityData.set(GEAR, getGear() + 1);
+        } else if (direction < 0 && getGear() > 1) {
+            entityData.set(GEAR, getGear() - 1);
         }
     }
 
@@ -407,6 +463,8 @@ public class OpenwheelCarEntity extends Entity {
         entityData.set(CURRENT_LAP_TICKS, input.getIntOr("CurrentLapTicks", 0));
         entityData.set(BEST_LAP_TICKS, input.getIntOr("BestLapTicks", 0));
         entityData.set(CHECKPOINT_ARMED, input.getBooleanOr("CheckpointArmed", false));
+        steeringAngle = input.getDoubleOr("SteeringAngle", 0.0);
+        yawRate = input.getDoubleOr("YawRate", 0.0);
         lapStartedAt = input.getLongOr("LapStartedAt", -1L);
     }
 
@@ -423,6 +481,8 @@ public class OpenwheelCarEntity extends Entity {
         output.putInt("CurrentLapTicks", getCurrentLapTicks());
         output.putInt("BestLapTicks", getBestLapTicks());
         output.putBoolean("CheckpointArmed", hasCheckpoint());
+        output.putDouble("SteeringAngle", steeringAngle);
+        output.putDouble("YawRate", yawRate);
         output.putLong("LapStartedAt", lapStartedAt);
     }
 
@@ -516,8 +576,15 @@ public class OpenwheelCarEntity extends Entity {
 
 
     public void tickLocalClientMovement(float throttle, float brake, float steering) {
-        if (level().isClientSide() && getControllingPassenger() != null) {
+        Entity passenger = getControllingPassenger();
+        if (level().isClientSide() && passenger != null) {
+            float previousYaw = getYRot();
             tickMovement(throttle, brake, steering, false);
+            float yawDelta = getYRot() - previousYaw;
+            positionRider(passenger);
+            passenger.setYRot(passenger.getYRot() + yawDelta);
+            passenger.setYHeadRot(passenger.getYRot());
+            passenger.setYBodyRot(passenger.getYRot());
         }
     }
 
@@ -538,69 +605,128 @@ public class OpenwheelCarEntity extends Entity {
 
         double damageFactor    = 1.0 - getDamagePercent()   / 140.0;
         double tyreFactor      = 1.0 - getTyreWearPercent() / 180.0;
-        // Gear ratio: low gear = high torque + low top speed, high gear = low torque + high top speed
-        int gear = getGear();
-        double gearRatio       = GEAR_RATIOS[gear];                         // 0.28 (1st) → 1.10 (6th)
-        double torqueMultiplier = (GEAR_RATIOS[1] + GEAR_RATIOS[6]) - gearRatio; // inverted: more in low gears
-        double maxSpeed = BASE_MAX_SPEED * setup.gearingMultiplier() * setup.aeroMultiplier() * damageFactor;
-        if (isPitLane()) maxSpeed = Math.min(maxSpeed, 0.52);
-
-        double acceleration = BASE_ACCELERATION * setup.powerMultiplier() * torqueMultiplier * damageFactor;
-
-        // --- Throttle ---
-        if (throttle > 0.0 && horizontalSpeed < maxSpeed) {
-            Vec3 forward = Vec3.directionFromRotation(0.0f, getYRot()).scale(acceleration * throttle);
-            delta = delta.add(forward.x, 0.0, forward.z);
+        int gear = Math.max(1, Math.min(MAX_GEAR, getGear()));
+        if (gear != getGear()) {
+            entityData.set(GEAR, gear);
+        }
+        double gearTopSpeed = GEAR_TOP_SPEEDS[gear] * setup.gearingMultiplier() * setup.aeroMultiplier() * damageFactor;
+        double maxSpeed = GEAR_TOP_SPEEDS[MAX_GEAR] * setup.gearingMultiplier() * setup.aeroMultiplier() * damageFactor;
+        if (isPitLane()) {
+            gearTopSpeed = Math.min(gearTopSpeed, 0.52);
+            maxSpeed = Math.min(maxSpeed, 0.52);
         }
 
-        // --- Engine brake (off throttle) ---
-        if (throttle == 0.0 && brake == 0.0 && horizontalSpeed > 0.01) {
-            double engineBrake = ENGINE_BRAKE * gearRatio * damageFactor;
-            double newSpeed = Math.max(0.0, horizontalSpeed - engineBrake);
-            double scale = horizontalSpeed > 0 ? newSpeed / horizontalSpeed : 0;
-            delta = new Vec3(delta.x * scale, delta.y, delta.z * scale);
-        }
-
-        // --- Foot brake ---
-        if (brake > 0.0) {
-            double brakeForce = BASE_BRAKE_FORCE * tyreFactor * getCurrentSurface().grip;
-            double brakeScale = Math.max(0.0, 1.0 - brakeForce * brake);
-            delta = new Vec3(delta.x * brakeScale, delta.y, delta.z * brakeScale);
-        }
-
-        // --- Steering + lateral grip ---
         SurfaceProfile surface = getCurrentSurface();
-        if (Math.abs(steering) > STEERING_DEADZONE && horizontalSpeed > MIN_STEERING_SPEED) {
-            double speedNorm      = Math.min(1.0, horizontalSpeed / maxSpeed);
-            double maxTurnPerTick = 4.5 - speedNorm * 3.2;
-            float turn = (float) (-steering * maxTurnPerTick * Math.min(1.0, horizontalSpeed / 0.3));
-            setYRot(getYRot() + turn);
-            addTyreWear((float)(Math.abs(steering) * horizontalSpeed * 0.012 * setup.tyreWearMultiplier() * surface.wearMult));
+        Vec3 forward = Vec3.directionFromRotation(0.0f, getYRot());
+        Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
+        double velocityLong = (delta.x * forward.x + delta.z * forward.z) * 20.0;
+        double velocityLat = (delta.x * right.x + delta.z * right.z) * 20.0;
+        double speedMetersPerSecond = Math.sqrt(velocityLong * velocityLong + velocityLat * velocityLat);
+        if (speedMetersPerSecond < 0.35 && throttle == 0.0 && brake == 0.0) {
+            velocityLat = 0.0;
+            yawRate = 0.0;
+        }
+        boolean autoClutch = throttle > 0.0 && gear == 1 && horizontalSpeed < LAUNCH_CLUTCH_SPEED;
+        int engineRpm = calculateRpm(horizontalSpeed, gear, gearTopSpeed, autoClutch);
+        double power = enginePowerWatts(engineRpm) * setup.powerMultiplier() * damageFactor;
+        double tyreSlip = 0.0;
+
+        double steerInput = Math.abs(steering) > STEERING_DEADZONE ? steering : 0.0;
+        double speedSteerScale = 1.0 / (1.0 + speedMetersPerSecond / 22.0);
+        double targetSteeringAngle = steerInput * MAX_STEER_ANGLE * speedSteerScale;
+        double maxSteeringStep = STEERING_RACK_RATE * PHYSICS_DT;
+        steeringAngle += clamp(targetSteeringAngle - steeringAngle, -maxSteeringStep, maxSteeringStep);
+
+        double downforce = 0.5 * AIR_DENSITY * DOWNFORCE_AREA * speedMetersPerSecond * speedMetersPerSecond;
+        double aeroDrag = 0.5 * AIR_DENSITY * DRAG_AREA * speedMetersPerSecond * speedMetersPerSecond;
+        double staticFrontLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT;
+        double staticRearLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT);
+        double aeroFrontLoad = downforce * FRONT_AERO_BALANCE;
+        double aeroRearLoad = downforce * (1.0 - FRONT_AERO_BALANCE);
+
+        double driveForceRequest = throttle > 0.0 && horizontalSpeed < gearTopSpeed
+            ? power * throttle / Math.max(MIN_POWER_SPEED, Math.abs(velocityLong))
+            : 0.0;
+        if (autoClutch) {
+            double staticRearTraction = ASPHALT_MU_LONGITUDINAL * surface.grip * staticRearLoad;
+            driveForceRequest = Math.min(driveForceRequest, staticRearTraction * 0.72);
+        }
+        double brakeForceRequest = brake * MAX_BRAKE_FORCE;
+        if (isPitLane() && horizontalSpeed >= maxSpeed) {
+            driveForceRequest = 0.0;
+            brakeForceRequest = Math.max(brakeForceRequest, 6_000.0);
+        }
+        double rollingForce = ROLLING_RESISTANCE * (CAR_MASS_KG * GRAVITY + downforce);
+        double preliminaryAx = (driveForceRequest - brakeForceRequest - Math.signum(velocityLong) * (aeroDrag + rollingForce)) / CAR_MASS_KG;
+        double loadTransfer = CAR_MASS_KG * preliminaryAx * CG_HEIGHT / WHEELBASE;
+        double normalFront = Math.max(150.0, staticFrontLoad + aeroFrontLoad - loadTransfer);
+        double normalRear = Math.max(150.0, staticRearLoad + aeroRearLoad + loadTransfer);
+        double referenceFrontLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT;
+        double referenceRearLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT);
+        double surfaceMuLat = ASPHALT_MU_LATERAL * surface.grip;
+        double surfaceMuLong = ASPHALT_MU_LONGITUDINAL * surface.grip;
+        double tyreWearGrip = Math.max(0.45, tyreFactor);
+        double muLatFront = loadSensitiveMu(surfaceMuLat * tyreWearGrip, normalFront, referenceFrontLoad);
+        double muLatRear = loadSensitiveMu(surfaceMuLat * tyreWearGrip, normalRear, referenceRearLoad);
+        double muLongFront = loadSensitiveMu(surfaceMuLong * tyreWearGrip, normalFront, referenceFrontLoad);
+        double muLongRear = loadSensitiveMu(surfaceMuLong * tyreWearGrip, normalRear, referenceRearLoad);
+
+        double brakeFront = brakeForceRequest * BRAKE_FRONT_BIAS;
+        double brakeRear = brakeForceRequest * (1.0 - BRAKE_FRONT_BIAS);
+        double frontLongRequest = -Math.signum(velocityLong) * brakeFront;
+        double rearLongRequest = driveForceRequest - Math.signum(velocityLong) * brakeRear;
+        double slipSpeed = Math.max(6.0, Math.abs(velocityLong));
+        double lowSpeedForceScale = Math.max(0.20, Math.min(1.0, speedMetersPerSecond / 8.0));
+        double frontSlipAngle = Math.atan2(velocityLat + yawRate * FRONT_AXLE_DISTANCE, slipSpeed) - steeringAngle;
+        double rearSlipAngle = Math.atan2(velocityLat - yawRate * REAR_AXLE_DISTANCE, slipSpeed);
+        double frontLatRequest = -FRONT_CORNERING_STIFFNESS * lowSpeedForceScale * frontSlipAngle;
+        double rearLatRequest = -REAR_CORNERING_STIFFNESS * lowSpeedForceScale * rearSlipAngle;
+        double frontDemand = combinedSlipDemand(frontLongRequest, frontLatRequest, muLongFront * normalFront, muLatFront * normalFront);
+        double rearDemand = combinedSlipDemand(rearLongRequest, rearLatRequest, muLongRear * normalRear, muLatRear * normalRear);
+        double frontPatchLongSlip = frontLongRequest / Math.max(1.0, FRONT_CORNERING_STIFFNESS * PHYSICS_DT);
+        double rearPatchLongSlip = rearLongRequest / Math.max(1.0, REAR_CORNERING_STIFFNESS * PHYSICS_DT);
+        double frontPatchLatSlip = velocityLat + yawRate * FRONT_AXLE_DISTANCE - velocityLong * steeringAngle;
+        double rearPatchLatSlip = velocityLat - yawRate * REAR_AXLE_DISTANCE;
+        double frontLongForce = tyreForceLongitudinal(frontDemand, frontLongRequest, frontPatchLongSlip, frontPatchLatSlip, muLongFront * normalFront);
+        double rearLongForce = tyreForceLongitudinal(rearDemand, rearLongRequest, rearPatchLongSlip, rearPatchLatSlip, muLongRear * normalRear);
+        double frontLatForce = tyreForceLateral(frontDemand, frontLatRequest, frontPatchLongSlip, frontPatchLatSlip, muLatFront * normalFront);
+        double rearLatForce = tyreForceLateral(rearDemand, rearLatRequest, rearPatchLongSlip, rearPatchLatSlip, muLatRear * normalRear);
+        double frontSaturation = frontDemand;
+        double rearSaturation = rearDemand;
+        double dragForce = -Math.signum(velocityLong) * (aeroDrag + rollingForce);
+
+        double longitudinalForce = rearLongForce + frontLongForce + dragForce;
+        double lateralForce = frontLatForce + rearLatForce;
+        double accelerationLong = longitudinalForce / CAR_MASS_KG + yawRate * velocityLat;
+        double accelerationLat = lateralForce / CAR_MASS_KG - yawRate * velocityLong;
+        double yawMoment = FRONT_AXLE_DISTANCE * frontLatForce - REAR_AXLE_DISTANCE * rearLatForce;
+        double yawAcceleration = yawMoment / YAW_INERTIA;
+
+        velocityLong += accelerationLong * PHYSICS_DT;
+        velocityLat += accelerationLat * PHYSICS_DT;
+        yawRate += yawAcceleration * PHYSICS_DT;
+        if (speedMetersPerSecond < 1.5 && steerInput == 0.0) {
+            velocityLat = 0.0;
+            yawRate = 0.0;
+        }
+        setYRot(getYRot() + (float) Math.toDegrees(yawRate * PHYSICS_DT));
+
+        double frontExcess = Math.max(0.0, frontSaturation - 1.0);
+        double rearExcess = Math.max(0.0, rearSaturation - 1.0);
+        double slipMetric = Math.abs(frontSlipAngle) * 0.7 + Math.abs(rearSlipAngle) * 0.9 + frontExcess + rearExcess;
+        tyreSlip = Math.max(tyreSlip, Math.min(1.0, slipMetric * Math.min(1.0, speedMetersPerSecond / 18.0)));
+        if (speedMetersPerSecond > 1.0) {
+            addTyreWear((float) (slipMetric * speedMetersPerSecond * 0.00035 * setup.tyreWearMultiplier() * surface.wearMult));
         }
 
-        // --- Lateral grip / understeer ---
-        if (horizontalSpeed > 0.01) {
-            Vec3 forward        = Vec3.directionFromRotation(0.0f, getYRot());
-            double forwardSpeed = delta.x * forward.x + delta.z * forward.z;
-            double sideX        = delta.x - forward.x * forwardSpeed;
-            double sideZ        = delta.z - forward.z * forwardSpeed;
-            double sideSpeed    = Math.sqrt(sideX * sideX + sideZ * sideZ);
-            double corneringLoad   = horizontalSpeed / maxSpeed;
-            double gripBase        = (0.55 + 0.45 * tyreFactor * setup.gripMultiplier()) * surface.grip;
-            double gripEffective   = Math.max(0.1, Math.min(1.0, gripBase * (1.0 - 0.35 * corneringLoad)));
-            double sideKill  = Math.min(sideSpeed, Math.max(0.0, sideSpeed - gripEffective * 0.04));
-            double killScale = sideSpeed > 0 ? (sideSpeed - sideKill) / sideSpeed : 1.0;
-            delta = new Vec3(
-                forward.x * forwardSpeed + sideX * killScale,
-                delta.y,
-                forward.z * forwardSpeed + sideZ * killScale
-            );
-        }
-
-        // --- Drag & gravity ---
-        double drag = AIR_DRAG * setup.dragMultiplier() * surface.drag;
+        forward = Vec3.directionFromRotation(0.0f, getYRot());
+        right = new Vec3(forward.z, 0.0, -forward.x);
         double newY = onGround() ? 0.0 : delta.y - 0.04;
-        delta = new Vec3(delta.x * drag, newY, delta.z * drag);
+        delta = new Vec3(
+            (forward.x * velocityLong + right.x * velocityLat) / 20.0,
+            newY,
+            (forward.z * velocityLong + right.z * velocityLat) / 20.0
+        );
 
         setDeltaMovement(delta);
         Vec3 beforeMove = position();
@@ -631,8 +757,10 @@ public class OpenwheelCarEntity extends Entity {
         }
 
         double newSpeed = Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z);
+        int rpm = calculateRpm(newSpeed, gear, gearTopSpeed, throttle > 0.0 && gear == 1 && newSpeed < LAUNCH_CLUTCH_SPEED);
         entityData.set(SPEED, (float)(newSpeed * 72.0));
-        entityData.set(RPM, Math.max(900, Math.min(12500, (int)(900 + newSpeed * 7200 * gearRatio / Math.max(0.15, GEAR_RATIOS[6])))));
+        entityData.set(RPM, rpm);
+        entityData.set(TYRE_SLIP, (float) Math.max(0.0, Math.min(1.0, tyreSlip)));
         previousHorizontalSpeed = horizontalSpeed;
     }
 
@@ -714,6 +842,18 @@ public class OpenwheelCarEntity extends Entity {
         }
     }
 
+    private void logShift(String direction) {
+        if (!level().isClientSide()) {
+            LOGGER.info("OWR car shift id={} direction={} gear={} speedKmh={} rpm={} passenger={}",
+                getId(),
+                direction,
+                getGear(),
+                String.format("%.1f", getSpeedKmh()),
+                getRpm(),
+                getControllingPassenger() == null ? "none" : getControllingPassenger().getScoreboardName());
+        }
+    }
+
     private boolean isForwardPass(Direction markerFacing) {
         Vec3 carForward = Vec3.directionFromRotation(0.0f, getYRot());
         Vec3 markerForward = new Vec3(markerFacing.getStepX(), 0.0, markerFacing.getStepZ());
@@ -759,6 +899,73 @@ public class OpenwheelCarEntity extends Entity {
             serverPlayer.connection.send(new ClientboundSetSubtitleTextPacket(reasonMessage));
         }
         messageDriver(Component.literal("INVALID LAP: " + reason));
+    }
+
+    private static int calculateRpm(double speed, int gear, double gearTopSpeed, boolean autoClutch) {
+        double wheelRpm = gearTopSpeed <= 0.0 ? IDLE_RPM : speed / gearTopSpeed * REDLINE_RPM;
+        double rpm = Math.max(IDLE_RPM, wheelRpm);
+        if (autoClutch) {
+            rpm = Math.max(rpm, LAUNCH_RPM);
+        }
+        return (int) Math.max(IDLE_RPM, Math.min(REDLINE_RPM, rpm));
+    }
+
+    private static double powerAcceleration(double powerWatts, double speedBlocksPerTick) {
+        double speedMetersPerSecond = Math.max(MIN_POWER_SPEED, speedBlocksPerTick * 20.0);
+        double accelerationMetersPerSecondSquared = powerWatts / (CAR_MASS_KG * speedMetersPerSecond);
+        return accelerationMetersPerSecondSquared / 400.0;
+    }
+
+    private static double enginePowerWatts(int rpm) {
+        double[] rpmPoints = {900.0, 2500.0, 4000.0, 4700.0, 6500.0, 8200.0, 10500.0, 11800.0, 12600.0, 13000.0};
+        double[] powerPoints = {0.03, 0.10, 0.22, 0.34, 0.56, 0.75, 0.95, 1.00, 0.78, 0.42};
+        if (rpm <= rpmPoints[0]) {
+            return PEAK_POWER_WATTS * powerPoints[0];
+        }
+        for (int i = 1; i < rpmPoints.length; i++) {
+            if (rpm <= rpmPoints[i]) {
+                double t = (rpm - rpmPoints[i - 1]) / (rpmPoints[i] - rpmPoints[i - 1]);
+                double power = powerPoints[i - 1] + (powerPoints[i] - powerPoints[i - 1]) * t;
+                return PEAK_POWER_WATTS * power;
+            }
+        }
+        return PEAK_POWER_WATTS * powerPoints[powerPoints.length - 1];
+    }
+
+    private static double loadSensitiveMu(double baseMu, double normalLoad, double referenceLoad) {
+        return Math.max(0.35, baseMu * (1.0 - LOAD_SENSITIVITY * (normalLoad / referenceLoad - 1.0)));
+    }
+
+    private static double combinedSlipDemand(double longitudinalForce, double lateralForce, double longitudinalLimit, double lateralLimit) {
+        double x = longitudinalForce / Math.max(1.0, longitudinalLimit);
+        double y = lateralForce / Math.max(1.0, lateralLimit);
+        return Math.sqrt(x * x + y * y);
+    }
+
+    private static double tyreForceLongitudinal(double demand, double requestedForce, double longitudinalSlipVelocity, double lateralSlipVelocity, double forceLimit) {
+        if (demand <= 1.0) {
+            return requestedForce;
+        }
+        return Math.signum(requestedForce) * Math.min(Math.abs(requestedForce) / demand, KINETIC_MU_RATIO * forceLimit);
+    }
+
+    private static double tyreForceLateral(double demand, double requestedForce, double longitudinalSlipVelocity, double lateralSlipVelocity, double forceLimit) {
+        if (demand <= 1.0) {
+            return requestedForce;
+        }
+        double slipMagnitude = Math.sqrt(longitudinalSlipVelocity * longitudinalSlipVelocity + lateralSlipVelocity * lateralSlipVelocity);
+        if (slipMagnitude < 0.05) {
+            return requestedForce / demand;
+        }
+        return -KINETIC_MU_RATIO * forceLimit * lateralSlipVelocity / slipMagnitude;
+    }
+
+    private static double square(double value) {
+        return value * value;
+    }
+
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private static String formatLapTime(int ticks) {

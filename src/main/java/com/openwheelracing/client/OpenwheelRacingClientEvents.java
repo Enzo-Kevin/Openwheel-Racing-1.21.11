@@ -4,6 +4,7 @@ import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.client.hud.CarHudOverlay;
 import com.openwheelracing.client.input.OWRClientInputHandler;
 import com.openwheelracing.client.input.OWRKeyMappings;
+import com.openwheelracing.client.sound.CarSoundManager;
 import net.minecraft.resources.Identifier;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.AddGuiOverlayLayersEvent;
@@ -32,5 +33,6 @@ public final class OpenwheelRacingClientEvents {
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent.Post event) {
         OWRClientInputHandler.onClientTick(event);
+        CarSoundManager.onClientTick();
     }
 }

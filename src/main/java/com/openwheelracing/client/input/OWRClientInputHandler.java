@@ -10,6 +10,9 @@ import net.minecraftforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 public final class OWRClientInputHandler {
+    private static boolean shiftUpWasDown;
+    private static boolean shiftDownWasDown;
+
     private OWRClientInputHandler() {
     }
 
@@ -40,12 +43,18 @@ public final class OWRClientInputHandler {
         car.tickLocalClientMovement(throttle, brake, steering);
         OWRNetwork.CHANNEL.send(new OWRNetwork.DriveInputMessage(throttle, brake, steering), PacketDistributor.SERVER.noArg());
 
-        while (OWRKeyMappings.SHIFT_UP.consumeClick()) {
+        boolean shiftUpDown = isRawKeyDown(GLFW.GLFW_KEY_I);
+        boolean shiftDownDown = isRawKeyDown(GLFW.GLFW_KEY_K);
+        if (shiftUpDown && !shiftUpWasDown) {
+            car.shiftLocal(1);
             OWRNetwork.CHANNEL.send(new OWRNetwork.ShiftMessage(1), PacketDistributor.SERVER.noArg());
         }
-        while (OWRKeyMappings.SHIFT_DOWN.consumeClick()) {
+        if (shiftDownDown && !shiftDownWasDown) {
+            car.shiftLocal(-1);
             OWRNetwork.CHANNEL.send(new OWRNetwork.ShiftMessage(-1), PacketDistributor.SERVER.noArg());
         }
+        shiftUpWasDown = shiftUpDown;
+        shiftDownWasDown = shiftDownDown;
         while (OWRKeyMappings.EXIT_CAR.consumeClick()) {
             OWRNetwork.CHANNEL.send(new OWRNetwork.ExitCarMessage(), PacketDistributor.SERVER.noArg());
         }
@@ -54,9 +63,11 @@ public final class OWRClientInputHandler {
     /** Poll the raw GLFW key state regardless of Minecraft conflict context. */
     private static boolean isDown(net.minecraft.client.KeyMapping mapping) {
         InputConstants.Key key = mapping.getKey();
+        return isRawKeyDown(key.getValue());
+    }
+
+    private static boolean isRawKeyDown(int keyCode) {
         com.mojang.blaze3d.platform.Window win = Minecraft.getInstance().getWindow();
-        // InputConstants.isKeyDown polls the actual GLFW key state on the window,
-        // bypassing KeyMapping's conflict-context suppression that zeros passenger input.
-        return InputConstants.isKeyDown(win, key.getValue());
+        return InputConstants.isKeyDown(win, keyCode);
     }
 }

@@ -5,6 +5,7 @@ import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 
 public final class CarHudOverlay {
     private static final int PANEL_WIDTH = 132;
@@ -34,13 +35,16 @@ public final class CarHudOverlay {
         graphics.drawString(font, "BEST " + formatLapTime(car.getBestLapTicks()), x + 8, y + 62, 0xFFFFFF99, false);
 
         int setupX = 8;
-        int setupY = graphics.guiHeight() - 56;
-        graphics.fill(setupX, setupY, setupX + 98, setupY + 48, 0x99000000);
-        graphics.renderOutline(setupX, setupY, 98, 48, 0xFF555555);
+        int setupY = graphics.guiHeight() - 89;
+        graphics.fill(setupX, setupY, setupX + 172, setupY + 81, 0x99000000);
+        graphics.renderOutline(setupX, setupY, 172, 81, 0xFF555555);
         graphics.drawString(font, "PWR " + car.getSetup().power(), setupX + 7, setupY + 7, 0xFFFF9999, false);
         graphics.drawString(font, "TYRE C" + (car.getSetup().grip() + 1), setupX + 7, setupY + 18, 0xFFB7FFB7, false);
         graphics.drawString(font, "AERO " + car.getSetup().aero(), setupX + 7, setupY + 29, 0xFF99DDFF, false);
         graphics.drawString(font, "GEAR " + car.getSetup().gearing(), setupX + 52, setupY + 29, 0xFFFFDD88, false);
+        graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.drive"), setupX + 7, setupY + 43, 0xFFDDDDDD, false);
+        graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.shift"), setupX + 7, setupY + 54, 0xFFDDDDDD, false);
+        graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.exit"), setupX + 7, setupY + 65, 0xFFDDDDDD, false);
 
         if (car.isInPitStop()) {
             int remaining = car.getPitStopTicks();

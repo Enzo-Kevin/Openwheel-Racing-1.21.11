@@ -1,0 +1,37 @@
+{
+  "car.engine.low": {
+    "sounds": [
+      {
+        "name": "openwheelracing:car_engine_low",
+        "stream": true
+      }
+    ]
+  },
+  "car.engine.high": {
+    "sounds": [
+      {
+        "name": "openwheelracing:car_engine_high",
+        "stream": true
+      }
+    ]
+  },
+  "car.tyre_squeal": {
+    "sounds": [
+      {
+        "name": "minecraft:block/grindstone/grindstone1",
+        "stream": true,
+        "pitch": 1.8
+      },
+      {
+        "name": "minecraft:block/grindstone/grindstone2",
+        "stream": true,
+        "pitch": 1.9
+      },
+      {
+        "name": "minecraft:block/grindstone/grindstone3",
+        "stream": true,
+        "pitch": 2.0
+      }
+    ]
+  }
+}

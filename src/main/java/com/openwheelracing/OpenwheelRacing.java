@@ -11,6 +11,7 @@ import com.openwheelracing.registry.OWRFuelHandler;
 import com.openwheelracing.registry.OWRItems;
 import com.openwheelracing.registry.OWRMenus;
 import com.openwheelracing.registry.OWRRecipes;
+import com.openwheelracing.registry.OWRSoundEvents;
 import net.minecraftforge.event.furnace.FurnaceFuelBurnTimeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -34,6 +35,7 @@ public final class OpenwheelRacing {
         OWRBlockEntities.register(modBusGroup);
         OWRMenus.register(modBusGroup);
         OWRRecipes.register(modBusGroup);
+        OWRSoundEvents.register(modBusGroup);
         OWRCreativeTabs.register(modBusGroup);
         FurnaceFuelBurnTimeEvent.BUS.addListener(OWRFuelHandler::onFuelBurnTime);
     }

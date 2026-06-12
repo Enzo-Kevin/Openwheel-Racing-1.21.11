@@ -14,8 +14,8 @@ public final class OWRKeyMappings {
     public static final KeyMapping BRAKE       = new KeyMapping("key.openwheelracing.brake",       InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_S,            CATEGORY);
     public static final KeyMapping STEER_LEFT  = new KeyMapping("key.openwheelracing.steer_left",  InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_A,            CATEGORY);
     public static final KeyMapping STEER_RIGHT = new KeyMapping("key.openwheelracing.steer_right", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_D,            CATEGORY);
-    public static final KeyMapping SHIFT_UP    = new KeyMapping("key.openwheelracing.shift_up",    InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_BRACKET, CATEGORY);
-    public static final KeyMapping SHIFT_DOWN  = new KeyMapping("key.openwheelracing.shift_down",  InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_BRACKET,  CATEGORY);
+    public static final KeyMapping SHIFT_UP    = new KeyMapping("key.openwheelracing.shift_up",    InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_I,            CATEGORY);
+    public static final KeyMapping SHIFT_DOWN  = new KeyMapping("key.openwheelracing.shift_down",  InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_K,            CATEGORY);
     public static final KeyMapping EXIT_CAR    = new KeyMapping("key.openwheelracing.exit_car",    InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R,            CATEGORY);
     public static final KeyMapping MOUNT_CAR   = new KeyMapping("key.openwheelracing.mount_car",   InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G,            CATEGORY);
     public static final KeyMapping TRACK_EDITOR = new KeyMapping("key.openwheelracing.track_editor", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_B,            CATEGORY);

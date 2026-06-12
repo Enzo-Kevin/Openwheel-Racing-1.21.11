@@ -13,6 +13,7 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
 
 public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, OpenwheelCarRenderer.CarRenderState> {
     private static final Identifier BODY_TEX = Identifier.fromNamespaceAndPath("openwheelracing", "textures/entity/car_body.png");
@@ -68,6 +69,7 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     public void extractRenderState(OpenwheelCarEntity car, CarRenderState state, float partialTick) {
         super.extractRenderState(car, state, partialTick);
         state.yRot = car.getYRot(partialTick);
+        state.frontWheelSteerDegrees = car.getFrontWheelSteerDegrees();
         state.lightCoords = 15728880;
         state.tyreCompound = car.getSetup().grip();
     }
@@ -115,13 +117,27 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         });
 
         nodeCollector.submitCustomGeometry(poseStack, RT_WHEEL, (pose, consumer) -> {
-            wheel(consumer, pose, -1.10f, 0.26f, -1.98f, rimColor, light);
-            wheel(consumer, pose, 1.10f, 0.26f, -1.98f, rimColor, light);
+            steerableWheel(consumer, pose, -1.10f, 0.26f, -1.98f, state.frontWheelSteerDegrees, rimColor, light);
+            steerableWheel(consumer, pose, 1.10f, 0.26f, -1.98f, state.frontWheelSteerDegrees, rimColor, light);
             wheel(consumer, pose, -1.10f, 0.26f, 1.02f, rimColor, light);
             wheel(consumer, pose, 1.10f, 0.26f, 1.02f, rimColor, light);
         });
 
         poseStack.popPose();
+    }
+
+    private static void steerableWheel(VertexConsumer consumer, PoseStack.Pose pose, float cx, float cy, float cz, float steerDegrees, int rimColor, int light) {
+        float halfWidth = 0.27f;
+        float halfHeight = 0.25f;
+        float halfLength = 0.33f;
+
+        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth, cy - halfHeight, cz - halfLength, cx + halfWidth, cy + halfHeight, cz + halfLength, TYRE_TOP, TYRE_SIDE, TYRE_DARK, light);
+        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy - 0.04f, cz - halfLength, cx + halfWidth + 0.01f, cy + 0.04f, cz - halfLength + 0.04f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
+        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy - 0.04f, cz + halfLength - 0.04f, cx + halfWidth + 0.01f, cy + 0.04f, cz + halfLength, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
+        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy + halfHeight - 0.05f, cz - 0.25f, cx + halfWidth + 0.01f, cy + halfHeight + 0.01f, cz + 0.25f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
+
+        steeredRimFace(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.03f, cy, cz, 0.06f, rimColor, light);
+        steeredRimFace(consumer, pose, cx, cz, steerDegrees, cx + halfWidth + 0.03f, cy, cz, 0.06f, rimColor, light);
     }
 
     private static void wheel(VertexConsumer consumer, PoseStack.Pose pose, float cx, float cy, float cz, int rimColor, int light) {
@@ -136,6 +152,21 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
 
         rimFace(consumer, pose, cx - halfWidth - 0.03f, cy, cz, 0.06f, rimColor, light);
         rimFace(consumer, pose, cx + halfWidth + 0.03f, cy, cz, 0.06f, rimColor, light);
+    }
+
+    private static void steeredRimFace(VertexConsumer consumer, PoseStack.Pose pose, float pivotX, float pivotZ, float steerDegrees, float x, float y, float z, float thickness, int rimColor, int light) {
+        float x0 = x - thickness * 0.5f;
+        float x1 = x + thickness * 0.5f;
+        float top = y + 0.15f;
+        float bottom = y - 0.15f;
+        float front = z - 0.21f;
+        float back = z + 0.21f;
+
+        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, top - 0.055f, front, x1, top + 0.055f, back, rimColor, rimColor, rimColor, light);
+        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, bottom - 0.055f, front, x1, bottom + 0.055f, back, rimColor, rimColor, rimColor, light);
+        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, bottom, front - 0.055f, x1, top, front + 0.055f, rimColor, rimColor, rimColor, light);
+        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, bottom, back - 0.055f, x1, top, back + 0.055f, rimColor, rimColor, rimColor, light);
+        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0 - 0.005f, y - 0.075f, z - 0.075f, x1 + 0.005f, y + 0.075f, z + 0.075f, DISC_FACE, DISC_SIDE, DISC_SIDE, light);
     }
 
     private static void rimFace(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float thickness, int rimColor, int light) {
@@ -157,6 +188,17 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         return COMPOUND_RIM_COLORS[Math.max(0, Math.min(COMPOUND_RIM_COLORS.length - 1, tyreCompound))];
     }
 
+    private static void steeredBox(VertexConsumer consumer, PoseStack.Pose pose, float pivotX, float pivotZ, float steerDegrees,
+                                   float minX, float minY, float minZ, float maxX, float maxY, float maxZ,
+                                   int top, int side, int bottom, int light) {
+        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, minX, maxY, minZ, maxX, maxY, minZ, maxX, minY, minZ, minX, minY, minZ, side, light, 0.0f, 0.0f, -1.0f);
+        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, maxX, maxY, maxZ, minX, maxY, maxZ, minX, minY, maxZ, maxX, minY, maxZ, side, light, 0.0f, 0.0f, 1.0f);
+        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, minX, maxY, maxZ, minX, maxY, minZ, minX, minY, minZ, minX, minY, maxZ, side, light, -1.0f, 0.0f, 0.0f);
+        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, maxX, maxY, minZ, maxX, maxY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, side, light, 1.0f, 0.0f, 0.0f);
+        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, minX, maxY, minZ, top, light, 0.0f, 1.0f, 0.0f);
+        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, minX, minY, maxZ, bottom, light, 0.0f, -1.0f, 0.0f);
+    }
+
     private static void box(VertexConsumer consumer, PoseStack.Pose pose,
                             float minX, float minY, float minZ, float maxX, float maxY, float maxZ,
                             int top, int side, int bottom, int light) {
@@ -168,6 +210,16 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         face(consumer, pose, minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, minX, minY, maxZ, bottom, light, 0.0f, -1.0f, 0.0f);
     }
 
+    private static void steeredFace(VertexConsumer consumer, PoseStack.Pose pose, float pivotX, float pivotZ, float steerDegrees,
+                                    float x1, float y1, float z1, float x2, float y2, float z2,
+                                    float x3, float y3, float z3, float x4, float y4, float z4,
+                                    int color, int light, float normalX, float normalY, float normalZ) {
+        steeredVertex(consumer, pose, pivotX, pivotZ, steerDegrees, x1, y1, z1, color, light, normalX, normalY, normalZ);
+        steeredVertex(consumer, pose, pivotX, pivotZ, steerDegrees, x2, y2, z2, color, light, normalX, normalY, normalZ);
+        steeredVertex(consumer, pose, pivotX, pivotZ, steerDegrees, x3, y3, z3, color, light, normalX, normalY, normalZ);
+        steeredVertex(consumer, pose, pivotX, pivotZ, steerDegrees, x4, y4, z4, color, light, normalX, normalY, normalZ);
+    }
+
     private static void face(VertexConsumer consumer, PoseStack.Pose pose,
                              float x1, float y1, float z1, float x2, float y2, float z2,
                              float x3, float y3, float z3, float x4, float y4, float z4,
@@ -176,6 +228,16 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         vertex(consumer, pose, x2, y2, z2, color, light, normalX, normalY, normalZ);
         vertex(consumer, pose, x3, y3, z3, color, light, normalX, normalY, normalZ);
         vertex(consumer, pose, x4, y4, z4, color, light, normalX, normalY, normalZ);
+    }
+
+    private static void steeredVertex(VertexConsumer consumer, PoseStack.Pose pose, float pivotX, float pivotZ, float steerDegrees,
+                                      float x, float y, float z, int color, int light, float normalX, float normalY, float normalZ) {
+        float radians = (float) Math.toRadians(steerDegrees);
+        float localX = x - pivotX;
+        float localZ = z - pivotZ;
+        float rotatedX = pivotX + localX * Mth.cos(radians) - localZ * Mth.sin(radians);
+        float rotatedZ = pivotZ + localX * Mth.sin(radians) + localZ * Mth.cos(radians);
+        vertex(consumer, pose, rotatedX, y, rotatedZ, color, light, normalX, normalY, normalZ);
     }
 
     private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, int color, int light, float normalX, float normalY, float normalZ) {
@@ -193,6 +255,7 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
 
     public static class CarRenderState extends EntityRenderState {
         public float yRot;
+        public float frontWheelSteerDegrees;
         public int lightCoords;
         public int tyreCompound;
     }

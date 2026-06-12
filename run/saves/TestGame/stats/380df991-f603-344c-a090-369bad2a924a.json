@@ -1,40 +1,40 @@
 {
   "stats": {
+    "minecraft:dropped": {
+      "openwheelracing:tires": 1,
+      "openwheelracing:prototype_car_spawn": 6
+    },
+    "minecraft:picked_up": {
+      "openwheelracing:tires": 1,
+      "openwheelracing:prototype_car_spawn": 5
+    },
     "minecraft:used": {
       "openwheelracing:car_assembly_workstation": 9,
       "minecraft:acacia_boat": 1,
       "openwheelracing:start_finish": 35,
       "openwheelracing:barrier": 48,
-      "openwheelracing:prototype_car_spawn": 69,
+      "openwheelracing:prototype_car_spawn": 144,
       "minecraft:copper_pickaxe": 1,
       "openwheelracing:checkpoint": 7,
       "openwheelracing:refinery": 7,
       "openwheelracing:pit_lane": 34,
-      "openwheelracing:asphalt_track": 239,
-      "openwheelracing:kerb": 379
+      "openwheelracing:asphalt_track": 240,
+      "openwheelracing:kerb": 389
     },
     "minecraft:custom": {
-      "minecraft:time_since_rest": 58340,
-      "minecraft:walk_one_cm": 147909,
-      "minecraft:leave_game": 23,
+      "minecraft:time_since_rest": 127763,
+      "minecraft:walk_one_cm": 197288,
+      "minecraft:leave_game": 45,
       "minecraft:boat_one_cm": 7325,
-      "minecraft:play_time": 58340,
-      "minecraft:jump": 312,
-      "minecraft:time_since_death": 58340,
-      "minecraft:drop": 6,
-      "minecraft:sprint_one_cm": 19518,
-      "minecraft:total_world_time": 91358,
-      "minecraft:fly_one_cm": 291712,
-      "minecraft:crouch_one_cm": 2396,
-      "minecraft:sneak_time": 812
-    },
-    "minecraft:dropped": {
-      "openwheelracing:tires": 1,
-      "openwheelracing:prototype_car_spawn": 5
-    },
-    "minecraft:picked_up": {
-      "openwheelracing:tires": 1,
-      "openwheelracing:prototype_car_spawn": 4
+      "minecraft:play_time": 127763,
+      "minecraft:jump": 440,
+      "minecraft:time_since_death": 127763,
+      "minecraft:drop": 7,
+      "minecraft:sprint_one_cm": 35371,
+      "minecraft:total_world_time": 176145,
+      "minecraft:fly_one_cm": 1026431,
+      "minecraft:crouch_one_cm": 2454,
+      "minecraft:sneak_time": 1197
     }
   },
   "DataVersion": 4671
