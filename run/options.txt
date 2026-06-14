@@ -8,7 +8,7 @@ entityDistanceScaling:1.0
 entityShadows:true
 forceUnicodeFont:false
 japaneseGlyphVariants:false
-fov:0.5
+fov:0.55
 fovEffectScale:1.0
 darknessEffectScale:1.0
 glintSpeed:0.5
@@ -172,6 +172,7 @@ key_key.openwheelracing.steer_right:key.keyboard.d
 key_key.openwheelracing.shift_up:key.keyboard.space
 key_key.openwheelracing.shift_down:key.keyboard.left.control
 key_key.openwheelracing.exit_car:key.keyboard.r
+key_key.openwheelracing.toggle_abs:key.keyboard.v
 key_key.openwheelracing.mount_car:key.keyboard.g
 key_key.openwheelracing.track_editor:key.keyboard.b
 soundCategory_master:1.0

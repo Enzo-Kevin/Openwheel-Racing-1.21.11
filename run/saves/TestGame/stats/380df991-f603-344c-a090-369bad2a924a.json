@@ -2,39 +2,46 @@
   "stats": {
     "minecraft:dropped": {
       "openwheelracing:tires": 1,
-      "openwheelracing:prototype_car_spawn": 6
+      "openwheelracing:prototype_car_spawn": 7
+    },
+    "minecraft:used": {
+      "openwheelracing:car_assembly_workstation": 10,
+      "minecraft:acacia_boat": 1,
+      "openwheelracing:start_finish": 49,
+      "openwheelracing:barrier": 48,
+      "openwheelracing:prototype_car_spawn": 292,
+      "minecraft:copper_pickaxe": 1,
+      "openwheelracing:checkpoint": 7,
+      "openwheelracing:refinery": 8,
+      "openwheelracing:pit_lane": 34,
+      "openwheelracing:asphalt_track": 240,
+      "openwheelracing:kerb": 408
+    },
+    "minecraft:custom": {
+      "minecraft:time_since_rest": 72936,
+      "minecraft:walk_one_cm": 290743,
+      "minecraft:leave_game": 70,
+      "minecraft:damage_taken": 4436,
+      "minecraft:boat_one_cm": 7325,
+      "minecraft:play_time": 296138,
+      "minecraft:jump": 755,
+      "minecraft:time_since_death": 72870,
+      "minecraft:drop": 8,
+      "minecraft:sprint_one_cm": 77848,
+      "minecraft:fall_one_cm": 7567,
+      "minecraft:total_world_time": 384158,
+      "minecraft:fly_one_cm": 2268767,
+      "minecraft:crouch_one_cm": 2516,
+      "minecraft:sneak_time": 1476,
+      "minecraft:deaths": 8
     },
     "minecraft:picked_up": {
       "openwheelracing:tires": 1,
-      "openwheelracing:prototype_car_spawn": 5
-    },
-    "minecraft:used": {
-      "openwheelracing:car_assembly_workstation": 9,
-      "minecraft:acacia_boat": 1,
-      "openwheelracing:start_finish": 35,
-      "openwheelracing:barrier": 48,
-      "openwheelracing:prototype_car_spawn": 144,
-      "minecraft:copper_pickaxe": 1,
-      "openwheelracing:checkpoint": 7,
-      "openwheelracing:refinery": 7,
-      "openwheelracing:pit_lane": 34,
-      "openwheelracing:asphalt_track": 240,
-      "openwheelracing:kerb": 389
-    },
-    "minecraft:custom": {
-      "minecraft:time_since_rest": 127763,
-      "minecraft:walk_one_cm": 197288,
-      "minecraft:leave_game": 45,
-      "minecraft:boat_one_cm": 7325,
-      "minecraft:play_time": 127763,
-      "minecraft:jump": 440,
-      "minecraft:time_since_death": 127763,
-      "minecraft:drop": 7,
-      "minecraft:sprint_one_cm": 35371,
-      "minecraft:total_world_time": 176145,
-      "minecraft:fly_one_cm": 1026431,
-      "minecraft:crouch_one_cm": 2454,
-      "minecraft:sneak_time": 1197
+      "openwheelracing:gas": 1,
+      "openwheelracing:crude_rubber": 1,
+      "openwheelracing:prototype_car_spawn": 6,
+      "minecraft:bucket": 1,
+      "openwheelracing:diesel_can": 2
     }
   },
   "DataVersion": 4671

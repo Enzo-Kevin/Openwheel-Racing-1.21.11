@@ -9,6 +9,7 @@ import com.openwheelracing.content.block.RefineryBlock;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
@@ -44,9 +45,11 @@ public final class OWRBlocks {
     );
 
     public static final RegistryObject<Block> ASPHALT_TRACK = registerSimpleBlock("asphalt_track", MapColor.COLOR_BLACK, 2.4f, 6.0f);
+    public static final RegistryObject<Block> ASPHALT_TRACK_SLAB = registerSlabBlock("asphalt_track_slab", MapColor.COLOR_BLACK, 2.4f, 6.0f);
     public static final RegistryObject<Block> KERB = registerDirectionalBlock("kerb", MapColor.COLOR_RED, 2.0f, 6.0f);
     public static final RegistryObject<Block> BARRIER = registerSimpleBlock("barrier", MapColor.METAL, 4.0f, 8.0f);
     public static final RegistryObject<Block> PIT_LANE = registerSimpleBlock("pit_lane", MapColor.COLOR_GRAY, 2.4f, 6.0f);
+    public static final RegistryObject<Block> PIT_LANE_SLAB = registerSlabBlock("pit_lane_slab", MapColor.COLOR_GRAY, 2.4f, 6.0f);
     public static final RegistryObject<Block> START_FINISH = registerLapMarker("start_finish", true, MapColor.SNOW);
     public static final RegistryObject<Block> CHECKPOINT = registerLapMarker("checkpoint", false, MapColor.COLOR_LIGHT_BLUE);
 
@@ -54,9 +57,11 @@ public final class OWRBlocks {
     public static final RegistryObject<Item> REFINERY_ITEM = registerBlockItem("refinery", REFINERY);
     public static final RegistryObject<Item> CRUDE_OIL_DEPOSIT_ITEM = registerBlockItem("crude_oil_deposit", CRUDE_OIL_DEPOSIT);
     public static final RegistryObject<Item> ASPHALT_TRACK_ITEM = registerBlockItem("asphalt_track", ASPHALT_TRACK);
+    public static final RegistryObject<Item> ASPHALT_TRACK_SLAB_ITEM = registerBlockItem("asphalt_track_slab", ASPHALT_TRACK_SLAB);
     public static final RegistryObject<Item> KERB_ITEM = registerBlockItem("kerb", KERB);
     public static final RegistryObject<Item> BARRIER_ITEM = registerBlockItem("barrier", BARRIER);
     public static final RegistryObject<Item> PIT_LANE_ITEM = registerBlockItem("pit_lane", PIT_LANE);
+    public static final RegistryObject<Item> PIT_LANE_SLAB_ITEM = registerBlockItem("pit_lane_slab", PIT_LANE_SLAB);
     public static final RegistryObject<Item> START_FINISH_ITEM = registerBlockItem("start_finish", START_FINISH);
     public static final RegistryObject<Item> CHECKPOINT_ITEM = registerBlockItem("checkpoint", CHECKPOINT);
 
@@ -69,6 +74,15 @@ public final class OWRBlocks {
 
     private static RegistryObject<Block> registerSimpleBlock(String name, MapColor mapColor, float destroyTime, float explosionResistance) {
         return BLOCKS.register(name, () -> new Block(BlockBehaviour.Properties.of()
+            .setId(BLOCKS.key(name))
+            .mapColor(mapColor)
+            .strength(destroyTime, explosionResistance)
+            .requiresCorrectToolForDrops())
+        );
+    }
+
+    private static RegistryObject<Block> registerSlabBlock(String name, MapColor mapColor, float destroyTime, float explosionResistance) {
+        return BLOCKS.register(name, () -> new SlabBlock(BlockBehaviour.Properties.of()
             .setId(BLOCKS.key(name))
             .mapColor(mapColor)
             .strength(destroyTime, explosionResistance)

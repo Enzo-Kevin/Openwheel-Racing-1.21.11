@@ -6,6 +6,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
@@ -14,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 public final class TrackEditorPlacementService {
-    private static final int MAX_BLOCKS_PER_OPERATION = 4096;
+    private static final int MAX_BLOCKS_PER_OPERATION = 8192;
     private static final int MAX_DISTANCE_FROM_PLAYER = 512;
     private static final int MAX_POLYGON_AREA = 16384;
 
@@ -72,22 +73,55 @@ public final class TrackEditorPlacementService {
     private static LinkedHashMap<BlockPos, BlockState> generatePlacements(TrackEditorOperation operation) {
         LinkedHashMap<BlockPos, BlockState> placements = new LinkedHashMap<>();
         switch (operation.mode()) {
-            case STRAIGHT -> addLine(placements, operation.points().get(0), operation.points().get(1), operation.width(), operation.material(), operation.facing());
-            case FREEHAND, EDGE -> addPath(placements, operation.points(), operation.width(), operation.material(), operation.facing());
-            case ARC -> addArc(placements, operation.points().get(0), operation.points().get(1), operation.points().get(2), operation.width(), operation.material(), operation.facing());
+            case STRAIGHT -> addLine(placements, operation.points().get(0), operation.points().get(1), operation);
+            case FREEHAND -> addPath(placements, operation.points(), operation);
+            case EDGE -> addManualEdgePath(placements, operation.points(), operation.width(), operation.material(), operation.facing());
+            case ARC -> addArc(placements, operation.points().get(0), operation.points().get(1), operation.points().get(2), operation);
             case POLYGON -> addPolygon(placements, operation.points(), operation.material(), operation.facing());
         }
         return placements;
     }
 
-    private static void addPath(LinkedHashMap<BlockPos, BlockState> placements, List<BlockPos> points, int width, TrackEditorMaterial material, Direction fallbackFacing) {
+    private static void addPath(LinkedHashMap<BlockPos, BlockState> placements, List<BlockPos> points, TrackEditorOperation operation) {
         for (int i = 1; i < points.size(); i++) {
-            Direction facing = horizontalFacing(points.get(i - 1), points.get(i), fallbackFacing);
-            addLine(placements, points.get(i - 1), points.get(i), width, material, facing);
+            addLine(placements, points.get(i - 1), points.get(i), operation);
         }
     }
 
-    private static void addLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, int width, TrackEditorMaterial material, Direction facing) {
+    private static void addManualEdgePath(LinkedHashMap<BlockPos, BlockState> placements, List<BlockPos> points, int width, TrackEditorMaterial material, Direction fallbackFacing) {
+        for (int i = 1; i < points.size(); i++) {
+            Direction facing = horizontalFacing(points.get(i - 1), points.get(i), fallbackFacing);
+            addManualLine(placements, points.get(i - 1), points.get(i), width, material, facing);
+        }
+    }
+
+    private static void addLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, TrackEditorOperation operation) {
+        int dx = end.getX() - start.getX();
+        int dz = end.getZ() - start.getZ();
+        int steps = Math.max(Math.abs(dx), Math.abs(dz));
+        Direction pathFacing = horizontalFacing(start, end, operation.facing());
+        Direction outward = perpendicularFacing(pathFacing);
+        if (steps == 0) {
+            addPresetCrossSection(placements, start, outward, operation, false);
+            return;
+        }
+        for (int i = 0; i <= steps; i++) {
+            int x = Math.round(start.getX() + dx * (i / (float) steps));
+            int z = Math.round(start.getZ() + dz * (i / (float) steps));
+            boolean includePreset = i >= operation.width() && i <= steps - operation.width();
+            addPresetCrossSection(placements, new BlockPos(x, start.getY(), z), outward, operation, includePreset);
+            if (i > 0) {
+                int previousX = Math.round(start.getX() + dx * ((i - 1) / (float) steps));
+                int previousZ = Math.round(start.getZ() + dz * ((i - 1) / (float) steps));
+                if (previousX != x && previousZ != z) {
+                    addPresetCrossSection(placements, new BlockPos(previousX, start.getY(), z), outward, operation, includePreset);
+                    addPresetCrossSection(placements, new BlockPos(x, start.getY(), previousZ), outward, operation, includePreset);
+                }
+            }
+        }
+    }
+
+    private static void addManualLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, int width, TrackEditorMaterial material, Direction facing) {
         int dx = end.getX() - start.getX();
         int dz = end.getZ() - start.getZ();
         int steps = Math.max(Math.abs(dx), Math.abs(dz));
@@ -102,7 +136,7 @@ public final class TrackEditorPlacementService {
         }
     }
 
-    private static void addArc(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos control, BlockPos end, int width, TrackEditorMaterial material, Direction fallbackFacing) {
+    private static void addArc(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos control, BlockPos end, TrackEditorOperation operation) {
         double length = start.distSqr(control) + control.distSqr(end);
         int samples = Math.min(128, Math.max(12, (int) Math.sqrt(length) * 2));
         BlockPos previous = start;
@@ -112,9 +146,77 @@ public final class TrackEditorPlacementService {
             int x = (int) Math.round(u * u * start.getX() + 2.0 * u * t * control.getX() + t * t * end.getX());
             int z = (int) Math.round(u * u * start.getZ() + 2.0 * u * t * control.getZ() + t * t * end.getZ());
             BlockPos next = new BlockPos(x, start.getY(), z);
-            addLine(placements, previous, next, width, material, horizontalFacing(previous, next, fallbackFacing));
+            addLine(placements, previous, next, operation);
             previous = next;
         }
+    }
+
+    private static void addPresetCrossSection(LinkedHashMap<BlockPos, BlockState> placements, BlockPos center, Direction outward, TrackEditorOperation operation, boolean includePreset) {
+        int radius = Math.max(0, (operation.width() - 1) / 2);
+        for (int offset = -radius; offset <= radius; offset++) {
+            putSurface(placements, offset(center, outward, offset), operation.material().state(operation.facing()));
+        }
+        if (!includePreset || operation.preset() == TrackEditorPreset.BLANK) {
+            return;
+        }
+        addPresetSide(placements, center, outward, radius + 1, operation, outward);
+        addPresetSide(placements, center, outward.getOpposite(), radius + 1, operation, outward.getOpposite());
+    }
+
+    private static void addPresetSide(LinkedHashMap<BlockPos, BlockState> placements, BlockPos center, Direction side, int startOffset, TrackEditorOperation operation, Direction facing) {
+        switch (operation.preset()) {
+            case STREET -> {
+                putSurface(placements, offset(center, side, startOffset), operation.runoffMaterial().state(facing));
+                putBarrierStack(placements, offset(center, side, startOffset + 1), facing, 2);
+            }
+            case HALF_STREET -> {
+                putSurface(placements, offset(center, side, startOffset), kerbState(facing));
+                putSurface(placements, offset(center, side, startOffset + 1), Blocks.GRASS_BLOCK.defaultBlockState());
+                putBarrierStack(placements, offset(center, side, startOffset + 2), facing, 1);
+            }
+            case FULL_CIRCUIT -> {
+                putSurface(placements, offset(center, side, startOffset), operation.runoffMaterial().state(facing));
+                putSurface(placements, offset(center, side, startOffset + 1), Blocks.GRASS_BLOCK.defaultBlockState());
+                putSurface(placements, offset(center, side, startOffset + 2), Blocks.GRASS_BLOCK.defaultBlockState());
+                putBarrierStack(placements, offset(center, side, startOffset + 3), facing, 1);
+            }
+            case BLANK -> {
+            }
+        }
+    }
+
+    private static void putBarrierStack(LinkedHashMap<BlockPos, BlockState> placements, BlockPos pos, Direction facing, int fenceHeight) {
+        BlockPos barrierPos = pos.above();
+        placements.put(barrierPos, OWRBlocks.BARRIER.get().defaultBlockState());
+        for (int i = 1; i <= fenceHeight; i++) {
+            placements.put(barrierPos.above(i), Blocks.IRON_BARS.defaultBlockState());
+        }
+    }
+
+    private static BlockState kerbState(Direction facing) {
+        BlockState state = OWRBlocks.KERB.get().defaultBlockState();
+        if (state.hasProperty(HorizontalDirectionalBlock.FACING)) {
+            return state.setValue(HorizontalDirectionalBlock.FACING, facing);
+        }
+        return state;
+    }
+
+    private static void putSurface(LinkedHashMap<BlockPos, BlockState> placements, BlockPos pos, BlockState state) {
+        placements.put(pos, state);
+    }
+
+    private static BlockPos offset(BlockPos pos, Direction direction, int distance) {
+        return pos.relative(direction, distance);
+    }
+
+    private static Direction perpendicularFacing(Direction facing) {
+        return switch (facing) {
+            case NORTH -> Direction.EAST;
+            case SOUTH -> Direction.WEST;
+            case EAST -> Direction.SOUTH;
+            case WEST -> Direction.NORTH;
+            default -> Direction.EAST;
+        };
     }
 
     private static void addPolygon(LinkedHashMap<BlockPos, BlockState> placements, List<BlockPos> points, TrackEditorMaterial material, Direction facing) {
@@ -191,6 +293,7 @@ public final class TrackEditorPlacementService {
             || block == Blocks.SAND
             || block == Blocks.GRASS_BLOCK
             || block == Blocks.DIRT
-            || block == Blocks.GRAVEL;
+            || block == Blocks.GRAVEL
+            || block == Blocks.IRON_BARS;
     }
 }

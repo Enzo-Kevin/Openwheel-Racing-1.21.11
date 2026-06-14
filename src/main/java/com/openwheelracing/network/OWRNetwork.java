@@ -9,6 +9,7 @@ import com.openwheelracing.content.track.TrackEditorMaterial;
 import com.openwheelracing.content.track.TrackEditorMode;
 import com.openwheelracing.content.track.TrackEditorOperation;
 import com.openwheelracing.content.track.TrackEditorPlacementService;
+import com.openwheelracing.content.track.TrackEditorPreset;
 import com.openwheelracing.content.track.TrackEditorUndoStore;
 import com.openwheelracing.registry.OWRDataComponents;
 import com.openwheelracing.registry.OWRItems;
@@ -60,6 +61,11 @@ public final class OWRNetwork {
             .encoder(DriveInputMessage::encode)
             .decoder(DriveInputMessage::decode)
             .consumerMainThread(DriveInputMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(ToggleAbsMessage.class)
+            .encoder(ToggleAbsMessage::encode)
+            .decoder(ToggleAbsMessage::decode)
+            .consumerMainThread(ToggleAbsMessage::handle)
             .add();
         CHANNEL.messageBuilder(MountCarMessage.class)
             .encoder(MountCarMessage::encode)
@@ -210,6 +216,26 @@ public final class OWRNetwork {
         }
     }
 
+    public record ToggleAbsMessage() {
+        private static void encode(ToggleAbsMessage message, FriendlyByteBuf buffer) {
+        }
+
+        private static ToggleAbsMessage decode(FriendlyByteBuf buffer) {
+            return new ToggleAbsMessage();
+        }
+
+        private static void handle(ToggleAbsMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.getVehicle() instanceof OpenwheelCarEntity car)) {
+                    return;
+                }
+                car.toggleAbs();
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
     public record MountCarMessage() {
         private static void encode(MountCarMessage message, FriendlyByteBuf buffer) {
         }
@@ -258,6 +284,8 @@ public final class OWRNetwork {
             buffer.writeEnum(message.operation.material());
             buffer.writeVarInt(message.operation.width());
             buffer.writeEnum(message.operation.facing());
+            buffer.writeEnum(message.operation.preset());
+            buffer.writeEnum(message.operation.runoffMaterial());
             buffer.writeVarInt(message.operation.points().size());
             for (BlockPos point : message.operation.points()) {
                 buffer.writeBlockPos(point);
@@ -269,6 +297,8 @@ public final class OWRNetwork {
             TrackEditorMaterial material = buffer.readEnum(TrackEditorMaterial.class);
             int width = buffer.readVarInt();
             Direction facing = buffer.readEnum(Direction.class);
+            TrackEditorPreset preset = buffer.readEnum(TrackEditorPreset.class);
+            TrackEditorMaterial runoffMaterial = buffer.readEnum(TrackEditorMaterial.class);
             int declaredSize = buffer.readVarInt();
             int size = Math.min(declaredSize, TrackEditorOperation.MAX_POINTS);
             java.util.List<BlockPos> points = new java.util.ArrayList<>(size);
@@ -278,7 +308,7 @@ public final class OWRNetwork {
                     points.add(point);
                 }
             }
-            return new TrackEditorPlaceMessage(new TrackEditorOperation(mode, material, width, points, facing));
+            return new TrackEditorPlaceMessage(new TrackEditorOperation(mode, material, width, points, facing, preset, runoffMaterial));
         }
 
         private static void handle(TrackEditorPlaceMessage message, CustomPayloadEvent.Context context) {

@@ -10,9 +10,9 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
 
 public final class CarSoundManager {
-    private static final double AUDIBLE_DISTANCE_SQR = 96.0 * 96.0;
     private static final Map<Integer, CarSoundSet> SOUNDS = new HashMap<>();
 
     private CarSoundManager() {
@@ -27,21 +27,27 @@ public final class CarSoundManager {
             return;
         }
 
+        SoundManager soundManager = mc.getSoundManager();
+        Vec3 listenerPosition = player.position();
         Set<Integer> active = new HashSet<>();
         for (Entity entity : level.entitiesForRendering()) {
-            if (entity instanceof OpenwheelCarEntity car && car.distanceToSqr(player) <= AUDIBLE_DISTANCE_SQR) {
+            if (entity instanceof OpenwheelCarEntity car) {
+                double distanceSqr = car.distanceToSqr(player);
+                if (distanceSqr > CarSoundPhysics.MAX_AUDIBLE_DISTANCE_SQR) {
+                    continue;
+                }
                 active.add(car.getId());
-                SOUNDS.computeIfAbsent(car.getId(), id -> CarSoundSet.start(mc.getSoundManager(), car)).replaceCar(car);
+                SOUNDS.computeIfAbsent(car.getId(), id -> CarSoundSet.start(soundManager, car, listenerPosition)).replaceCar(car);
             }
         }
 
-        SoundManager soundManager = mc.getSoundManager();
         SOUNDS.entrySet().removeIf(entry -> {
             CarSoundSet soundSet = entry.getValue();
             if (!active.contains(entry.getKey()) || soundSet.isStopped()) {
                 soundSet.stop(soundManager);
                 return true;
             }
+            soundSet.updateListener(listenerPosition);
             return false;
         });
     }

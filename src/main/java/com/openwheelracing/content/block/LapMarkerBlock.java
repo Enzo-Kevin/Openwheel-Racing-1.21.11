@@ -19,7 +19,7 @@ public class LapMarkerBlock extends DirectionalTrackBlock {
     public void stepOn(Level level, BlockPos pos, BlockState state, Entity entity) {
         if (!level.isClientSide() && entity instanceof OpenwheelCarEntity car) {
             if (startFinish) {
-                car.crossStartFinishLine(state.getValue(HorizontalDirectionalBlock.FACING));
+                car.crossStartFinishLine(pos, state.getValue(HorizontalDirectionalBlock.FACING));
             } else {
                 car.crossCheckpoint(pos, state.getValue(HorizontalDirectionalBlock.FACING));
             }

@@ -20,9 +20,11 @@ public final class OWRCreativeTabs {
             output.accept(OWRBlocks.REFINERY_ITEM.get());
             output.accept(OWRBlocks.CRUDE_OIL_DEPOSIT_ITEM.get());
             output.accept(OWRBlocks.ASPHALT_TRACK_ITEM.get());
+            output.accept(OWRBlocks.ASPHALT_TRACK_SLAB_ITEM.get());
             output.accept(OWRBlocks.KERB_ITEM.get());
             output.accept(OWRBlocks.BARRIER_ITEM.get());
             output.accept(OWRBlocks.PIT_LANE_ITEM.get());
+            output.accept(OWRBlocks.PIT_LANE_SLAB_ITEM.get());
             output.accept(OWRBlocks.START_FINISH_ITEM.get());
             output.accept(OWRBlocks.CHECKPOINT_ITEM.get());
             output.accept(OWRItems.CARBON_FIBER.get());

@@ -104,51 +104,49 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         });
 
         nodeCollector.submitCustomGeometry(poseStack, RT_DARK, (pose, consumer) -> {
-            box(consumer, pose, -1.25f, 0.09f, -3.08f, 1.25f, 0.18f, -2.45f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
-            box(consumer, pose, -1.25f, 0.09f, -3.08f, -1.08f, 0.40f, -2.45f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, 1.08f, 0.09f, -3.08f, 1.25f, 0.40f, -2.45f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, -0.62f, 0.21f, -3.12f, 0.62f, 0.29f, -3.00f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, -1.10f, 1.02f, 1.10f, 1.10f, 1.14f, 1.55f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
-            box(consumer, pose, -1.10f, 0.38f, 1.10f, -0.92f, 1.14f, 1.55f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, 0.92f, 0.38f, 1.10f, 1.10f, 1.14f, 1.55f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, -1.10f, 0.78f, 1.22f, 1.10f, 0.88f, 1.36f, SKY_TOP, SKY_SIDE, SKY_BOTTOM, light);
+            box(consumer, pose, -1.05f, 0.09f, -3.02f, 1.05f, 0.17f, -2.52f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
+            box(consumer, pose, -1.05f, 0.09f, -3.02f, -0.91f, 0.34f, -2.52f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
+            box(consumer, pose, 0.91f, 0.09f, -3.02f, 1.05f, 0.34f, -2.52f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
+            box(consumer, pose, -0.50f, 0.20f, -3.05f, 0.50f, 0.27f, -2.95f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
+            box(consumer, pose, -0.88f, 0.98f, 1.12f, 0.88f, 1.08f, 1.46f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
+            box(consumer, pose, -0.88f, 0.44f, 1.12f, -0.74f, 1.08f, 1.46f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
+            box(consumer, pose, 0.74f, 0.44f, 1.12f, 0.88f, 1.08f, 1.46f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
+            box(consumer, pose, -0.88f, 0.76f, 1.22f, 0.88f, 0.85f, 1.34f, SKY_TOP, SKY_SIDE, SKY_BOTTOM, light);
             box(consumer, pose, -0.78f, 0.06f, -1.12f, 0.78f, 0.14f, 1.12f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
             box(consumer, pose, -0.55f, 0.06f, 1.02f, 0.55f, 0.26f, 1.34f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
         });
 
         nodeCollector.submitCustomGeometry(poseStack, RT_WHEEL, (pose, consumer) -> {
-            steerableWheel(consumer, pose, -1.10f, 0.26f, -1.98f, state.frontWheelSteerDegrees, rimColor, light);
-            steerableWheel(consumer, pose, 1.10f, 0.26f, -1.98f, state.frontWheelSteerDegrees, rimColor, light);
-            wheel(consumer, pose, -1.10f, 0.26f, 1.02f, rimColor, light);
-            wheel(consumer, pose, 1.10f, 0.26f, 1.02f, rimColor, light);
+            steerableWheel(consumer, pose, -1.10f, 0.26f, -1.98f, 0.14f, state.frontWheelSteerDegrees, rimColor, light);
+            steerableWheel(consumer, pose, 1.10f, 0.26f, -1.98f, 0.14f, state.frontWheelSteerDegrees, rimColor, light);
+            wheel(consumer, pose, -1.10f, 0.26f, 1.02f, 0.17f, rimColor, light);
+            wheel(consumer, pose, 1.10f, 0.26f, 1.02f, 0.17f, rimColor, light);
         });
 
         poseStack.popPose();
     }
 
-    private static void steerableWheel(VertexConsumer consumer, PoseStack.Pose pose, float cx, float cy, float cz, float steerDegrees, int rimColor, int light) {
-        float halfWidth = 0.27f;
-        float halfHeight = 0.25f;
-        float halfLength = 0.33f;
+    private static void steerableWheel(VertexConsumer consumer, PoseStack.Pose pose, float cx, float cy, float cz, float halfWidth, float steerDegrees, int rimColor, int light) {
+        float halfHeight = 0.35f;
+        float halfLength = 0.35f;
 
         steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth, cy - halfHeight, cz - halfLength, cx + halfWidth, cy + halfHeight, cz + halfLength, TYRE_TOP, TYRE_SIDE, TYRE_DARK, light);
         steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy - 0.04f, cz - halfLength, cx + halfWidth + 0.01f, cy + 0.04f, cz - halfLength + 0.04f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
         steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy - 0.04f, cz + halfLength - 0.04f, cx + halfWidth + 0.01f, cy + 0.04f, cz + halfLength, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
-        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy + halfHeight - 0.05f, cz - 0.25f, cx + halfWidth + 0.01f, cy + halfHeight + 0.01f, cz + 0.25f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
+        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy + halfHeight - 0.055f, cz - 0.27f, cx + halfWidth + 0.01f, cy + halfHeight + 0.01f, cz + 0.27f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
 
         steeredRimFace(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.03f, cy, cz, 0.06f, rimColor, light);
         steeredRimFace(consumer, pose, cx, cz, steerDegrees, cx + halfWidth + 0.03f, cy, cz, 0.06f, rimColor, light);
     }
 
-    private static void wheel(VertexConsumer consumer, PoseStack.Pose pose, float cx, float cy, float cz, int rimColor, int light) {
-        float halfWidth = 0.27f;
-        float halfHeight = 0.25f;
-        float halfLength = 0.33f;
+    private static void wheel(VertexConsumer consumer, PoseStack.Pose pose, float cx, float cy, float cz, float halfWidth, int rimColor, int light) {
+        float halfHeight = 0.35f;
+        float halfLength = 0.35f;
 
         box(consumer, pose, cx - halfWidth, cy - halfHeight, cz - halfLength, cx + halfWidth, cy + halfHeight, cz + halfLength, TYRE_TOP, TYRE_SIDE, TYRE_DARK, light);
         box(consumer, pose, cx - halfWidth - 0.01f, cy - 0.04f, cz - halfLength, cx + halfWidth + 0.01f, cy + 0.04f, cz - halfLength + 0.04f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
         box(consumer, pose, cx - halfWidth - 0.01f, cy - 0.04f, cz + halfLength - 0.04f, cx + halfWidth + 0.01f, cy + 0.04f, cz + halfLength, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
-        box(consumer, pose, cx - halfWidth - 0.01f, cy + halfHeight - 0.05f, cz - 0.25f, cx + halfWidth + 0.01f, cy + halfHeight + 0.01f, cz + 0.25f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
+        box(consumer, pose, cx - halfWidth - 0.01f, cy + halfHeight - 0.055f, cz - 0.27f, cx + halfWidth + 0.01f, cy + halfHeight + 0.01f, cz + 0.27f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
 
         rimFace(consumer, pose, cx - halfWidth - 0.03f, cy, cz, 0.06f, rimColor, light);
         rimFace(consumer, pose, cx + halfWidth + 0.03f, cy, cz, 0.06f, rimColor, light);
@@ -157,10 +155,10 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     private static void steeredRimFace(VertexConsumer consumer, PoseStack.Pose pose, float pivotX, float pivotZ, float steerDegrees, float x, float y, float z, float thickness, int rimColor, int light) {
         float x0 = x - thickness * 0.5f;
         float x1 = x + thickness * 0.5f;
-        float top = y + 0.15f;
-        float bottom = y - 0.15f;
-        float front = z - 0.21f;
-        float back = z + 0.21f;
+        float top = y + 0.24f;
+        float bottom = y - 0.24f;
+        float front = z - 0.24f;
+        float back = z + 0.24f;
 
         steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, top - 0.055f, front, x1, top + 0.055f, back, rimColor, rimColor, rimColor, light);
         steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, bottom - 0.055f, front, x1, bottom + 0.055f, back, rimColor, rimColor, rimColor, light);
@@ -172,10 +170,10 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     private static void rimFace(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float thickness, int rimColor, int light) {
         float x0 = x - thickness * 0.5f;
         float x1 = x + thickness * 0.5f;
-        float top = y + 0.15f;
-        float bottom = y - 0.15f;
-        float front = z - 0.21f;
-        float back = z + 0.21f;
+        float top = y + 0.24f;
+        float bottom = y - 0.24f;
+        float front = z - 0.24f;
+        float back = z + 0.24f;
 
         box(consumer, pose, x0, top - 0.055f, front, x1, top + 0.055f, back, rimColor, rimColor, rimColor, light);
         box(consumer, pose, x0, bottom - 0.055f, front, x1, bottom + 0.055f, back, rimColor, rimColor, rimColor, light);

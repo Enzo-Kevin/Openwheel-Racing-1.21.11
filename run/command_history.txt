@@ -1,35 +1,50 @@
+/kill @e[type=openwheelracing:prototype_car]
 /gamemode survival
+/kill @e[type=openwheelracing:prototype_car]
+/give @s openwheelracing:prototype_car_spawn
+/tp @e[type=openwheelracing:prototype_car] @s
+/kill @e[type=openwheelracing:prototype_car]
+/give @s openwheelracing:prototype_car_spawn
 /time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/give @s openwheelracing:prototype_car_spawn
 /gamemode creative
-/gamemode survival
-/give @s minecraft:copper_pickaxe
-/gamemode creative
-/kill @e[type=openwheelracing:prototype_car]
-/time set 1
-/kill @e[type=openwheelracing:prototype_car]
-/time set 1
-/kill @e[type=openwheelracing:prototype_car]
-/give @s minecraft:acacia_boat
-/kill @e[type=openwheelracing:prototype_car]
-/time set 1
-/kill @e[type=openwheelracing:prototype_car]
-/time set 1
-/kill @e[type=openwheelracing:prototype_car]
-/time 1
-/time set 1
-/tp 0 0 0
-/kill @e[type=openwheelracing:prototype_car]
-/tp 0 0 0
-/time set 1
-/kill @e[type=openwheelracing:prototype_car]
-/tp @e[type=openwheelracing:prototype_car] @s
-/kill @e[type=openwheelracing:prototype_car]
-/tp @e[type=openwheelracing:prototype_car] @s
-/kill @e[type=openwheelracing:prototype_car]
-/time set 1
-/tp @e[type=openwheelracing:prototype_car] @s
-/kill @e[type=openwheelracing:prototype_car]
-/tp 0 0 0
-/tp 1000 0 100
 /tp 1000 0 1000
 /kill @e[type=openwheelracing:prototype_car]
+/tp 1000 0 1000
+/time set 1
+/tp 1000 0 1000
+/kill @e[type=openwheelracing:prototype_car]
+/tp -1000 0 -1000
+/time set 0
+/kill @e[type=openwheelracing:prototype_car]
+/weather clear
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/gamemode survival
+/give @s openwheelracing:prototype_car_spawn
+/tp 10000 0 10000
+/gamemode creative
+/tp 10000 0 10000
+/time set 1
+/gamemode survival
+/gamemode creative
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/tp 10000 0 10000
+/kill @e[type=openwheelracing:prototype_car]
+/tp 10000 0 10000
+/time set 0
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/tp -10000 0 -10000
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/tp -10000 0 -10000
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1

@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/slab_top",
+  "textures": {
+    "bottom": "openwheelracing:block/asphalt_track",
+    "top": "openwheelracing:block/asphalt_track",
+    "side": "openwheelracing:block/asphalt_track"
+  }
+}

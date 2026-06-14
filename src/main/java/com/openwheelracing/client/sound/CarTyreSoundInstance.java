@@ -11,36 +11,48 @@ import net.minecraft.world.phys.Vec3;
 final class CarTyreSoundInstance extends AbstractTickableSoundInstance {
     private final Wheel wheel;
     private OpenwheelCarEntity car;
+    private Vec3 listenerPosition;
+    private Vec3 previousSourcePosition;
 
-    private CarTyreSoundInstance(OpenwheelCarEntity car, Wheel wheel) {
+    private CarTyreSoundInstance(OpenwheelCarEntity car, Vec3 listenerPosition, Wheel wheel) {
         super(OWRSoundEvents.CAR_TYRE_SQUEAL.get(), SoundSource.PLAYERS, RandomSource.create());
         this.car = car;
+        this.listenerPosition = listenerPosition;
         this.wheel = wheel;
         looping = true;
         delay = 0;
         attenuation = Attenuation.LINEAR;
         volume = 0.0f;
         pitch = 1.4f;
+        Vec3 position = car.getWheelSoundPosition(wheel.sideOffset, wheel.lengthOffset);
+        x = position.x;
+        y = position.y;
+        z = position.z;
+        previousSourcePosition = new Vec3(x, y, z);
     }
 
-    static CarTyreSoundInstance frontLeft(OpenwheelCarEntity car) {
-        return new CarTyreSoundInstance(car, Wheel.FRONT_LEFT);
+    static CarTyreSoundInstance frontLeft(OpenwheelCarEntity car, Vec3 listenerPosition) {
+        return new CarTyreSoundInstance(car, listenerPosition, Wheel.FRONT_LEFT);
     }
 
-    static CarTyreSoundInstance frontRight(OpenwheelCarEntity car) {
-        return new CarTyreSoundInstance(car, Wheel.FRONT_RIGHT);
+    static CarTyreSoundInstance frontRight(OpenwheelCarEntity car, Vec3 listenerPosition) {
+        return new CarTyreSoundInstance(car, listenerPosition, Wheel.FRONT_RIGHT);
     }
 
-    static CarTyreSoundInstance rearLeft(OpenwheelCarEntity car) {
-        return new CarTyreSoundInstance(car, Wheel.REAR_LEFT);
+    static CarTyreSoundInstance rearLeft(OpenwheelCarEntity car, Vec3 listenerPosition) {
+        return new CarTyreSoundInstance(car, listenerPosition, Wheel.REAR_LEFT);
     }
 
-    static CarTyreSoundInstance rearRight(OpenwheelCarEntity car) {
-        return new CarTyreSoundInstance(car, Wheel.REAR_RIGHT);
+    static CarTyreSoundInstance rearRight(OpenwheelCarEntity car, Vec3 listenerPosition) {
+        return new CarTyreSoundInstance(car, listenerPosition, Wheel.REAR_RIGHT);
     }
 
     void replaceCar(OpenwheelCarEntity car) {
         this.car = car;
+    }
+
+    void updateListener(Vec3 listenerPosition) {
+        this.listenerPosition = listenerPosition;
     }
 
     @Override
@@ -60,6 +72,7 @@ final class CarTyreSoundInstance extends AbstractTickableSoundInstance {
             return;
         }
 
+        previousSourcePosition = new Vec3(x, y, z);
         Vec3 position = car.getWheelSoundPosition(wheel.sideOffset, wheel.lengthOffset);
         x = position.x;
         y = position.y;
@@ -67,8 +80,9 @@ final class CarTyreSoundInstance extends AbstractTickableSoundInstance {
 
         float slip = car.getTyreSlipIntensity();
         float speed = Mth.clamp(car.getSpeedKmh() / 45.0f, 0.0f, 1.0f);
-        volume = slip <= 0.03f ? 0.0f : wheel.volumeMultiplier * Mth.clamp((slip - 0.03f) / 0.97f, 0.0f, 1.0f) * (0.25f + speed * 0.75f);
-        pitch = Mth.clamp(1.55f + slip * 0.65f + wheel.pitchOffset, 1.3f, 2.0f);
+        float distance = (float) listenerPosition.distanceTo(position);
+        volume = slip <= 0.03f ? 0.0f : wheel.volumeMultiplier * Mth.clamp((slip - 0.03f) / 0.97f, 0.0f, 1.0f) * (0.25f + speed * 0.75f) * CarSoundPhysics.attenuation(distance);
+        pitch = CarSoundPhysics.doppler(Mth.clamp(1.55f + slip * 0.65f + wheel.pitchOffset, 1.3f, 2.0f), position, previousSourcePosition, listenerPosition);
     }
 
     private enum Wheel {

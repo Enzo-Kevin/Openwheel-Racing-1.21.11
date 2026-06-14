@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "###"
+  ],
+  "key": {
+    "#": "openwheelracing:pit_lane"
+  },
+  "result": {
+    "id": "openwheelracing:pit_lane_slab",
+    "count": 6
+  }
+}

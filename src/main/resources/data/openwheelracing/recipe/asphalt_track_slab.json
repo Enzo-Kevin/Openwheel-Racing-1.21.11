@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "###"
+  ],
+  "key": {
+    "#": "openwheelracing:asphalt_track"
+  },
+  "result": {
+    "id": "openwheelracing:asphalt_track_slab",
+    "count": 6
+  }
+}

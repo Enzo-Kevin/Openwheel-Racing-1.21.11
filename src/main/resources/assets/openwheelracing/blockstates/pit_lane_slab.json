@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "type=bottom,waterlogged=false": {
+      "model": "openwheelracing:block/pit_lane_slab"
+    },
+    "type=bottom,waterlogged=true": {
+      "model": "openwheelracing:block/pit_lane_slab"
+    },
+    "type=top,waterlogged=false": {
+      "model": "openwheelracing:block/pit_lane_slab_top"
+    },
+    "type=top,waterlogged=true": {
+      "model": "openwheelracing:block/pit_lane_slab_top"
+    },
+    "type=double,waterlogged=false": {
+      "model": "openwheelracing:block/pit_lane"
+    }
+  }
+}

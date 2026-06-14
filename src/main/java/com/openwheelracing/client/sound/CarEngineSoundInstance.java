@@ -7,32 +7,44 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.phys.Vec3;
 
 final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
     private final Tone tone;
     private OpenwheelCarEntity car;
+    private Vec3 listenerPosition;
+    private Vec3 previousSourcePosition;
 
-    private CarEngineSoundInstance(OpenwheelCarEntity car, SoundEvent soundEvent, Tone tone) {
+    private CarEngineSoundInstance(OpenwheelCarEntity car, Vec3 listenerPosition, SoundEvent soundEvent, Tone tone) {
         super(soundEvent, SoundSource.PLAYERS, RandomSource.create());
         this.car = car;
+        this.listenerPosition = listenerPosition;
         this.tone = tone;
         looping = true;
         delay = 0;
         attenuation = Attenuation.LINEAR;
         volume = 0.0f;
         pitch = 1.0f;
+        x = car.getX();
+        y = car.getY() + 0.35;
+        z = car.getZ();
+        previousSourcePosition = new Vec3(x, y, z);
     }
 
-    static CarEngineSoundInstance lowTone(OpenwheelCarEntity car) {
-        return new CarEngineSoundInstance(car, OWRSoundEvents.CAR_ENGINE_LOW.get(), Tone.LOW);
+    static CarEngineSoundInstance lowTone(OpenwheelCarEntity car, Vec3 listenerPosition) {
+        return new CarEngineSoundInstance(car, listenerPosition, OWRSoundEvents.CAR_ENGINE_LOW.get(), Tone.LOW);
     }
 
-    static CarEngineSoundInstance highTone(OpenwheelCarEntity car) {
-        return new CarEngineSoundInstance(car, OWRSoundEvents.CAR_ENGINE_HIGH.get(), Tone.HIGH);
+    static CarEngineSoundInstance highTone(OpenwheelCarEntity car, Vec3 listenerPosition) {
+        return new CarEngineSoundInstance(car, listenerPosition, OWRSoundEvents.CAR_ENGINE_HIGH.get(), Tone.HIGH);
     }
 
     void replaceCar(OpenwheelCarEntity car) {
         this.car = car;
+    }
+
+    void updateListener(Vec3 listenerPosition) {
+        this.listenerPosition = listenerPosition;
     }
 
     @Override
@@ -52,6 +64,7 @@ final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
             return;
         }
 
+        previousSourcePosition = new Vec3(x, y, z);
         x = car.getX();
         y = car.getY() + 0.35;
         z = car.getZ();
@@ -59,8 +72,10 @@ final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
         float rpm = car.getRpm();
         float speed = car.getSpeedKmh();
         float rpmNorm = Mth.clamp((rpm - 900.0f) / 11600.0f, 0.0f, 1.0f);
-        volume = tone.volume(speed, rpmNorm);
-        pitch = tone.pitch(rpm);
+        float basePitch = tone.pitch(rpm);
+        float distance = (float) listenerPosition.distanceTo(new Vec3(x, y, z));
+        volume = tone.volume(speed, rpmNorm) * CarSoundPhysics.attenuation(distance);
+        pitch = CarSoundPhysics.doppler(basePitch, new Vec3(x, y, z), previousSourcePosition, listenerPosition);
     }
 
     private enum Tone {

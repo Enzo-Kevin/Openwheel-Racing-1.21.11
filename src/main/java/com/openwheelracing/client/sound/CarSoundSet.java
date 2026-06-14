@@ -2,6 +2,7 @@ package com.openwheelracing.client.sound;
 
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import net.minecraft.client.sounds.SoundManager;
+import net.minecraft.world.phys.Vec3;
 
 final class CarSoundSet {
     private final CarEngineSoundInstance engineLow;
@@ -11,17 +12,17 @@ final class CarSoundSet {
     private final CarTyreSoundInstance rearLeft;
     private final CarTyreSoundInstance rearRight;
 
-    private CarSoundSet(OpenwheelCarEntity car) {
-        engineLow = CarEngineSoundInstance.lowTone(car);
-        engineHigh = CarEngineSoundInstance.highTone(car);
-        frontLeft = CarTyreSoundInstance.frontLeft(car);
-        frontRight = CarTyreSoundInstance.frontRight(car);
-        rearLeft = CarTyreSoundInstance.rearLeft(car);
-        rearRight = CarTyreSoundInstance.rearRight(car);
+    private CarSoundSet(OpenwheelCarEntity car, Vec3 listenerPosition) {
+        engineLow = CarEngineSoundInstance.lowTone(car, listenerPosition);
+        engineHigh = CarEngineSoundInstance.highTone(car, listenerPosition);
+        frontLeft = CarTyreSoundInstance.frontLeft(car, listenerPosition);
+        frontRight = CarTyreSoundInstance.frontRight(car, listenerPosition);
+        rearLeft = CarTyreSoundInstance.rearLeft(car, listenerPosition);
+        rearRight = CarTyreSoundInstance.rearRight(car, listenerPosition);
     }
 
-    static CarSoundSet start(SoundManager soundManager, OpenwheelCarEntity car) {
-        CarSoundSet soundSet = new CarSoundSet(car);
+    static CarSoundSet start(SoundManager soundManager, OpenwheelCarEntity car, Vec3 listenerPosition) {
+        CarSoundSet soundSet = new CarSoundSet(car, listenerPosition);
         soundManager.play(soundSet.engineLow);
         soundManager.play(soundSet.engineHigh);
         soundManager.play(soundSet.frontLeft);
@@ -38,6 +39,15 @@ final class CarSoundSet {
         frontRight.replaceCar(car);
         rearLeft.replaceCar(car);
         rearRight.replaceCar(car);
+    }
+
+    void updateListener(Vec3 listenerPosition) {
+        engineLow.updateListener(listenerPosition);
+        engineHigh.updateListener(listenerPosition);
+        frontLeft.updateListener(listenerPosition);
+        frontRight.updateListener(listenerPosition);
+        rearLeft.updateListener(listenerPosition);
+        rearRight.updateListener(listenerPosition);
     }
 
     boolean isStopped() {
