@@ -46,6 +46,7 @@ public final class OWRCreativeTabs {
             output.accept(OWRItems.AERO_KIT.get());
             output.accept(OWRItems.GEARBOX.get());
             output.accept(OWRItems.STEERING_CONTROLS.get());
+            output.accept(OWRItems.RACE_CONTROL.get());
             for (int livery = 0; livery < CarLivery.count(); livery++) {
                 output.accept(PrototypeCarItem.create(PrototypeCarSetup.DEFAULT, 0.0f, 0.0f, livery));
             }

@@ -1,11 +1,4 @@
 /kill @e[type=openwheelracing:prototype_car]
-/tp 1000 0 1000
-/time set 1
-/tp 1000 0 1000
-/kill @e[type=openwheelracing:prototype_car]
-/tp -1000 0 -1000
-/time set 0
-/kill @e[type=openwheelracing:prototype_car]
 /weather clear
 /kill @e[type=openwheelracing:prototype_car]
 /time set 1
@@ -45,6 +38,13 @@
 /tp 10000 0 10000
 /kill @e[type=openwheelracing:prototype_car]
 /tp -10000 0 -10000
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/weather clear
+/time set 1
 /kill @e[type=openwheelracing:prototype_car]
 /time set 1
 /kill @e[type=openwheelracing:prototype_car]

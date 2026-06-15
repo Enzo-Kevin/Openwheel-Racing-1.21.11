@@ -11,6 +11,8 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 public class OWRLapRecords extends SavedData {
+    public static final int MIN_VALID_LAP_TICKS = 100;
+
     private static final Codec<OWRLapRecords> CODEC = Codec.unboundedMap(Codec.STRING, Codec.INT)
         .fieldOf("player_best_laps")
         .codec()
@@ -29,14 +31,22 @@ public class OWRLapRecords extends SavedData {
     }
 
     private OWRLapRecords(Map<String, Integer> packed) {
-        packed.forEach((key, ticks) -> {
+        boolean removedInvalidRecords = false;
+        for (Map.Entry<String, Integer> entry : packed.entrySet()) {
             try {
-                if (ticks > 0) {
-                    playerBestLaps.put(UUID.fromString(key), ticks);
+                int ticks = entry.getValue();
+                if (ticks > MIN_VALID_LAP_TICKS) {
+                    playerBestLaps.put(UUID.fromString(entry.getKey()), ticks);
+                } else {
+                    removedInvalidRecords = true;
                 }
             } catch (IllegalArgumentException ignored) {
+                removedInvalidRecords = true;
             }
-        });
+        }
+        if (removedInvalidRecords) {
+            setDirty();
+        }
     }
 
     public static OWRLapRecords get(ServerLevel level) {
@@ -48,7 +58,7 @@ public class OWRLapRecords extends SavedData {
     }
 
     public boolean setBestLapIfBetter(UUID playerId, int ticks) {
-        if (ticks <= 0) {
+        if (ticks <= MIN_VALID_LAP_TICKS) {
             return false;
         }
         int previous = getBestLap(playerId);
@@ -62,7 +72,11 @@ public class OWRLapRecords extends SavedData {
 
     private Map<String, Integer> pack() {
         Map<String, Integer> packed = new HashMap<>();
-        playerBestLaps.forEach((playerId, ticks) -> packed.put(playerId.toString(), ticks));
+        playerBestLaps.forEach((playerId, ticks) -> {
+            if (ticks > MIN_VALID_LAP_TICKS) {
+                packed.put(playerId.toString(), ticks);
+            }
+        });
         return packed;
     }
 }

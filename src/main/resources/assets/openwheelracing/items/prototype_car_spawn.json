@@ -1,6 +1,13 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "openwheelracing:item/prototype_car_spawn"
+    "model": "openwheelracing:item/prototype_car_spawn",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": -16777216
+      }
+    ]
   }
 }

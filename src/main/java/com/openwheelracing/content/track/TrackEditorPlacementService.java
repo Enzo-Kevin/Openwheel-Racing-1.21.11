@@ -73,7 +73,7 @@ public final class TrackEditorPlacementService {
     private static LinkedHashMap<BlockPos, BlockState> generatePlacements(TrackEditorOperation operation) {
         LinkedHashMap<BlockPos, BlockState> placements = new LinkedHashMap<>();
         switch (operation.mode()) {
-            case STRAIGHT -> addLine(placements, operation.points().get(0), operation.points().get(1), operation);
+            case STRAIGHT -> addLine(placements, operation.points().get(0), operation.points().get(1), operation, true);
             case FREEHAND -> addPath(placements, operation.points(), operation);
             case EDGE -> addManualEdgePath(placements, operation.points(), operation.width(), operation.material(), operation.facing());
             case ARC -> addArc(placements, operation.points().get(0), operation.points().get(1), operation.points().get(2), operation);
@@ -83,8 +83,17 @@ public final class TrackEditorPlacementService {
     }
 
     private static void addPath(LinkedHashMap<BlockPos, BlockState> placements, List<BlockPos> points, TrackEditorOperation operation) {
+        int[] segmentLengths = new int[points.size() - 1];
+        int totalSteps = 0;
         for (int i = 1; i < points.size(); i++) {
-            addLine(placements, points.get(i - 1), points.get(i), operation);
+            int steps = lineSteps(points.get(i - 1), points.get(i));
+            segmentLengths[i - 1] = steps;
+            totalSteps += steps;
+        }
+        int walkedSteps = 0;
+        for (int i = 1; i < points.size(); i++) {
+            addLine(placements, points.get(i - 1), points.get(i), operation, walkedSteps, totalSteps, true);
+            walkedSteps += segmentLengths[i - 1];
         }
     }
 
@@ -95,20 +104,24 @@ public final class TrackEditorPlacementService {
         }
     }
 
-    private static void addLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, TrackEditorOperation operation) {
+    private static void addLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, TrackEditorOperation operation, boolean trimPresetEnds) {
+        addLine(placements, start, end, operation, 0, lineSteps(start, end), trimPresetEnds);
+    }
+
+    private static void addLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, TrackEditorOperation operation, int walkedSteps, int totalSteps, boolean trimPresetEnds) {
         int dx = end.getX() - start.getX();
         int dz = end.getZ() - start.getZ();
-        int steps = Math.max(Math.abs(dx), Math.abs(dz));
+        int steps = lineSteps(start, end);
         Direction pathFacing = horizontalFacing(start, end, operation.facing());
         Direction outward = perpendicularFacing(pathFacing);
         if (steps == 0) {
-            addPresetCrossSection(placements, start, outward, operation, false);
+            addPresetCrossSection(placements, start, outward, operation, !trimPresetEnds || isInsideTrimmedPresetRange(walkedSteps, totalSteps, operation.width()));
             return;
         }
         for (int i = 0; i <= steps; i++) {
             int x = Math.round(start.getX() + dx * (i / (float) steps));
             int z = Math.round(start.getZ() + dz * (i / (float) steps));
-            boolean includePreset = i >= operation.width() && i <= steps - operation.width();
+            boolean includePreset = !trimPresetEnds || isInsideTrimmedPresetRange(walkedSteps + i, totalSteps, operation.width());
             addPresetCrossSection(placements, new BlockPos(x, start.getY(), z), outward, operation, includePreset);
             if (i > 0) {
                 int previousX = Math.round(start.getX() + dx * ((i - 1) / (float) steps));
@@ -119,6 +132,16 @@ public final class TrackEditorPlacementService {
                 }
             }
         }
+    }
+
+    private static int lineSteps(BlockPos start, BlockPos end) {
+        int dx = end.getX() - start.getX();
+        int dz = end.getZ() - start.getZ();
+        return Math.max(Math.abs(dx), Math.abs(dz));
+    }
+
+    private static boolean isInsideTrimmedPresetRange(int step, int totalSteps, int width) {
+        return step >= width && step <= totalSteps - width;
     }
 
     private static void addManualLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, int width, TrackEditorMaterial material, Direction facing) {
@@ -146,7 +169,7 @@ public final class TrackEditorPlacementService {
             int x = (int) Math.round(u * u * start.getX() + 2.0 * u * t * control.getX() + t * t * end.getX());
             int z = (int) Math.round(u * u * start.getZ() + 2.0 * u * t * control.getZ() + t * t * end.getZ());
             BlockPos next = new BlockPos(x, start.getY(), z);
-            addLine(placements, previous, next, operation);
+            addLine(placements, previous, next, operation, true);
             previous = next;
         }
     }

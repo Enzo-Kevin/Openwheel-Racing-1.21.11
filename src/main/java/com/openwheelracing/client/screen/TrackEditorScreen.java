@@ -554,12 +554,12 @@ public class TrackEditorScreen extends Screen {
             if (chunk.size() < 2) {
                 continue;
             }
-            IMPORT_QUEUE.add(new QueuedImportOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, material(), width, chunk, facing(), preset(), runoffMaterial())));
+            IMPORT_QUEUE.add(new QueuedImportOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), width, chunk, facing(), preset(), runoffMaterial())));
             chunks++;
         }
         if (importedPoints.size() > 2) {
             List<BlockPos> closingChunk = List.of(importedPoints.get(importedPoints.size() - 1), importedPoints.get(0));
-            IMPORT_QUEUE.add(new QueuedImportOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, material(), width, closingChunk, facing(), preset(), runoffMaterial())));
+            IMPORT_QUEUE.add(new QueuedImportOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), width, closingChunk, facing(), preset(), runoffMaterial())));
             chunks++;
         }
         return chunks;
@@ -682,7 +682,11 @@ public class TrackEditorScreen extends Screen {
     }
 
     private TrackEditorMaterial material() {
-        return mode() == TrackEditorMode.EDGE ? EDGE_MATERIALS[edgeIndex] : PAVEMENT_MATERIALS[pavementIndex];
+        return mode() == TrackEditorMode.EDGE ? EDGE_MATERIALS[edgeIndex] : importMaterial();
+    }
+
+    private TrackEditorMaterial importMaterial() {
+        return PAVEMENT_MATERIALS[pavementIndex];
     }
 
     private TrackEditorPreset preset() {

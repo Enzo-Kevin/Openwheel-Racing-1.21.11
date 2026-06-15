@@ -5,14 +5,17 @@ import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import com.openwheelracing.registry.OWRDataComponents;
 import com.openwheelracing.registry.OWREntities;
+import java.util.List;
 import java.util.function.Consumer;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
@@ -41,7 +44,9 @@ public class PrototypeCarItem extends Item {
         stack.set(OWRDataComponents.CAR_SETUP.get(), setup);
         stack.set(OWRDataComponents.CAR_DAMAGE.get(), Math.max(0, Math.min(100, Math.round(damage))));
         stack.set(OWRDataComponents.TYRE_WEAR.get(), Math.max(0, Math.min(100, Math.round(tyreWear))));
-        stack.set(OWRDataComponents.CAR_LIVERY.get(), Math.max(0, Math.min(CarLivery.count() - 1, livery)));
+        int clampedLivery = Math.max(0, Math.min(CarLivery.count() - 1, livery));
+        stack.set(OWRDataComponents.CAR_LIVERY.get(), clampedLivery);
+        applyLiveryItemDisplay(stack, clampedLivery);
         return stack;
     }
 
@@ -58,6 +63,10 @@ public class PrototypeCarItem extends Item {
     public static int getLivery(ItemStack stack) {
         Integer livery = stack.get(OWRDataComponents.CAR_LIVERY.get());
         return livery == null ? 0 : Math.max(0, Math.min(CarLivery.count() - 1, livery));
+    }
+
+    public static void applyLiveryItemDisplay(ItemStack stack, int livery) {
+        stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(List.of(), List.of(), List.of(), List.of(CarLivery.fromIndex(livery).bodySide())));
     }
 
     @Override

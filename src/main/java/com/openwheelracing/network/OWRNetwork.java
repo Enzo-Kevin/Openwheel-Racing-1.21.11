@@ -175,7 +175,9 @@ public final class OWRNetwork {
                     return;
                 }
                 int current = PrototypeCarItem.getLivery(stack);
-                stack.set(OWRDataComponents.CAR_LIVERY.get(), CarLivery.wrapIndex(current + message.delta));
+                int livery = CarLivery.wrapIndex(current + message.delta);
+                stack.set(OWRDataComponents.CAR_LIVERY.get(), livery);
+                PrototypeCarItem.applyLiveryItemDisplay(stack, livery);
                 menu.slotsChanged(menu.getContainer());
             });
             context.setPacketHandled(true);

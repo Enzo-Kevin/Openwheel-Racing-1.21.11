@@ -107,9 +107,11 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
             if (result.get(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get()) == null) {
                 result.set(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get(), com.openwheelracing.content.car.PrototypeCarSetup.DEFAULT);
             }
+            int livery = com.openwheelracing.content.item.PrototypeCarItem.getLivery(result);
             if (result.get(com.openwheelracing.registry.OWRDataComponents.CAR_LIVERY.get()) == null) {
-                result.set(com.openwheelracing.registry.OWRDataComponents.CAR_LIVERY.get(), 0);
+                result.set(com.openwheelracing.registry.OWRDataComponents.CAR_LIVERY.get(), livery);
             }
+            com.openwheelracing.content.item.PrototypeCarItem.applyLiveryItemDisplay(result, livery);
         }
 
         ItemStack output = getItem(SLOT_OUTPUT);

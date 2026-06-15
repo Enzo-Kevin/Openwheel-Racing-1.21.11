@@ -5,6 +5,7 @@ import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.race.OWRLapRecords;
+import com.openwheelracing.content.race.OWRRaceControlState;
 import com.openwheelracing.registry.OWRBlocks;
 import com.openwheelracing.registry.OWRItems;
 import net.minecraft.core.BlockPos;
@@ -53,6 +54,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final EntityDataAccessor<Boolean> ABS_ENABLED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> LIVERY = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
 
+    private static final int MIN_VALID_LAP_TICKS = 100;
     private static final int PIT_STOP_DURATION = 60; // 3 seconds
     private static final int PIT_RUBBER_COST = 2;    // rubber items consumed per stop
 
@@ -73,6 +75,8 @@ public class OpenwheelCarEntity extends Entity {
     private static final double PHYSICS_DT = 1.0 / 20.0;
     private static final int PHYSICS_SUBSTEPS = 4;
     private static final double WHEELBASE = 3.60;
+    private static final double TRACK_WIDTH = 1.63;
+    private static final double HALF_TRACK_WIDTH = TRACK_WIDTH * 0.5;
     private static final double FRONT_AXLE_DISTANCE = WHEELBASE * (1.0 - 0.46);
     private static final double REAR_AXLE_DISTANCE = WHEELBASE * 0.46;
     private static final double YAW_INERTIA = 1100.0;
@@ -101,7 +105,9 @@ public class OpenwheelCarEntity extends Entity {
     private static final double LOW_SPEED_STEER_ANGLE = Math.toRadians(24.0);
     private static final double HIGH_SPEED_STEER_ANGLE = Math.toRadians(2.2);
     private static final double LOW_SPEED_STEERING_RACK_RATE = Math.toRadians(120.0);
-    private static final double HIGH_SPEED_STEERING_RACK_RATE = Math.toRadians(12.0);
+    private static final double HIGH_SPEED_STEERING_RACK_RATE = Math.toRadians(4.0);
+    private static final double LOW_SPEED_STEERING_CENTERING_RATE = Math.toRadians(90.0);
+    private static final double HIGH_SPEED_STEERING_CENTERING_RATE = Math.toRadians(180.0);
     private static final double STEERING_SPEED_SCALE = 20.0;
     private static final double TRACTION_CONTROL_SLIP_TARGET = 0.92;
     private static final double SLIP_ANGLE_DEADBAND = Math.toRadians(0.15);
@@ -338,6 +344,11 @@ public class OpenwheelCarEntity extends Entity {
 
         long gameTime = level().getGameTime();
         if (lapStartedAt >= 0L) {
+            if (isCheckpointCheckEnabled() && visitedCheckpoints.isEmpty()) {
+                invalidateLap("no checkpoints crossed");
+                startLap(gameTime, Component.literal("Lap started — cross all checkpoints"));
+                return;
+            }
             completeLap(gameTime);
         } else {
             messageDriver(Component.literal("Lap started"));
@@ -347,6 +358,9 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     public void crossCheckpoint(BlockPos pos, Direction markerFacing) {
+        if (!isCheckpointCheckEnabled()) {
+            return;
+        }
         if (!isForwardPass(markerFacing)) {
             invalidateLap("reverse checkpoint pass");
             return;
@@ -373,6 +387,10 @@ public class OpenwheelCarEntity extends Entity {
 
     private void completeLap(long gameTime) {
         int lapTicks = Math.max(1, (int)(gameTime - lapStartedAt));
+        if (lapTicks <= MIN_VALID_LAP_TICKS) {
+            messageDriver(Component.literal("Lap ignored: must be over 5 seconds"));
+            return;
+        }
         entityData.set(CURRENT_LAP_TICKS, lapTicks);
         boolean personalBest = updatePlayerBestLap(lapTicks);
         messageDriver(Component.literal("Lap: " + formatLapTime(lapTicks)
@@ -602,7 +620,7 @@ public class OpenwheelCarEntity extends Entity {
                 invalidateLap("driver left car");
                 return;
             }
-            if (!isOnTrackSurface()) {
+            if (isOffTrackCheckEnabled() && !isOnTrackSurface()) {
                 invalidateLap("four wheels off track");
                 return;
             }
@@ -691,22 +709,15 @@ public class OpenwheelCarEntity extends Entity {
         double yaw = Math.toRadians(getYRot());
         Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
         Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
-        for (double side : TRACK_WHEEL_SIDE_OFFSETS) {
-            for (double length : TRACK_WHEEL_LENGTH_OFFSETS) {
-                if (!wheelPatchTouchesTrack(forward, right, side, length)) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    private boolean wheelPatchTouchesTrack(Vec3 forward, Vec3 right, double wheelSide, double wheelLength) {
-        for (double sidePatch : TRACK_PATCH_SIDE_OFFSETS) {
-            for (double lengthPatch : TRACK_PATCH_LENGTH_OFFSETS) {
+        double minSide = TRACK_WHEEL_SIDE_OFFSETS[0] + TRACK_PATCH_SIDE_OFFSETS[0];
+        double maxSide = TRACK_WHEEL_SIDE_OFFSETS[TRACK_WHEEL_SIDE_OFFSETS.length - 1] + TRACK_PATCH_SIDE_OFFSETS[TRACK_PATCH_SIDE_OFFSETS.length - 1];
+        double minLength = TRACK_WHEEL_LENGTH_OFFSETS[0] + TRACK_PATCH_LENGTH_OFFSETS[0];
+        double maxLength = TRACK_WHEEL_LENGTH_OFFSETS[TRACK_WHEEL_LENGTH_OFFSETS.length - 1] + TRACK_PATCH_LENGTH_OFFSETS[TRACK_PATCH_LENGTH_OFFSETS.length - 1];
+        for (double side = minSide; side <= maxSide + 1.0E-6; side += 0.45) {
+            for (double length = minLength; length <= maxLength + 1.0E-6; length += 0.45) {
                 Vec3 samplePos = position()
-                    .add(right.scale(wheelSide + sidePatch))
-                    .add(forward.scale(wheelLength + lengthPatch));
+                    .add(right.scale(side))
+                    .add(forward.scale(length));
                 if (getSurfaceAt(samplePos).countsAsTrack) {
                     return true;
                 }
@@ -715,31 +726,52 @@ public class OpenwheelCarEntity extends Entity {
         return false;
     }
 
-    private void scanLapMarkers() {
+    private boolean isCheckpointCheckEnabled() {
+        return level() instanceof ServerLevel serverLevel && OWRRaceControlState.get(serverLevel).isCheckpointCheckEnabled();
+    }
+
+    private boolean isOffTrackCheckEnabled() {
+        return !(level() instanceof ServerLevel serverLevel) || OWRRaceControlState.get(serverLevel).isOffTrackCheckEnabled();
+    }
+
+    private void scanLapMarkers(Vec3 beforeMove, Vec3 actualMovement) {
         double yaw = Math.toRadians(getYRot());
         Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
         Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
+        int steps = Math.max(1, (int)Math.ceil(actualMovement.horizontalDistance() / 0.25));
+        Vec3 currentPosition = position();
+        for (int step = 0; step <= steps; step++) {
+            double t = (double)step / steps;
+            Vec3 center = beforeMove.lerp(currentPosition, t);
+            if (scanLapMarkerAt(center, forward, right)) {
+                return;
+            }
+        }
+    }
+
+    private boolean scanLapMarkerAt(Vec3 center, Vec3 forward, Vec3 right) {
         for (double side : TRACK_WHEEL_SIDE_OFFSETS) {
             for (double length : TRACK_WHEEL_LENGTH_OFFSETS) {
                 for (double sidePatch : TRACK_PATCH_SIDE_OFFSETS) {
                     for (double lengthPatch : TRACK_PATCH_LENGTH_OFFSETS) {
-                        Vec3 samplePos = position()
+                        Vec3 samplePos = center
                             .add(right.scale(side + sidePatch))
                             .add(forward.scale(length + lengthPatch));
                         BlockPos pos = BlockPos.containing(samplePos.x, getBoundingBox().minY - 0.05, samplePos.z);
                         Block block = level().getBlockState(pos).getBlock();
                         if (block == OWRBlocks.START_FINISH.get()) {
                             crossStartFinishLine(pos, level().getBlockState(pos).getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING));
-                            return;
+                            return true;
                         }
                         if (block == OWRBlocks.CHECKPOINT.get()) {
                             crossCheckpoint(pos, level().getBlockState(pos).getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING));
-                            return;
+                            return true;
                         }
                     }
                 }
             }
         }
+        return false;
     }
 
 
@@ -805,151 +837,221 @@ public class OpenwheelCarEntity extends Entity {
         double speedSteerT = square(speedRatio) / (1.0 + square(speedRatio));
         double steeringLock = LOW_SPEED_STEER_ANGLE + (HIGH_SPEED_STEER_ANGLE - LOW_SPEED_STEER_ANGLE) * speedSteerT;
         double rackRate = LOW_SPEED_STEERING_RACK_RATE + (HIGH_SPEED_STEERING_RACK_RATE - LOW_SPEED_STEERING_RACK_RATE) * speedSteerT;
+        double centeringRate = LOW_SPEED_STEERING_CENTERING_RATE + (HIGH_SPEED_STEERING_CENTERING_RATE - LOW_SPEED_STEERING_CENTERING_RATE) * speedSteerT;
         double targetSteeringAngle = steerInput * steeringLock;
-        double maxSteeringStep = rackRate * PHYSICS_DT;
-        steeringAngle += clamp(targetSteeringAngle - steeringAngle, -maxSteeringStep, maxSteeringStep);
-
-        double downforce = 0.5 * AIR_DENSITY * DOWNFORCE_AREA * speedMetersPerSecond * speedMetersPerSecond;
-        double aeroDrag = 0.5 * AIR_DENSITY * DRAG_AREA * speedMetersPerSecond * speedMetersPerSecond;
-        double staticFrontLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT;
-        double staticRearLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT);
-        double aeroFrontLoad = downforce * FRONT_AERO_BALANCE;
-        double aeroRearLoad = downforce * (1.0 - FRONT_AERO_BALANCE);
-
-        double driveForceRequest = throttle > 0.0 && horizontalSpeed < gearTopSpeed
-            ? power * throttle / Math.max(MIN_POWER_SPEED, Math.abs(velocityLong))
-            : 0.0;
-        double forwardRollingFraction = Math.abs(velocityLong) / Math.max(1.0, speedMetersPerSecond);
-        if (speedMetersPerSecond > 3.0 && forwardRollingFraction < 0.45) {
-            driveForceRequest *= forwardRollingFraction / 0.45;
-        }
-        if (autoClutch) {
-            double staticRearTraction = ASPHALT_MU_LONGITUDINAL * surface.grip * staticRearLoad;
-            driveForceRequest = Math.min(driveForceRequest, staticRearTraction * 0.72);
-        }
-        double brakeForceEstimate = brake * Math.min(MAX_BRAKE_FORCE, ASPHALT_MU_LONGITUDINAL * surface.grip * (CAR_MASS_KG * GRAVITY + downforce));
-        if (isPitLane() && horizontalSpeed >= maxSpeed) {
-            driveForceRequest = 0.0;
-            brakeForceEstimate = Math.max(brakeForceEstimate, 6_000.0);
-        }
-        double rollingForce = ROLLING_RESISTANCE * (CAR_MASS_KG * GRAVITY + downforce);
-        double sinkDragForce = surface.sinkDrag * (CAR_MASS_KG * GRAVITY + downforce);
-        double preliminaryAx = (driveForceRequest - brakeForceEstimate - Math.signum(velocityLong) * (aeroDrag + rollingForce + sinkDragForce)) / CAR_MASS_KG;
-        double loadTransfer = CAR_MASS_KG * preliminaryAx * CG_HEIGHT / WHEELBASE;
-        double normalFront = Math.max(150.0, staticFrontLoad + aeroFrontLoad - loadTransfer);
-        double normalRear = Math.max(150.0, staticRearLoad + aeroRearLoad + loadTransfer);
-        double referenceFrontLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT;
-        double referenceRearLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT);
-        double surfaceMuLat = ASPHALT_MU_LATERAL * surface.grip;
-        double surfaceMuLong = ASPHALT_MU_LONGITUDINAL * surface.grip;
-        double tyreWearGrip = Math.max(0.45, tyreFactor);
-        double muLatFront = loadSensitiveMu(surfaceMuLat * tyreWearGrip, normalFront, referenceFrontLoad);
-        double muLatRear = loadSensitiveMu(surfaceMuLat * tyreWearGrip, normalRear, referenceRearLoad);
-        double muLongFront = loadSensitiveMu(surfaceMuLong * tyreWearGrip, normalFront, referenceFrontLoad);
-        double muLongRear = loadSensitiveMu(surfaceMuLong * tyreWearGrip, normalRear, referenceRearLoad);
-
-        double brakeCapacityFront = muLongFront * normalFront;
-        double brakeCapacityRear = muLongRear * normalRear;
-        double brakeForceRequest = brake * MAX_BRAKE_FORCE;
-        if (isPitLane() && horizontalSpeed >= maxSpeed) {
-            brakeForceRequest = Math.max(brakeForceRequest, 6_000.0);
-        }
-        double brakeFront = brakeForceRequest * BRAKE_FRONT_BIAS;
-        double brakeRear = brakeForceRequest * (1.0 - BRAKE_FRONT_BIAS);
-        double brakeSign = velocityLong >= 0.0 ? 1.0 : -1.0;
-        double frontLongRequest = -brakeSign * brakeFront;
-        double rearLongRequest = driveForceRequest - brakeSign * brakeRear;
-        double slipSpeed = Math.max(6.0, Math.abs(velocityLong));
-        double rollingForceRamp = Math.max(0.0, Math.min(1.0, (speedMetersPerSecond - 1.5) / 8.5));
-        double rollingForceScale = rollingForceRamp * rollingForceRamp * (3.0 - 2.0 * rollingForceRamp);
-        double frontSlipAngle = Math.abs(velocityLat) < 0.04 && Math.abs(yawRate) < 0.01 && Math.abs(steeringAngle) < SLIP_ANGLE_DEADBAND ? 0.0 : Math.atan2(velocityLat + yawRate * FRONT_AXLE_DISTANCE, slipSpeed) - steeringAngle;
-        double rearSlipAngle = Math.abs(velocityLat) < 0.04 && Math.abs(yawRate) < 0.01 ? 0.0 : Math.atan2(velocityLat - yawRate * REAR_AXLE_DISTANCE, slipSpeed);
-        double frontLatTarget = lateralTyreForceRequest(frontSlipAngle, FRONT_CORNERING_STIFFNESS * rollingForceScale, muLatFront * normalFront);
-        double rearLatTarget = lateralTyreForceRequest(rearSlipAngle, REAR_CORNERING_STIFFNESS * rollingForceScale, muLatRear * normalRear);
-        double frontRelaxation = tyreRelaxationGain(speedMetersPerSecond, FRONT_TYRE_RELAXATION_LENGTH);
-        double rearRelaxation = tyreRelaxationGain(speedMetersPerSecond, REAR_TYRE_RELAXATION_LENGTH);
-        relaxedFrontLatForce += (frontLatTarget - relaxedFrontLatForce) * frontRelaxation;
-        relaxedRearLatForce += (rearLatTarget - relaxedRearLatForce) * rearRelaxation;
-        if (Math.abs(frontLatTarget) < 1.0) {
-            relaxedFrontLatForce = 0.0;
-        }
-        if (Math.abs(rearLatTarget) < 1.0) {
-            relaxedRearLatForce = 0.0;
-        }
-        double frontLatRequest = relaxedFrontLatForce;
-        double rearLatRequest = relaxedRearLatForce;
-        double rearLatCapacity = muLatRear * normalRear;
-        double rearLongCapacity = muLongRear * normalRear;
-        if (isAbsEnabled() && brake > 0.0) {
-            frontLongRequest = absLimitedBrakeForce(frontLongRequest, frontLatRequest, brakeCapacityFront, muLatFront * normalFront);
-            double rearBrakeRequest = rearLongRequest - driveForceRequest;
-            double rearBrakeLimited = absLimitedBrakeForce(rearBrakeRequest, rearLatRequest, brakeCapacityRear, rearLatCapacity);
-            rearLongRequest = driveForceRequest + rearBrakeLimited;
-        }
-        double rearLatForTractionControl = Math.abs(rearLatRequest) < rearLatCapacity * 0.08 ? 0.0 : rearLatRequest;
-        double rearTractionControlLimit = Math.sqrt(Math.max(0.0, square(rearLongCapacity * TRACTION_CONTROL_SLIP_TARGET) - square(rearLatForTractionControl)));
-        rearLongRequest = clamp(rearLongRequest, -rearTractionControlLimit, rearTractionControlLimit);
-        double frontDemand = combinedSlipDemand(frontLongRequest, frontLatRequest, muLongFront * normalFront, muLatFront * normalFront);
-        double rearDemand = combinedSlipDemand(rearLongRequest, rearLatRequest, muLongRear * normalRear, muLatRear * normalRear);
-        double frontPatchLongSlip = frontLongRequest / Math.max(1.0, FRONT_CORNERING_STIFFNESS * PHYSICS_DT);
-        double rearPatchLongSlip = rearLongRequest / Math.max(1.0, REAR_CORNERING_STIFFNESS * PHYSICS_DT);
-        double frontPatchLatSlip = velocityLat + yawRate * FRONT_AXLE_DISTANCE - velocityLong * steeringAngle;
-        double rearPatchLatSlip = velocityLat - yawRate * REAR_AXLE_DISTANCE;
-        double frontLongForce = tyreForceLongitudinal(frontDemand, frontLongRequest, frontPatchLongSlip, frontPatchLatSlip, muLongFront * normalFront);
-        double rearLongForce = tyreForceLongitudinal(rearDemand, rearLongRequest, rearPatchLongSlip, rearPatchLatSlip, muLongRear * normalRear);
-        double frontLatForce = tyreForceLateral(frontDemand, frontLatRequest, frontPatchLongSlip, frontPatchLatSlip, muLatFront * normalFront);
-        double rearLatForce = tyreForceLateral(rearDemand, rearLatRequest, rearPatchLongSlip, rearPatchLatSlip, muLatRear * normalRear);
-        double frontSaturation = frontDemand;
-        double rearSaturation = rearDemand;
-        double dragForce = -Math.signum(velocityLong) * (aeroDrag + rollingForce + sinkDragForce);
-        debugVelocityLong = velocityLong;
-        debugVelocityLat = velocityLat;
-        debugDriveForce = driveForceRequest;
-        debugDragForce = dragForce;
-        debugFrontLatForce = frontLatForce;
-        debugRearLatForce = rearLatForce;
-        debugFrontLongForce = frontLongForce;
-        debugRearLongForce = rearLongForce;
-        double actualAxForLoad = (rearLongForce + frontLongForce + dragForce) / CAR_MASS_KG;
-        double actualLoadTransfer = CAR_MASS_KG * actualAxForLoad * CG_HEIGHT / WHEELBASE;
-        double actualNormalFront = Math.max(150.0, staticFrontLoad + aeroFrontLoad - actualLoadTransfer);
-        double actualNormalRear = Math.max(150.0, staticRearLoad + aeroRearLoad + actualLoadTransfer);
-        debugFrontLoad = actualNormalFront;
-        debugRearLoad = actualNormalRear;
-        debugFrontDemand = frontDemand;
-        debugRearDemand = rearDemand;
-        debugFrontSlipAngle = frontSlipAngle;
-        debugRearSlipAngle = rearSlipAngle;
-        debugDownforce = downforce;
-
-        double longitudinalForce = rearLongForce + frontLongForce + dragForce;
-        double lateralForce = frontLatForce + rearLatForce;
-        double accelerationLong = longitudinalForce / CAR_MASS_KG + yawRate * velocityLat;
-        double accelerationLat = lateralForce / CAR_MASS_KG - yawRate * velocityLong;
-        double yawMoment = FRONT_AXLE_DISTANCE * frontLatForce - REAR_AXLE_DISTANCE * rearLatForce;
-        double yawAcceleration = yawMoment / YAW_INERTIA;
+        double steeringError = targetSteeringAngle - steeringAngle;
+        boolean centering = Math.abs(targetSteeringAngle) < Math.abs(steeringAngle) && Math.signum(targetSteeringAngle) != Math.signum(steeringError);
+        double steeringRate = centering ? centeringRate : rackRate;
+        double steeringGain = 1.0 - Math.exp(-steeringRate * PHYSICS_DT / Math.max(Math.toRadians(0.25), steeringLock));
+        steeringAngle += steeringError * steeringGain;
 
         double previousKineticEnergy = 0.5 * CAR_MASS_KG * (velocityLong * velocityLong + velocityLat * velocityLat) + 0.5 * YAW_INERTIA * yawRate * yawRate;
         double previousVelocityLong = velocityLong;
         double yawDelta = 0.0;
+        double driveWorkJoules = 0.0;
         double subDt = PHYSICS_DT / PHYSICS_SUBSTEPS;
+        double finalFrontLatForce = 0.0;
+        double finalRearLatForce = 0.0;
+        double finalFrontLongForce = 0.0;
+        double finalRearLongForce = 0.0;
+        double finalFrontLoad = 0.0;
+        double finalRearLoad = 0.0;
+        double finalFrontDemand = 0.0;
+        double finalRearDemand = 0.0;
+        double finalFrontSlipAngle = 0.0;
+        double finalRearSlipAngle = 0.0;
+        double finalDownforce = 0.0;
+        double finalDragForce = 0.0;
+        double finalFrontSaturation = 0.0;
+        double finalRearSaturation = 0.0;
+
         for (int substep = 0; substep < PHYSICS_SUBSTEPS; substep++) {
-            double subAccelerationLong = longitudinalForce / CAR_MASS_KG + yawRate * velocityLat;
+            double subSpeedSquared = velocityLong * velocityLong + velocityLat * velocityLat;
+            double subSpeed = Math.sqrt(subSpeedSquared);
+            double subDownforce = 0.5 * AIR_DENSITY * DOWNFORCE_AREA * subSpeedSquared;
+            double subAeroDrag = 0.5 * AIR_DENSITY * DRAG_AREA * subSpeedSquared;
+            double subStaticFrontLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT;
+            double subStaticRearLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT);
+            double subAeroFrontLoad = subDownforce * FRONT_AERO_BALANCE;
+            double subAeroRearLoad = subDownforce * (1.0 - FRONT_AERO_BALANCE);
+
+            double subSpeedBlocksPerTick = subSpeed / 20.0;
+            double subDriveForceRequest = throttle > 0.0 && subSpeedBlocksPerTick < gearTopSpeed
+                ? power * throttle / Math.max(MIN_POWER_SPEED, Math.abs(velocityLong))
+                : 0.0;
+            double subForwardRollingFraction = Math.abs(velocityLong) / Math.max(1.0, subSpeed);
+            if (subSpeed > 3.0 && subForwardRollingFraction < 0.45) {
+                subDriveForceRequest *= subForwardRollingFraction / 0.45;
+            }
+            if (autoClutch) {
+                double subStaticRearTraction = ASPHALT_MU_LONGITUDINAL * surface.grip * subStaticRearLoad;
+                subDriveForceRequest = Math.min(subDriveForceRequest, subStaticRearTraction * 0.72);
+            }
+
+            double subBrakeForceRequest = brake * MAX_BRAKE_FORCE;
+            if (isPitLane() && subSpeedBlocksPerTick >= maxSpeed) {
+                subDriveForceRequest = 0.0;
+                subBrakeForceRequest = Math.max(subBrakeForceRequest, 6_000.0);
+            }
+            double subBrakeForceEstimate = brake * Math.min(MAX_BRAKE_FORCE, ASPHALT_MU_LONGITUDINAL * surface.grip * (CAR_MASS_KG * GRAVITY + subDownforce));
+            double subRollingForce = ROLLING_RESISTANCE * (CAR_MASS_KG * GRAVITY + subDownforce);
+            double subSinkDragForce = surface.sinkDrag * (CAR_MASS_KG * GRAVITY + subDownforce);
+            double subPreliminaryAx = (subDriveForceRequest - subBrakeForceEstimate - Math.signum(velocityLong) * (subAeroDrag + subRollingForce + subSinkDragForce)) / CAR_MASS_KG;
+            double subLateralAccelerationEstimate = (velocityLat - debugVelocityLat) / Math.max(subDt, 1.0E-6);
+            double subLongitudinalLoadTransfer = CAR_MASS_KG * subPreliminaryAx * CG_HEIGHT / WHEELBASE;
+            double subLateralLoadTransfer = CAR_MASS_KG * subLateralAccelerationEstimate * CG_HEIGHT / TRACK_WIDTH;
+            double subNormalFront = Math.max(300.0, subStaticFrontLoad + subAeroFrontLoad - subLongitudinalLoadTransfer);
+            double subNormalRear = Math.max(300.0, subStaticRearLoad + subAeroRearLoad + subLongitudinalLoadTransfer);
+            double leftLoadTransfer = -subLateralLoadTransfer;
+            double flNormal = Math.max(75.0, subNormalFront * 0.5 + leftLoadTransfer * FRONT_STATIC_WEIGHT);
+            double frNormal = Math.max(75.0, subNormalFront * 0.5 - leftLoadTransfer * FRONT_STATIC_WEIGHT);
+            double rlNormal = Math.max(75.0, subNormalRear * 0.5 + leftLoadTransfer * (1.0 - FRONT_STATIC_WEIGHT));
+            double rrNormal = Math.max(75.0, subNormalRear * 0.5 - leftLoadTransfer * (1.0 - FRONT_STATIC_WEIGHT));
+            double subReferenceFrontWheelLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT * 0.5;
+            double subReferenceRearWheelLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT) * 0.5;
+            double subSurfaceMuLat = ASPHALT_MU_LATERAL * surface.grip;
+            double subSurfaceMuLong = ASPHALT_MU_LONGITUDINAL * surface.grip;
+            double subTyreWearGrip = Math.max(0.45, tyreFactor);
+            double flMuLat = loadSensitiveMu(subSurfaceMuLat * subTyreWearGrip, flNormal, subReferenceFrontWheelLoad);
+            double frMuLat = loadSensitiveMu(subSurfaceMuLat * subTyreWearGrip, frNormal, subReferenceFrontWheelLoad);
+            double rlMuLat = loadSensitiveMu(subSurfaceMuLat * subTyreWearGrip, rlNormal, subReferenceRearWheelLoad);
+            double rrMuLat = loadSensitiveMu(subSurfaceMuLat * subTyreWearGrip, rrNormal, subReferenceRearWheelLoad);
+            double flMuLong = loadSensitiveMu(subSurfaceMuLong * subTyreWearGrip, flNormal, subReferenceFrontWheelLoad);
+            double frMuLong = loadSensitiveMu(subSurfaceMuLong * subTyreWearGrip, frNormal, subReferenceFrontWheelLoad);
+            double rlMuLong = loadSensitiveMu(subSurfaceMuLong * subTyreWearGrip, rlNormal, subReferenceRearWheelLoad);
+            double rrMuLong = loadSensitiveMu(subSurfaceMuLong * subTyreWearGrip, rrNormal, subReferenceRearWheelLoad);
+
+            double brakeFront = subBrakeForceRequest * BRAKE_FRONT_BIAS * 0.5;
+            double brakeRear = subBrakeForceRequest * (1.0 - BRAKE_FRONT_BIAS) * 0.5;
+            double driveRear = subDriveForceRequest * 0.5;
+            double brakeSign = velocityLong >= 0.0 ? 1.0 : -1.0;
+            double flLongRequest = -brakeSign * brakeFront;
+            double frLongRequest = -brakeSign * brakeFront;
+            double rlLongRequest = driveRear - brakeSign * brakeRear;
+            double rrLongRequest = driveRear - brakeSign * brakeRear;
+            double slipSpeed = Math.max(6.0, Math.abs(velocityLong));
+            double rollingForceRamp = Math.max(0.0, Math.min(1.0, (subSpeed - 1.5) / 8.5));
+            double rollingForceScale = rollingForceRamp * rollingForceRamp * (3.0 - 2.0 * rollingForceRamp);
+            double flPatchLatSlip = velocityLat + yawRate * FRONT_AXLE_DISTANCE - yawRate * HALF_TRACK_WIDTH - velocityLong * steeringAngle;
+            double frPatchLatSlip = velocityLat + yawRate * FRONT_AXLE_DISTANCE + yawRate * HALF_TRACK_WIDTH - velocityLong * steeringAngle;
+            double rlPatchLatSlip = velocityLat - yawRate * REAR_AXLE_DISTANCE - yawRate * HALF_TRACK_WIDTH;
+            double rrPatchLatSlip = velocityLat - yawRate * REAR_AXLE_DISTANCE + yawRate * HALF_TRACK_WIDTH;
+            double flSlipAngle = Math.abs(flPatchLatSlip) < 0.04 && Math.abs(yawRate) < 0.01 && Math.abs(steeringAngle) < SLIP_ANGLE_DEADBAND ? 0.0 : Math.atan2(flPatchLatSlip, slipSpeed) - steeringAngle;
+            double frSlipAngle = Math.abs(frPatchLatSlip) < 0.04 && Math.abs(yawRate) < 0.01 && Math.abs(steeringAngle) < SLIP_ANGLE_DEADBAND ? 0.0 : Math.atan2(frPatchLatSlip, slipSpeed) - steeringAngle;
+            double rlSlipAngle = Math.abs(rlPatchLatSlip) < 0.04 && Math.abs(yawRate) < 0.01 ? 0.0 : Math.atan2(rlPatchLatSlip, slipSpeed);
+            double rrSlipAngle = Math.abs(rrPatchLatSlip) < 0.04 && Math.abs(yawRate) < 0.01 ? 0.0 : Math.atan2(rrPatchLatSlip, slipSpeed);
+            double flLatTarget = lateralTyreForceRequest(flSlipAngle, FRONT_CORNERING_STIFFNESS * 0.5 * rollingForceScale, flMuLat * flNormal);
+            double frLatTarget = lateralTyreForceRequest(frSlipAngle, FRONT_CORNERING_STIFFNESS * 0.5 * rollingForceScale, frMuLat * frNormal);
+            double rlLatTarget = lateralTyreForceRequest(rlSlipAngle, REAR_CORNERING_STIFFNESS * 0.5 * rollingForceScale, rlMuLat * rlNormal);
+            double rrLatTarget = lateralTyreForceRequest(rrSlipAngle, REAR_CORNERING_STIFFNESS * 0.5 * rollingForceScale, rrMuLat * rrNormal);
+            double frontRelaxation = tyreRelaxationGain(subSpeed, FRONT_TYRE_RELAXATION_LENGTH, subDt);
+            double rearRelaxation = tyreRelaxationGain(subSpeed, REAR_TYRE_RELAXATION_LENGTH, subDt);
+            double frontLatTarget = flLatTarget + frLatTarget;
+            double rearLatTarget = rlLatTarget + rrLatTarget;
+            relaxedFrontLatForce += (frontLatTarget - relaxedFrontLatForce) * frontRelaxation;
+            relaxedRearLatForce += (rearLatTarget - relaxedRearLatForce) * rearRelaxation;
+            if (Math.abs(frontLatTarget) < 1.0) {
+                relaxedFrontLatForce = 0.0;
+            }
+            if (Math.abs(rearLatTarget) < 1.0) {
+                relaxedRearLatForce = 0.0;
+            }
+            double frontLatScale = Math.abs(frontLatTarget) > 1.0 ? relaxedFrontLatForce / frontLatTarget : 0.0;
+            double rearLatScale = Math.abs(rearLatTarget) > 1.0 ? relaxedRearLatForce / rearLatTarget : 0.0;
+            double flLatRequest = flLatTarget * frontLatScale;
+            double frLatRequest = frLatTarget * frontLatScale;
+            double rlLatRequest = rlLatTarget * rearLatScale;
+            double rrLatRequest = rrLatTarget * rearLatScale;
+
+            if (isAbsEnabled() && brake > 0.0) {
+                flLongRequest = absLimitedBrakeForce(flLongRequest, flLatRequest, flMuLong * flNormal, flMuLat * flNormal);
+                frLongRequest = absLimitedBrakeForce(frLongRequest, frLatRequest, frMuLong * frNormal, frMuLat * frNormal);
+                double rlBrakeLimited = absLimitedBrakeForce(rlLongRequest - driveRear, rlLatRequest, rlMuLong * rlNormal, rlMuLat * rlNormal);
+                double rrBrakeLimited = absLimitedBrakeForce(rrLongRequest - driveRear, rrLatRequest, rrMuLong * rrNormal, rrMuLat * rrNormal);
+                rlLongRequest = driveRear + rlBrakeLimited;
+                rrLongRequest = driveRear + rrBrakeLimited;
+            }
+            if (brake > 0.0 && Math.abs(steeringAngle) > SLIP_ANGLE_DEADBAND && velocityLong > 0.0) {
+                double brakingRequest = Math.max(0.0, -(flLongRequest + frLongRequest + rlLongRequest + rrLongRequest));
+                double maxBrakeImpulseForce = CAR_MASS_KG * velocityLong / subDt;
+                if (brakingRequest > maxBrakeImpulseForce) {
+                    double brakeScale = maxBrakeImpulseForce / brakingRequest;
+                    flLongRequest *= flLongRequest < 0.0 ? brakeScale : 1.0;
+                    frLongRequest *= frLongRequest < 0.0 ? brakeScale : 1.0;
+                    rlLongRequest = driveRear + (rlLongRequest - driveRear) * brakeScale;
+                    rrLongRequest = driveRear + (rrLongRequest - driveRear) * brakeScale;
+                }
+            }
+            double rearLatUse = Math.max(Math.abs(rlLatRequest) / Math.max(1.0, rlMuLat * rlNormal), Math.abs(rrLatRequest) / Math.max(1.0, rrMuLat * rrNormal));
+            double rearTractionControlTarget = rearLatUse < 0.08 ? TRACTION_CONTROL_SLIP_TARGET : Math.sqrt(Math.max(0.0, square(TRACTION_CONTROL_SLIP_TARGET) - square(rearLatUse)));
+            rlLongRequest = clamp(rlLongRequest, -rlMuLong * rlNormal * rearTractionControlTarget, rlMuLong * rlNormal * rearTractionControlTarget);
+            rrLongRequest = clamp(rrLongRequest, -rrMuLong * rrNormal * rearTractionControlTarget, rrMuLong * rrNormal * rearTractionControlTarget);
+
+            double flDemand = combinedSlipDemand(flLongRequest, flLatRequest, flMuLong * flNormal, flMuLat * flNormal);
+            double frDemand = combinedSlipDemand(frLongRequest, frLatRequest, frMuLong * frNormal, frMuLat * frNormal);
+            double rlDemand = combinedSlipDemand(rlLongRequest, rlLatRequest, rlMuLong * rlNormal, rlMuLat * rlNormal);
+            double rrDemand = combinedSlipDemand(rrLongRequest, rrLatRequest, rrMuLong * rrNormal, rrMuLat * rrNormal);
+            double flPatchLongSlip = flLongRequest / Math.max(1.0, FRONT_CORNERING_STIFFNESS * 0.5 * subDt);
+            double frPatchLongSlip = frLongRequest / Math.max(1.0, FRONT_CORNERING_STIFFNESS * 0.5 * subDt);
+            double rlPatchLongSlip = rlLongRequest / Math.max(1.0, REAR_CORNERING_STIFFNESS * 0.5 * subDt);
+            double rrPatchLongSlip = rrLongRequest / Math.max(1.0, REAR_CORNERING_STIFFNESS * 0.5 * subDt);
+            double flLongForce = tyreForceLongitudinal(flDemand, flLongRequest, flPatchLongSlip, flPatchLatSlip, flMuLong * flNormal);
+            double frLongForce = tyreForceLongitudinal(frDemand, frLongRequest, frPatchLongSlip, frPatchLatSlip, frMuLong * frNormal);
+            double rlLongForce = tyreForceLongitudinal(rlDemand, rlLongRequest, rlPatchLongSlip, rlPatchLatSlip, rlMuLong * rlNormal);
+            double rrLongForce = tyreForceLongitudinal(rrDemand, rrLongRequest, rrPatchLongSlip, rrPatchLatSlip, rrMuLong * rrNormal);
+            double flLatForce = tyreForceLateral(flDemand, flLatRequest, flPatchLongSlip, flPatchLatSlip, flMuLat * flNormal);
+            double frLatForce = tyreForceLateral(frDemand, frLatRequest, frPatchLongSlip, frPatchLatSlip, frMuLat * frNormal);
+            double rlLatForce = tyreForceLateral(rlDemand, rlLatRequest, rlPatchLongSlip, rlPatchLatSlip, rlMuLat * rlNormal);
+            double rrLatForce = tyreForceLateral(rrDemand, rrLatRequest, rrPatchLongSlip, rrPatchLatSlip, rrMuLat * rrNormal);
+
+            double frontLongForce = flLongForce + frLongForce;
+            double rearLongForce = rlLongForce + rrLongForce;
+            double frontLatForce = flLatForce + frLatForce;
+            double rearLatForce = rlLatForce + rrLatForce;
+            double dragForce = -Math.signum(velocityLong) * (subAeroDrag + subRollingForce + subSinkDragForce);
+            double longitudinalForce = rearLongForce + frontLongForce + dragForce;
+            double lateralForce = frontLatForce + rearLatForce;
+            double yawMoment = FRONT_AXLE_DISTANCE * frontLatForce - REAR_AXLE_DISTANCE * rearLatForce
+                + HALF_TRACK_WIDTH * (frLongForce + rrLongForce - flLongForce - rlLongForce);
+            double yawAcceleration = yawMoment / YAW_INERTIA;
+            double subVelocityLongBefore = velocityLong;
+            double forceAccelerationLong = longitudinalForce / CAR_MASS_KG;
+            double couplingAccelerationLong = yawRate * velocityLat;
             double subAccelerationLat = lateralForce / CAR_MASS_KG - yawRate * velocityLong;
-            velocityLong += subAccelerationLong * subDt;
-            if (previousVelocityLong > 0.0 && velocityLong < 0.0 && driveForceRequest <= brakeForceRequest) {
+
+            velocityLong += forceAccelerationLong * subDt;
+            if (subVelocityLongBefore >= 0.0 && velocityLong < 0.0 && subDriveForceRequest <= subBrakeForceRequest) {
                 velocityLong = 0.0;
-            } else if (previousVelocityLong < 0.0 && velocityLong > 0.0 && throttle == 0.0) {
+            }
+            velocityLong += couplingAccelerationLong * subDt;
+            if (subVelocityLongBefore >= -0.05 && velocityLong < 0.0 && throttle >= 0.0 && Math.abs(yawDelta) < Math.PI * 0.5) {
+                velocityLong = 0.0;
+            } else if (subVelocityLongBefore < 0.0 && velocityLong > 0.0 && throttle == 0.0) {
                 velocityLong = 0.0;
             }
             velocityLat += subAccelerationLat * subDt;
             yawRate += yawAcceleration * subDt;
             yawDelta += yawRate * subDt;
+            driveWorkJoules += Math.max(0.0, rearLongForce + frontLongForce) * Math.max(0.0, velocityLong) * subDt;
+
+            finalFrontLatForce = frontLatForce;
+            finalRearLatForce = rearLatForce;
+            finalFrontLongForce = frontLongForce;
+            finalRearLongForce = rearLongForce;
+            finalFrontLoad = subNormalFront;
+            finalRearLoad = subNormalRear;
+            finalFrontDemand = Math.max(flDemand, frDemand);
+            finalRearDemand = Math.max(rlDemand, rrDemand);
+            finalFrontSlipAngle = Math.abs(flSlipAngle) >= Math.abs(frSlipAngle) ? flSlipAngle : frSlipAngle;
+            finalRearSlipAngle = Math.abs(rlSlipAngle) >= Math.abs(rrSlipAngle) ? rlSlipAngle : rrSlipAngle;
+            finalDownforce = subDownforce;
+            finalDragForce = dragForce;
+            finalFrontSaturation = Math.max(flDemand, frDemand);
+            finalRearSaturation = Math.max(rlDemand, rrDemand);
         }
+
         double newKineticEnergy = 0.5 * CAR_MASS_KG * (velocityLong * velocityLong + velocityLat * velocityLat) + 0.5 * YAW_INERTIA * yawRate * yawRate;
-        double positivePowerForce = Math.max(0.0, rearLongForce + frontLongForce);
-        double workSpeed = Math.max(0.0, (previousVelocityLong + velocityLong) * 0.5);
-        double allowedEnergy = previousKineticEnergy + positivePowerForce * workSpeed * PHYSICS_DT;
+        double allowedEnergy = previousKineticEnergy + driveWorkJoules;
         if (newKineticEnergy > allowedEnergy && newKineticEnergy > 0.0) {
             double energyScale = Math.sqrt(allowedEnergy / newKineticEnergy);
             velocityLong *= energyScale;
@@ -962,11 +1064,26 @@ public class OpenwheelCarEntity extends Entity {
             yawRate = 0.0;
             resetTyreRelaxation();
         }
+        debugVelocityLong = velocityLong;
+        debugVelocityLat = velocityLat;
+        debugDriveForce = driveWorkJoules > 0.0 ? driveWorkJoules / PHYSICS_DT : 0.0;
+        debugDragForce = finalDragForce;
+        debugFrontLatForce = finalFrontLatForce;
+        debugRearLatForce = finalRearLatForce;
+        debugFrontLongForce = finalFrontLongForce;
+        debugRearLongForce = finalRearLongForce;
+        debugFrontLoad = finalFrontLoad;
+        debugRearLoad = finalRearLoad;
+        debugFrontDemand = finalFrontDemand;
+        debugRearDemand = finalRearDemand;
+        debugFrontSlipAngle = finalFrontSlipAngle;
+        debugRearSlipAngle = finalRearSlipAngle;
+        debugDownforce = finalDownforce;
         setYRot(getYRot() + (float) Math.toDegrees(yawDelta));
 
-        double frontExcess = Math.max(0.0, frontSaturation - 1.0);
-        double rearExcess = Math.max(0.0, rearSaturation - 1.0);
-        double slipMetric = Math.abs(frontSlipAngle) * 0.7 + Math.abs(rearSlipAngle) * 0.9 + frontExcess + rearExcess;
+        double frontExcess = Math.max(0.0, finalFrontSaturation - 1.0);
+        double rearExcess = Math.max(0.0, finalRearSaturation - 1.0);
+        double slipMetric = Math.abs(finalFrontSlipAngle) * 0.7 + Math.abs(finalRearSlipAngle) * 0.9 + frontExcess + rearExcess;
         tyreSlip = Math.max(tyreSlip, Math.min(1.0, slipMetric * Math.min(1.0, speedMetersPerSecond / 18.0)));
         if (speedMetersPerSecond > 1.0) {
             addTyreWear((float) (slipMetric * speedMetersPerSecond * 0.00035 * setup.tyreWearMultiplier() * surface.wearMult));
@@ -986,7 +1103,7 @@ public class OpenwheelCarEntity extends Entity {
         move(MoverType.SELF, delta);
         Vec3 actualMovement = position().subtract(beforeMove);
         setDeltaMovement(actualMovement);
-        scanLapMarkers();
+        scanLapMarkers(beforeMove, actualMovement);
 
         boolean shouldDebugMovement = debugMovement && (getControllingPassenger() != null || throttle != 0.0 || brake != 0.0 || steering != 0.0 || horizontalSpeed > 0.01 || actualMovement.horizontalDistance() > 0.01);
         if (shouldDebugMovement && level().getGameTime() - lastMovementDebugAt >= 20L) {
@@ -1240,9 +1357,9 @@ public class OpenwheelCarEntity extends Entity {
         return peakLateralForce * Math.tanh(linearForce / peakLateralForce);
     }
 
-    private static double tyreRelaxationGain(double speedMetersPerSecond, double relaxationLength) {
+    private static double tyreRelaxationGain(double speedMetersPerSecond, double relaxationLength, double dt) {
         double timeConstant = relaxationLength / Math.max(1.0, speedMetersPerSecond);
-        return 1.0 - Math.exp(-PHYSICS_DT / timeConstant);
+        return 1.0 - Math.exp(-dt / timeConstant);
     }
 
     private static double absLimitedBrakeForce(double brakeForce, double lateralForce, double longitudinalLimit, double lateralLimit) {
