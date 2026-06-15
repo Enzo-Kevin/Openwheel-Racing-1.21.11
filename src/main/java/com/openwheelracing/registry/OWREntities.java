@@ -17,7 +17,7 @@ public final class OWREntities {
 
     public static final RegistryObject<EntityType<OpenwheelCarEntity>> PROTOTYPE_CAR = ENTITY_TYPES.register("prototype_car",
         () -> EntityType.Builder.of(OpenwheelCarEntity::new, MobCategory.MISC)
-            .sized(1.6f, 0.9f)
+            .sized(1.9f, 1.05f)
             .clientTrackingRange(10)
             .updateInterval(2)
             .build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath(OpenwheelRacing.MODID, "prototype_car")))

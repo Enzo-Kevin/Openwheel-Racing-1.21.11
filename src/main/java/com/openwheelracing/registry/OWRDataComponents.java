@@ -33,6 +33,13 @@ public final class OWRDataComponents {
             .build()
     );
 
+    public static final RegistryObject<DataComponentType<Integer>> CAR_LIVERY = DATA_COMPONENTS.register("car_livery",
+        () -> DataComponentType.<Integer>builder()
+            .persistent(Codec.intRange(0, 9))
+            .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.VAR_INT)
+            .build()
+    );
+
     private OWRDataComponents() {
     }
 

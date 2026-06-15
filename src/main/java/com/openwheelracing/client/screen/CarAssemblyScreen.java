@@ -1,5 +1,7 @@
 package com.openwheelracing.client.screen;
 
+import com.openwheelracing.content.car.CarLivery;
+import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.menu.CarAssemblyMenu;
 import com.openwheelracing.network.OWRNetwork;
 import net.minecraftforge.network.PacketDistributor;
@@ -27,8 +29,9 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
         addTuneButtons(1, 27);
         addTuneButtons(2, 40);
         addTuneButtons(3, 53);
+        addLiveryButtons(66);
         addRenderableWidget(Button.builder(Component.literal("Repair"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.RepairCarMessage(), PacketDistributor.SERVER.noArg()))
-            .bounds(leftPos + 126, topPos + 70, 42, 14)
+            .bounds(leftPos + 126, topPos + 78, 42, 14)
             .build());
     }
 
@@ -50,6 +53,11 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
         graphics.drawString(font, "T", x + 127, y + 29, 0xFF404040, false);
         graphics.drawString(font, "A", x + 127, y + 42, 0xFF404040, false);
         graphics.drawString(font, "G", x + 127, y + 55, 0xFF404040, false);
+        graphics.drawString(font, "L", x + 127, y + 68, 0xFF404040, false);
+        if (!menu.getOutputStack().isEmpty()) {
+            String name = CarLivery.fromIndex(PrototypeCarItem.getLivery(menu.getOutputStack())).displayName();
+            graphics.drawString(font, name, x + 78, y + 72, 0xFF404040, false);
+        }
     }
 
     @Override
@@ -64,6 +72,15 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
             .bounds(leftPos + 139, topPos + yOffset, 12, 11)
             .build());
         addRenderableWidget(Button.builder(Component.literal("+"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.TuneCarMessage(setupSlot, 1), PacketDistributor.SERVER.noArg()))
+            .bounds(leftPos + 158, topPos + yOffset, 12, 11)
+            .build());
+    }
+
+    private void addLiveryButtons(int yOffset) {
+        addRenderableWidget(Button.builder(Component.literal("-"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.CycleLiveryMessage(-1), PacketDistributor.SERVER.noArg()))
+            .bounds(leftPos + 139, topPos + yOffset, 12, 11)
+            .build());
+        addRenderableWidget(Button.builder(Component.literal("+"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.CycleLiveryMessage(1), PacketDistributor.SERVER.noArg()))
             .bounds(leftPos + 158, topPos + yOffset, 12, 11)
             .build());
     }

@@ -2,6 +2,7 @@ package com.openwheelracing.network;
 
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import com.openwheelracing.OpenwheelRacing;
+import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.menu.CarAssemblyMenu;
@@ -46,6 +47,11 @@ public final class OWRNetwork {
             .encoder(RepairCarMessage::encode)
             .decoder(RepairCarMessage::decode)
             .consumerMainThread(RepairCarMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(CycleLiveryMessage.class)
+            .encoder(CycleLiveryMessage::encode)
+            .decoder(CycleLiveryMessage::decode)
+            .consumerMainThread(CycleLiveryMessage::handle)
             .add();
         CHANNEL.messageBuilder(ShiftMessage.class)
             .encoder(ShiftMessage::encode)
@@ -143,6 +149,33 @@ public final class OWRNetwork {
                 }
                 player.getInventory().clearOrCountMatchingItems(item -> item.is(OWRItems.RUBBER.get()), 1, player.inventoryMenu.getCraftSlots());
                 stack.set(OWRDataComponents.CAR_DAMAGE.get(), Math.max(0, damage - 25));
+                menu.slotsChanged(menu.getContainer());
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record CycleLiveryMessage(int delta) {
+        private static void encode(CycleLiveryMessage message, FriendlyByteBuf buffer) {
+            buffer.writeInt(message.delta);
+        }
+
+        private static CycleLiveryMessage decode(FriendlyByteBuf buffer) {
+            return new CycleLiveryMessage(buffer.readInt());
+        }
+
+        private static void handle(CycleLiveryMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.containerMenu instanceof CarAssemblyMenu menu)) {
+                    return;
+                }
+                ItemStack stack = menu.getOutputStack();
+                if (!stack.is(OWRItems.PROTOTYPE_CAR_SPAWN.get())) {
+                    return;
+                }
+                int current = PrototypeCarItem.getLivery(stack);
+                stack.set(OWRDataComponents.CAR_LIVERY.get(), CarLivery.wrapIndex(current + message.delta));
                 menu.slotsChanged(menu.getContainer());
             });
             context.setPacketHandled(true);

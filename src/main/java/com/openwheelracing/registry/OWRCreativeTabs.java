@@ -1,6 +1,8 @@
 package com.openwheelracing.registry;
 
 import com.openwheelracing.OpenwheelRacing;
+import com.openwheelracing.content.car.CarLivery;
+import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -44,7 +46,9 @@ public final class OWRCreativeTabs {
             output.accept(OWRItems.AERO_KIT.get());
             output.accept(OWRItems.GEARBOX.get());
             output.accept(OWRItems.STEERING_CONTROLS.get());
-            output.accept(PrototypeCarItem.createWithDefaultSetup());
+            for (int livery = 0; livery < CarLivery.count(); livery++) {
+                output.accept(PrototypeCarItem.create(PrototypeCarSetup.DEFAULT, 0.0f, 0.0f, livery));
+            }
         })
         .build()
     );

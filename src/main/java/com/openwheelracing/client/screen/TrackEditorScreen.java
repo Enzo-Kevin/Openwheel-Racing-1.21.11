@@ -1,5 +1,10 @@
 package com.openwheelracing.client.screen;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 import com.openwheelracing.content.track.TrackEditorMaterial;
 import com.openwheelracing.content.track.TrackEditorMode;
 import com.openwheelracing.content.track.TrackEditorOperation;
@@ -8,6 +13,7 @@ import com.openwheelracing.network.OWRNetwork;
 import com.openwheelracing.registry.OWRBlocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -21,6 +27,10 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -57,6 +67,11 @@ public class TrackEditorScreen extends Screen {
     private static final int SIDE_PANEL_WIDTH = 280;
     private static final int PANEL_GAP = 12;
     private static final int OUTER_MARGIN = 20;
+    private static final int IMPORT_CHUNK_SIZE = 64;
+    private static final int IMPORT_SEND_DISTANCE = 480;
+    private static final double IMPORT_SAMPLE_SPACING = 3.0;
+    private static final String IMPORT_PATH = "openwheelracing/imports/lap-simulator-track.json";
+    private static final List<QueuedImportOperation> IMPORT_QUEUE = new ArrayList<>();
 
     private final List<BlockPos> points = new ArrayList<>();
     private int modeIndex;
@@ -73,6 +88,9 @@ public class TrackEditorScreen extends Screen {
     private boolean dragging;
     private double lastDragX;
     private double lastDragY;
+    private Component importStatus;
+    private Button clearQueueButton;
+    private int lastQueuedCount;
 
     public TrackEditorScreen() {
         super(Component.translatable("screen.openwheelracing.track_editor"));
@@ -92,6 +110,11 @@ public class TrackEditorScreen extends Screen {
             editY = minecraft.player.blockPosition().getY();
             initialized = true;
         }
+        MapBounds map = mapBounds();
+        clearQueueButton = addRenderableWidget(Button.builder(Component.translatable("screen.openwheelracing.track_editor.clear_queue"), button -> clearImportQueue())
+            .bounds(map.right + PANEL_GAP + 8, map.top + 214, SIDE_PANEL_WIDTH - 16, 20)
+            .build());
+        updateClearQueueButton();
     }
 
     @Override
@@ -150,6 +173,10 @@ public class TrackEditorScreen extends Screen {
             OWRNetwork.CHANNEL.send(new OWRNetwork.TrackEditorUndoMessage(), PacketDistributor.SERVER.noArg());
             return true;
         }
+        if (keyCode == GLFW.GLFW_KEY_C) {
+            clearImportQueue();
+            return true;
+        }
         switch (keyCode) {
             case GLFW.GLFW_KEY_M -> {
                 modeIndex = (modeIndex + 1) % MODES.length;
@@ -166,6 +193,10 @@ public class TrackEditorScreen extends Screen {
             }
             case GLFW.GLFW_KEY_O -> {
                 runoffMaterialIndex = (runoffMaterialIndex + 1) % RUNOFF_MATERIALS.length;
+                return true;
+            }
+            case GLFW.GLFW_KEY_I -> {
+                importLapSimulatorTrack();
                 return true;
             }
             case GLFW.GLFW_KEY_EQUAL, GLFW.GLFW_KEY_KP_ADD -> {
@@ -221,11 +252,18 @@ public class TrackEditorScreen extends Screen {
     }
 
     @Override
+    public void tick() {
+        flushImportQueue();
+    }
+
+    @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderMap(graphics);
+        renderQueuedImports(graphics);
         renderPendingGeometry(graphics);
         renderPlayerMarker(graphics);
         renderSidePanel(graphics);
+        super.render(graphics, mouseX, mouseY, partialTick);
     }
 
     private void renderMap(GuiGraphics graphics) {
@@ -287,6 +325,15 @@ public class TrackEditorScreen extends Screen {
         graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.scale_100m"), x + length + 6, y - 4, 0xFFFFFFFF, false);
     }
 
+    private void renderQueuedImports(GuiGraphics graphics) {
+        for (QueuedImportOperation queued : IMPORT_QUEUE) {
+            List<BlockPos> queuedPoints = queued.operation().points();
+            for (int i = 1; i < queuedPoints.size(); i++) {
+                drawLine(graphics, queuedPoints.get(i - 1), queuedPoints.get(i), 0xFF55FFAA);
+            }
+        }
+    }
+
     private void renderPendingGeometry(GuiGraphics graphics) {
         for (int i = 0; i < points.size(); i++) {
             BlockPos point = points.get(i);
@@ -318,7 +365,7 @@ public class TrackEditorScreen extends Screen {
         MapBounds map = mapBounds();
         int x = map.right + PANEL_GAP;
         int y = map.top;
-        int h = 190;
+        int h = 236;
         graphics.fill(x, y, x + panelWidth, y + h, 0xCC000000);
         graphics.renderOutline(x, y, panelWidth, h, 0xFFDA1A20);
         graphics.drawString(font, title, x + 8, y + 8, 0xFFFFFFFF, false);
@@ -335,6 +382,240 @@ public class TrackEditorScreen extends Screen {
         graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help3"), x + 8, y + 146, 0xFFB7FFB7, false);
         graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help4"), x + 8, y + 158, 0xFFB7FFB7, false);
         graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help5"), x + 8, y + 170, 0xFFB7FFB7, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help6"), x + 8, y + 182, 0xFFB7FFB7, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help7"), x + 8, y + 194, 0xFFB7FFB7, false);
+        if (importStatus != null) {
+            graphics.drawString(font, importStatus, x + 8, y + 206, 0xFFFFDD55, false);
+        }
+    }
+
+    private void importLapSimulatorTrack() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            return;
+        }
+        Path path = minecraft.gameDirectory.toPath().resolve(IMPORT_PATH);
+        try {
+            List<LapSimulatorSection> sections = parseLapSimulatorSections(Files.readString(path, StandardCharsets.UTF_8));
+            List<BlockPos> importedPoints = mapImportedPoints(sampleLapSimulatorCenterline(sections), sections.get(0));
+            if (importedPoints.size() < 2) {
+                importStatus = Component.translatable("screen.openwheelracing.track_editor.import_failed", "not enough unique points");
+                return;
+            }
+            int chunks = queueImportedPath(importedPoints);
+            updateImportQueueStatus(Component.translatable("screen.openwheelracing.track_editor.import_queued", sections.size(), importedPoints.size(), chunks));
+        } catch (IOException e) {
+            importStatus = Component.translatable("screen.openwheelracing.track_editor.import_failed", IMPORT_PATH);
+        } catch (IllegalArgumentException | JsonSyntaxException e) {
+            importStatus = Component.translatable("screen.openwheelracing.track_editor.import_failed", e.getMessage());
+        }
+    }
+
+    private List<LapSimulatorSection> parseLapSimulatorSections(String json) {
+        JsonElement root = JsonParser.parseString(json);
+        JsonArray rawSections;
+        if (root.isJsonArray()) {
+            rawSections = root.getAsJsonArray();
+        } else if (root.isJsonObject() && root.getAsJsonObject().get("sections") instanceof JsonArray sections) {
+            rawSections = sections;
+        } else {
+            throw new IllegalArgumentException("missing sections array");
+        }
+        if (rawSections.size() < 2) {
+            throw new IllegalArgumentException("track needs at least two sections");
+        }
+        List<LapSimulatorSection> sections = new ArrayList<>(rawSections.size());
+        for (int i = 0; i < rawSections.size(); i++) {
+            JsonElement element = rawSections.get(i);
+            if (!element.isJsonObject()) {
+                throw new IllegalArgumentException("section " + i + " is not an object");
+            }
+            JsonObject section = element.getAsJsonObject();
+            sections.add(new LapSimulatorSection(
+                requiredString(section, "id", i),
+                requiredFiniteDouble(section, "x", i),
+                requiredFiniteDouble(section, "y", i),
+                requiredFiniteDouble(section, "direction", i),
+                requiredPositiveDouble(section, "width", i)
+            ));
+        }
+        return sections;
+    }
+
+    private String requiredString(JsonObject object, String key, int sectionIndex) {
+        JsonElement value = object.get(key);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString() || value.getAsString().isBlank()) {
+            throw new IllegalArgumentException("section " + sectionIndex + " missing " + key);
+        }
+        return value.getAsString();
+    }
+
+    private double requiredPositiveDouble(JsonObject object, String key, int sectionIndex) {
+        double value = requiredFiniteDouble(object, key, sectionIndex);
+        if (value <= 0.0) {
+            throw new IllegalArgumentException("section " + sectionIndex + " " + key + " must be > 0");
+        }
+        return value;
+    }
+
+    private double requiredFiniteDouble(JsonObject object, String key, int sectionIndex) {
+        JsonElement value = object.get(key);
+        if (value == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) {
+            throw new IllegalArgumentException("section " + sectionIndex + " missing " + key);
+        }
+        double number = value.getAsDouble();
+        if (!Double.isFinite(number)) {
+            throw new IllegalArgumentException("section " + sectionIndex + " invalid " + key);
+        }
+        return number;
+    }
+
+    private List<Vec2> sampleLapSimulatorCenterline(List<LapSimulatorSection> sections) {
+        List<Vec2> points = new ArrayList<>();
+        for (int i = 0; i < sections.size(); i++) {
+            LapSimulatorSection start = sections.get(i);
+            LapSimulatorSection end = sections.get((i + 1) % sections.size());
+            sampleBezierSegment(points, start, end);
+        }
+        return points;
+    }
+
+    private void sampleBezierSegment(List<Vec2> points, LapSimulatorSection start, LapSimulatorSection end) {
+        Vec2 p0 = new Vec2(start.x(), start.y());
+        Vec2 p3 = new Vec2(end.x(), end.y());
+        double chord = p0.distanceTo(p3);
+        if (chord < 0.01) {
+            return;
+        }
+        double alpha = chord / 3.0;
+        Vec2 c0 = p0.add(Vec2.fromDirection(start.direction()).scale(alpha));
+        Vec2 c1 = p3.subtract(Vec2.fromDirection(end.direction()).scale(alpha));
+        int subdivisions = Math.max(12, Math.min(256, (int) Math.ceil(chord / 2.0)));
+        Vec2 previous = p0;
+        double carried = points.isEmpty() ? 0.0 : IMPORT_SAMPLE_SPACING;
+        addSampledPoint(points, p0);
+        for (int i = 1; i <= subdivisions; i++) {
+            Vec2 current = cubic(p0, c0, c1, p3, i / (double) subdivisions);
+            double segmentLength = previous.distanceTo(current);
+            while (carried + segmentLength >= IMPORT_SAMPLE_SPACING) {
+                double t = (IMPORT_SAMPLE_SPACING - carried) / segmentLength;
+                Vec2 sampled = previous.lerp(current, t);
+                addSampledPoint(points, sampled);
+                previous = sampled;
+                segmentLength = previous.distanceTo(current);
+                carried = 0.0;
+            }
+            carried += segmentLength;
+            previous = current;
+        }
+    }
+
+    private Vec2 cubic(Vec2 p0, Vec2 c0, Vec2 c1, Vec2 p3, double t) {
+        double u = 1.0 - t;
+        return new Vec2(
+            u * u * u * p0.x() + 3.0 * u * u * t * c0.x() + 3.0 * u * t * t * c1.x() + t * t * t * p3.x(),
+            u * u * u * p0.y() + 3.0 * u * u * t * c0.y() + 3.0 * u * t * t * c1.y() + t * t * t * p3.y()
+        );
+    }
+
+    private void addSampledPoint(List<Vec2> points, Vec2 point) {
+        if (points.isEmpty() || points.get(points.size() - 1).distanceTo(point) >= 0.5) {
+            points.add(point);
+        }
+    }
+
+    private List<BlockPos> mapImportedPoints(List<Vec2> importedPoints, LapSimulatorSection origin) {
+        List<BlockPos> mapped = new ArrayList<>(importedPoints.size());
+        BlockPos previous = null;
+        int anchorX = (int) Math.round(centerX);
+        int anchorZ = (int) Math.round(centerZ);
+        for (Vec2 point : importedPoints) {
+            BlockPos pos = new BlockPos(
+                (int) Math.round(anchorX + point.x() - origin.x()),
+                editY,
+                (int) Math.round(anchorZ + point.y() - origin.y())
+            );
+            if (!pos.equals(previous)) {
+                mapped.add(pos);
+                previous = pos;
+            }
+        }
+        if (mapped.size() > 1 && mapped.get(0).equals(mapped.get(mapped.size() - 1))) {
+            mapped.remove(mapped.size() - 1);
+        }
+        return mapped;
+    }
+
+    private int queueImportedPath(List<BlockPos> importedPoints) {
+        int chunks = 0;
+        for (int start = 0; start < importedPoints.size() - 1; start += IMPORT_CHUNK_SIZE - 1) {
+            int end = Math.min(importedPoints.size(), start + IMPORT_CHUNK_SIZE);
+            List<BlockPos> chunk = new ArrayList<>(importedPoints.subList(start, end));
+            if (chunk.size() < 2) {
+                continue;
+            }
+            IMPORT_QUEUE.add(new QueuedImportOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, material(), width, chunk, facing(), preset(), runoffMaterial())));
+            chunks++;
+        }
+        if (importedPoints.size() > 2) {
+            List<BlockPos> closingChunk = List.of(importedPoints.get(importedPoints.size() - 1), importedPoints.get(0));
+            IMPORT_QUEUE.add(new QueuedImportOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, material(), width, closingChunk, facing(), preset(), runoffMaterial())));
+            chunks++;
+        }
+        return chunks;
+    }
+
+    private void flushImportQueue() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null || IMPORT_QUEUE.isEmpty()) {
+            return;
+        }
+        BlockPos playerPos = minecraft.player.blockPosition();
+        int sent = 0;
+        for (int i = 0; i < IMPORT_QUEUE.size(); ) {
+            QueuedImportOperation queued = IMPORT_QUEUE.get(i);
+            if (!isOperationNearPlayer(queued.operation(), playerPos)) {
+                i++;
+                continue;
+            }
+            OWRNetwork.CHANNEL.send(new OWRNetwork.TrackEditorPlaceMessage(queued.operation()), PacketDistributor.SERVER.noArg());
+            IMPORT_QUEUE.remove(i);
+            sent++;
+        }
+        if (sent > 0 || lastQueuedCount != IMPORT_QUEUE.size()) {
+            updateImportQueueStatus(Component.translatable("screen.openwheelracing.track_editor.import_queue", IMPORT_QUEUE.size()));
+        }
+    }
+
+    private void clearImportQueue() {
+        int cleared = IMPORT_QUEUE.size();
+        if (cleared <= 0) {
+            updateClearQueueButton();
+            return;
+        }
+        IMPORT_QUEUE.clear();
+        updateImportQueueStatus(Component.translatable("screen.openwheelracing.track_editor.import_queue_cleared", cleared));
+    }
+
+    private void updateImportQueueStatus(Component status) {
+        lastQueuedCount = IMPORT_QUEUE.size();
+        importStatus = status;
+        updateClearQueueButton();
+    }
+
+    private void updateClearQueueButton() {
+        if (clearQueueButton != null) {
+            clearQueueButton.active = !IMPORT_QUEUE.isEmpty();
+        }
+    }
+
+    private boolean isOperationNearPlayer(TrackEditorOperation operation, BlockPos playerPos) {
+        for (BlockPos point : operation.points()) {
+            if (playerPos.distManhattan(point) > IMPORT_SEND_DISTANCE) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void addPoint(BlockPos point) {
@@ -537,6 +818,41 @@ public class TrackEditorScreen extends Screen {
         int left = Math.max(OUTER_MARGIN, (this.width - totalWidth) / 2);
         int top = Math.max(OUTER_MARGIN, (this.height - availableHeight) / 2);
         return new MapBounds(left, top, left + mapWidth, top + availableHeight);
+    }
+
+    private record QueuedImportOperation(TrackEditorOperation operation) {
+    }
+
+    private record LapSimulatorSection(String id, double x, double y, double direction, double width) {
+    }
+
+    private record Vec2(double x, double y) {
+        private static Vec2 fromDirection(double degrees) {
+            double radians = Math.toRadians(degrees);
+            return new Vec2(Math.cos(radians), Math.sin(radians));
+        }
+
+        private Vec2 add(Vec2 other) {
+            return new Vec2(x + other.x, y + other.y);
+        }
+
+        private Vec2 subtract(Vec2 other) {
+            return new Vec2(x - other.x, y - other.y);
+        }
+
+        private Vec2 scale(double scalar) {
+            return new Vec2(x * scalar, y * scalar);
+        }
+
+        private Vec2 lerp(Vec2 other, double t) {
+            return new Vec2(x + (other.x - x) * t, y + (other.y - y) * t);
+        }
+
+        private double distanceTo(Vec2 other) {
+            double dx = other.x - x;
+            double dy = other.y - y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
     }
 
     private record MapBounds(int left, int top, int right, int bottom) {

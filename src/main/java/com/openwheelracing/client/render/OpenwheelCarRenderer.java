@@ -3,6 +3,7 @@ package com.openwheelracing.client.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -26,15 +27,6 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     private static final RenderType RT_DARK = RenderTypes.entitySolid(DARK_TEX);
     private static final RenderType RT_WHEEL = RenderTypes.entitySolid(WHEEL_TEX);
 
-    private static final int NAV_TOP = rgb(18, 38, 98);
-    private static final int NAV_SIDE = rgb(12, 26, 72);
-    private static final int NAV_BOTTOM = rgb(8, 16, 48);
-    private static final int GOLD_TOP = rgb(240, 185, 20);
-    private static final int GOLD_SIDE = rgb(200, 148, 10);
-    private static final int GOLD_BOTTOM = rgb(150, 108, 5);
-    private static final int SKY_TOP = rgb(80, 160, 220);
-    private static final int SKY_SIDE = rgb(55, 120, 180);
-    private static final int SKY_BOTTOM = rgb(35, 85, 140);
     private static final int HALO_TOP = rgb(40, 40, 44);
     private static final int HALO_SIDE = rgb(25, 25, 28);
     private static final int HALO_BOTTOM = rgb(12, 12, 14);
@@ -72,6 +64,7 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         state.frontWheelSteerDegrees = car.getFrontWheelSteerDegrees();
         state.lightCoords = 15728880;
         state.tyreCompound = car.getSetup().grip();
+        state.livery = car.getLivery();
     }
 
     @Override
@@ -84,34 +77,35 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
 
         int light = state.lightCoords;
         int rimColor = compoundRimColor(state.tyreCompound);
+        CarLivery livery = CarLivery.fromIndex(state.livery);
 
         nodeCollector.submitCustomGeometry(poseStack, RT_BODY, (pose, consumer) -> {
-            box(consumer, pose, -0.38f, 0.12f, -1.35f, 0.38f, 0.58f, 0.98f, NAV_TOP, NAV_SIDE, NAV_BOTTOM, light);
-            box(consumer, pose, -0.16f, 0.16f, -2.80f, 0.16f, 0.44f, -1.35f, NAV_TOP, NAV_SIDE, NAV_BOTTOM, light);
-            box(consumer, pose, -0.78f, 0.11f, -0.88f, -0.38f, 0.48f, 0.72f, NAV_TOP, NAV_SIDE, NAV_BOTTOM, light);
-            box(consumer, pose, 0.38f, 0.11f, -0.88f, 0.78f, 0.48f, 0.72f, NAV_TOP, NAV_SIDE, NAV_BOTTOM, light);
-            box(consumer, pose, -0.12f, 0.58f, 0.02f, 0.12f, 1.02f, 0.92f, NAV_TOP, NAV_SIDE, NAV_BOTTOM, light);
-            box(consumer, pose, -0.34f, 0.12f, 0.82f, 0.34f, 0.38f, 1.20f, NAV_TOP, NAV_SIDE, NAV_BOTTOM, light);
-            box(consumer, pose, -0.24f, 0.42f, -0.90f, 0.24f, 0.66f, -0.12f, NAV_TOP, NAV_SIDE, NAV_BOTTOM, light);
+            box(consumer, pose, -0.38f, 0.12f, -1.35f, 0.38f, 0.58f, 0.98f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
+            box(consumer, pose, -0.16f, 0.16f, -2.80f, 0.16f, 0.44f, -1.35f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
+            box(consumer, pose, -0.78f, 0.11f, -0.88f, -0.38f, 0.48f, 0.72f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
+            box(consumer, pose, 0.38f, 0.11f, -0.88f, 0.78f, 0.48f, 0.72f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
+            box(consumer, pose, -0.12f, 0.58f, 0.02f, 0.12f, 1.02f, 0.92f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
+            box(consumer, pose, -0.34f, 0.12f, 0.82f, 0.34f, 0.38f, 1.20f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
+            box(consumer, pose, -0.24f, 0.42f, -0.90f, 0.24f, 0.66f, -0.12f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
         });
 
         nodeCollector.submitCustomGeometry(poseStack, RT_WHITE, (pose, consumer) -> {
-            box(consumer, pose, -0.065f, 0.46f, -2.76f, 0.065f, 0.53f, -0.34f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, -0.79f, 0.40f, -0.60f, -0.39f, 0.52f, 0.50f, SKY_TOP, SKY_SIDE, SKY_BOTTOM, light);
-            box(consumer, pose, 0.39f, 0.40f, -0.60f, 0.79f, 0.52f, 0.50f, SKY_TOP, SKY_SIDE, SKY_BOTTOM, light);
-            box(consumer, pose, -0.07f, 1.03f, 0.12f, 0.07f, 1.14f, 0.82f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, -0.45f, 0.62f, 0.98f, 0.45f, 0.72f, 1.12f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
+            box(consumer, pose, -0.065f, 0.46f, -2.76f, 0.065f, 0.53f, -0.34f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
+            box(consumer, pose, -0.79f, 0.40f, -0.60f, -0.39f, 0.52f, 0.50f, livery.accent2Top(), livery.accent2Side(), livery.accent2Bottom(), light);
+            box(consumer, pose, 0.39f, 0.40f, -0.60f, 0.79f, 0.52f, 0.50f, livery.accent2Top(), livery.accent2Side(), livery.accent2Bottom(), light);
+            box(consumer, pose, -0.07f, 1.03f, 0.12f, 0.07f, 1.14f, 0.82f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
+            box(consumer, pose, -0.45f, 0.62f, 0.98f, 0.45f, 0.72f, 1.12f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
         });
 
         nodeCollector.submitCustomGeometry(poseStack, RT_DARK, (pose, consumer) -> {
             box(consumer, pose, -1.05f, 0.09f, -3.02f, 1.05f, 0.17f, -2.52f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
-            box(consumer, pose, -1.05f, 0.09f, -3.02f, -0.91f, 0.34f, -2.52f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, 0.91f, 0.09f, -3.02f, 1.05f, 0.34f, -2.52f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, -0.50f, 0.20f, -3.05f, 0.50f, 0.27f, -2.95f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
+            box(consumer, pose, -1.05f, 0.09f, -3.02f, -0.91f, 0.34f, -2.52f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
+            box(consumer, pose, 0.91f, 0.09f, -3.02f, 1.05f, 0.34f, -2.52f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
+            box(consumer, pose, -0.50f, 0.20f, -3.05f, 0.50f, 0.27f, -2.95f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
             box(consumer, pose, -0.88f, 0.98f, 1.12f, 0.88f, 1.08f, 1.46f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
-            box(consumer, pose, -0.88f, 0.44f, 1.12f, -0.74f, 1.08f, 1.46f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, 0.74f, 0.44f, 1.12f, 0.88f, 1.08f, 1.46f, GOLD_TOP, GOLD_SIDE, GOLD_BOTTOM, light);
-            box(consumer, pose, -0.88f, 0.76f, 1.22f, 0.88f, 0.85f, 1.34f, SKY_TOP, SKY_SIDE, SKY_BOTTOM, light);
+            box(consumer, pose, -0.88f, 0.44f, 1.12f, -0.74f, 1.08f, 1.46f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
+            box(consumer, pose, 0.74f, 0.44f, 1.12f, 0.88f, 1.08f, 1.46f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
+            box(consumer, pose, -0.88f, 0.76f, 1.22f, 0.88f, 0.85f, 1.34f, livery.accent2Top(), livery.accent2Side(), livery.accent2Bottom(), light);
             box(consumer, pose, -0.78f, 0.06f, -1.12f, 0.78f, 0.14f, 1.12f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
             box(consumer, pose, -0.55f, 0.06f, 1.02f, 0.55f, 0.26f, 1.34f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
         });
@@ -256,5 +250,6 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         public float frontWheelSteerDegrees;
         public int lightCoords;
         public int tyreCompound;
+        public int livery;
     }
 }

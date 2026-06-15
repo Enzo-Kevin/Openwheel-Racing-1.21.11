@@ -103,8 +103,13 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
         }
 
         ItemStack result = recipe.result().copy();
-        if (result.is(OWRItems.PROTOTYPE_CAR_SPAWN.get()) && result.get(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get()) == null) {
-            result.set(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get(), com.openwheelracing.content.car.PrototypeCarSetup.DEFAULT);
+        if (result.is(OWRItems.PROTOTYPE_CAR_SPAWN.get())) {
+            if (result.get(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get()) == null) {
+                result.set(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get(), com.openwheelracing.content.car.PrototypeCarSetup.DEFAULT);
+            }
+            if (result.get(com.openwheelracing.registry.OWRDataComponents.CAR_LIVERY.get()) == null) {
+                result.set(com.openwheelracing.registry.OWRDataComponents.CAR_LIVERY.get(), 0);
+            }
         }
 
         ItemStack output = getItem(SLOT_OUTPUT);

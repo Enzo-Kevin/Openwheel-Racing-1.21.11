@@ -1,5 +1,6 @@
 package com.openwheelracing.content.item;
 
+import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import com.openwheelracing.registry.OWRDataComponents;
@@ -28,14 +29,19 @@ public class PrototypeCarItem extends Item {
     }
 
     public static ItemStack createWithDefaultSetup() {
-        return create(PrototypeCarSetup.DEFAULT, 0.0f, 0.0f);
+        return create(PrototypeCarSetup.DEFAULT, 0.0f, 0.0f, 0);
     }
 
     public static ItemStack create(PrototypeCarSetup setup, float damage, float tyreWear) {
+        return create(setup, damage, tyreWear, 0);
+    }
+
+    public static ItemStack create(PrototypeCarSetup setup, float damage, float tyreWear, int livery) {
         ItemStack stack = new ItemStack(com.openwheelracing.registry.OWRItems.PROTOTYPE_CAR_SPAWN.get());
         stack.set(OWRDataComponents.CAR_SETUP.get(), setup);
         stack.set(OWRDataComponents.CAR_DAMAGE.get(), Math.max(0, Math.min(100, Math.round(damage))));
         stack.set(OWRDataComponents.TYRE_WEAR.get(), Math.max(0, Math.min(100, Math.round(tyreWear))));
+        stack.set(OWRDataComponents.CAR_LIVERY.get(), Math.max(0, Math.min(CarLivery.count() - 1, livery)));
         return stack;
     }
 
@@ -47,6 +53,11 @@ public class PrototypeCarItem extends Item {
     public static int getTyreWear(ItemStack stack) {
         Integer tyreWear = stack.get(OWRDataComponents.TYRE_WEAR.get());
         return tyreWear == null ? 0 : tyreWear;
+    }
+
+    public static int getLivery(ItemStack stack) {
+        Integer livery = stack.get(OWRDataComponents.CAR_LIVERY.get());
+        return livery == null ? 0 : Math.max(0, Math.min(CarLivery.count() - 1, livery));
     }
 
     @Override
@@ -66,6 +77,7 @@ public class PrototypeCarItem extends Item {
             car.setSetup(getSetup(stack));
             car.setDamagePercent(getDamage(stack));
             car.setTyreWearPercent(getTyreWear(stack));
+            car.setLivery(getLivery(stack));
             level.addFreshEntity(car);
 
             if (!player.getAbilities().instabuild) {
@@ -84,6 +96,7 @@ public class PrototypeCarItem extends Item {
         tooltip.accept(Component.translatable("tooltip.openwheelracing.prototype_car.grip", setup.grip() + 1).withStyle(ChatFormatting.GREEN));
         tooltip.accept(Component.translatable("tooltip.openwheelracing.prototype_car.aero", setup.aero()).withStyle(ChatFormatting.AQUA));
         tooltip.accept(Component.translatable("tooltip.openwheelracing.prototype_car.gearing", setup.gearing()).withStyle(ChatFormatting.GOLD));
+        tooltip.accept(Component.translatable("tooltip.openwheelracing.prototype_car.livery", CarLivery.fromIndex(getLivery(stack)).displayName()).withStyle(ChatFormatting.BLUE));
         tooltip.accept(Component.translatable("tooltip.openwheelracing.prototype_car.damage", getDamage(stack)).withStyle(ChatFormatting.DARK_RED));
         tooltip.accept(Component.translatable("tooltip.openwheelracing.prototype_car.tyres", Math.max(0, 100 - getTyreWear(stack))).withStyle(ChatFormatting.YELLOW));
     }

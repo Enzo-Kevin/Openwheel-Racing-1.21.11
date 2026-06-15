@@ -1,6 +1,7 @@
 package com.openwheelracing.content.entity;
 
 import com.mojang.logging.LogUtils;
+import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.race.OWRLapRecords;
@@ -50,6 +51,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final EntityDataAccessor<Boolean> CHECKPOINT_ARMED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> PIT_STOP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> ABS_ENABLED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Integer> LIVERY = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
 
     private static final int PIT_STOP_DURATION = 60; // 3 seconds
     private static final int PIT_RUBBER_COST = 2;    // rubber items consumed per stop
@@ -105,6 +107,10 @@ public class OpenwheelCarEntity extends Entity {
     private static final double SLIP_ANGLE_DEADBAND = Math.toRadians(0.15);
     private static final double FRONT_TYRE_RELAXATION_LENGTH = 0.42;
     private static final double REAR_TYRE_RELAXATION_LENGTH = 0.45;
+    private static final double[] TRACK_WHEEL_SIDE_OFFSETS = {-1.34, 1.34};
+    private static final double[] TRACK_WHEEL_LENGTH_OFFSETS = {-2.95, 1.55};
+    private static final double[] TRACK_PATCH_SIDE_OFFSETS = {-0.18, 0.0, 0.18};
+    private static final double[] TRACK_PATCH_LENGTH_OFFSETS = {-0.32, 0.0, 0.32};
     private PrototypeCarSetup setup = PrototypeCarSetup.DEFAULT;
     private double previousHorizontalSpeed;
     private long lapStartedAt = -1L;
@@ -178,6 +184,7 @@ public class OpenwheelCarEntity extends Entity {
         builder.define(CHECKPOINT_ARMED, false);
         builder.define(PIT_STOP_TICKS, 0);
         builder.define(ABS_ENABLED, true);
+        builder.define(LIVERY, 0);
     }
 
     @Override
@@ -199,6 +206,14 @@ public class OpenwheelCarEntity extends Entity {
 
     public void setTyreWearPercent(float tyreWear) {
         entityData.set(TYRE_WEAR, Math.max(0.0f, Math.min(100.0f, tyreWear)));
+    }
+
+    public void setLivery(int livery) {
+        entityData.set(LIVERY, Math.max(0, Math.min(CarLivery.count() - 1, livery)));
+    }
+
+    public int getLivery() {
+        return entityData.get(LIVERY);
     }
 
     public int getGear() {
@@ -323,11 +338,6 @@ public class OpenwheelCarEntity extends Entity {
 
         long gameTime = level().getGameTime();
         if (lapStartedAt >= 0L) {
-            if (visitedCheckpoints.isEmpty()) {
-                invalidateLap("no checkpoints crossed");
-                startLap(gameTime, Component.literal("Lap started — cross all checkpoints"));
-                return;
-            }
             completeLap(gameTime);
         } else {
             messageDriver(Component.literal("Lap started"));
@@ -448,7 +458,7 @@ public class OpenwheelCarEntity extends Entity {
 
         // Sneak + empty hand on empty car → pick up as item
         if (getPassengers().isEmpty() && player.isShiftKeyDown() && player.getItemInHand(hand).isEmpty()) {
-            ItemStack item = PrototypeCarItem.create(setup, getDamagePercent(), getTyreWearPercent());
+            ItemStack item = PrototypeCarItem.create(setup, getDamagePercent(), getTyreWearPercent(), getLivery());
             if (!player.addItem(item)) {
                 player.drop(item, false);
             }
@@ -537,6 +547,7 @@ public class OpenwheelCarEntity extends Entity {
         entityData.set(RPM, input.getIntOr("Rpm", 900));
         entityData.set(DAMAGE, (float) input.getDoubleOr("Damage", 0.0));
         entityData.set(TYRE_WEAR, (float) input.getDoubleOr("TyreWear", 0.0));
+        setLivery(input.getIntOr("Livery", 0));
         entityData.set(CURRENT_LAP_TICKS, input.getIntOr("CurrentLapTicks", 0));
         entityData.set(BEST_LAP_TICKS, input.getIntOr("BestLapTicks", 0));
         entityData.set(CHECKPOINT_ARMED, input.getBooleanOr("CheckpointArmed", false));
@@ -555,6 +566,7 @@ public class OpenwheelCarEntity extends Entity {
         output.putInt("Rpm", getRpm());
         output.putDouble("Damage", getDamagePercent());
         output.putDouble("TyreWear", getTyreWearPercent());
+        output.putInt("Livery", getLivery());
         output.putInt("CurrentLapTicks", getCurrentLapTicks());
         output.putInt("BestLapTicks", getBestLapTicks());
         output.putBoolean("CheckpointArmed", hasCheckpoint());
@@ -678,12 +690,23 @@ public class OpenwheelCarEntity extends Entity {
     private boolean isOnTrackSurface() {
         double yaw = Math.toRadians(getYRot());
         Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
-        Vec3 right   = new Vec3(forward.z, 0.0, -forward.x);
-        double[] sideSamples = {-0.95, 0.0, 0.95};
-        double[] lengthSamples = {-1.35, 0.0, 1.35};
-        for (double side : sideSamples) {
-            for (double length : lengthSamples) {
-                Vec3 samplePos = position().add(right.scale(side)).add(forward.scale(length));
+        Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
+        for (double side : TRACK_WHEEL_SIDE_OFFSETS) {
+            for (double length : TRACK_WHEEL_LENGTH_OFFSETS) {
+                if (!wheelPatchTouchesTrack(forward, right, side, length)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean wheelPatchTouchesTrack(Vec3 forward, Vec3 right, double wheelSide, double wheelLength) {
+        for (double sidePatch : TRACK_PATCH_SIDE_OFFSETS) {
+            for (double lengthPatch : TRACK_PATCH_LENGTH_OFFSETS) {
+                Vec3 samplePos = position()
+                    .add(right.scale(wheelSide + sidePatch))
+                    .add(forward.scale(wheelLength + lengthPatch));
                 if (getSurfaceAt(samplePos).countsAsTrack) {
                     return true;
                 }
@@ -696,20 +719,24 @@ public class OpenwheelCarEntity extends Entity {
         double yaw = Math.toRadians(getYRot());
         Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
         Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
-        double[] sideSamples = {-0.95, 0.0, 0.95};
-        double[] lengthSamples = {-1.35, 0.0, 1.35};
-        for (double side : sideSamples) {
-            for (double length : lengthSamples) {
-                Vec3 samplePos = position().add(right.scale(side)).add(forward.scale(length));
-                BlockPos pos = BlockPos.containing(samplePos.x, getBoundingBox().minY - 0.05, samplePos.z);
-                Block block = level().getBlockState(pos).getBlock();
-                if (block == OWRBlocks.START_FINISH.get()) {
-                    crossStartFinishLine(pos, level().getBlockState(pos).getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING));
-                    return;
-                }
-                if (block == OWRBlocks.CHECKPOINT.get()) {
-                    crossCheckpoint(pos, level().getBlockState(pos).getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING));
-                    return;
+        for (double side : TRACK_WHEEL_SIDE_OFFSETS) {
+            for (double length : TRACK_WHEEL_LENGTH_OFFSETS) {
+                for (double sidePatch : TRACK_PATCH_SIDE_OFFSETS) {
+                    for (double lengthPatch : TRACK_PATCH_LENGTH_OFFSETS) {
+                        Vec3 samplePos = position()
+                            .add(right.scale(side + sidePatch))
+                            .add(forward.scale(length + lengthPatch));
+                        BlockPos pos = BlockPos.containing(samplePos.x, getBoundingBox().minY - 0.05, samplePos.z);
+                        Block block = level().getBlockState(pos).getBlock();
+                        if (block == OWRBlocks.START_FINISH.get()) {
+                            crossStartFinishLine(pos, level().getBlockState(pos).getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING));
+                            return;
+                        }
+                        if (block == OWRBlocks.CHECKPOINT.get()) {
+                            crossCheckpoint(pos, level().getBlockState(pos).getValue(net.minecraft.world.level.block.HorizontalDirectionalBlock.FACING));
+                            return;
+                        }
+                    }
                 }
             }
         }

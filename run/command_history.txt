@@ -1,16 +1,4 @@
 /kill @e[type=openwheelracing:prototype_car]
-/gamemode survival
-/kill @e[type=openwheelracing:prototype_car]
-/give @s openwheelracing:prototype_car_spawn
-/tp @e[type=openwheelracing:prototype_car] @s
-/kill @e[type=openwheelracing:prototype_car]
-/give @s openwheelracing:prototype_car_spawn
-/time set 1
-/kill @e[type=openwheelracing:prototype_car]
-/give @s openwheelracing:prototype_car_spawn
-/gamemode creative
-/tp 1000 0 1000
-/kill @e[type=openwheelracing:prototype_car]
 /tp 1000 0 1000
 /time set 1
 /tp 1000 0 1000
@@ -48,3 +36,15 @@
 /time set 1
 /kill @e[type=openwheelracing:prototype_car]
 /time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
+/tp 10000 0 -10000
+/tp 10000 0 10000
+/kill @e[type=openwheelracing:prototype_car]
+/tp -10000 0 -10000
+/kill @e[type=openwheelracing:prototype_car]
+/time set 1
+/kill @e[type=openwheelracing:prototype_car]
