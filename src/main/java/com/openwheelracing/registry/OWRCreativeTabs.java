@@ -20,6 +20,7 @@ public final class OWRCreativeTabs {
         .displayItems((parameters, output) -> {
             output.accept(OWRBlocks.CAR_ASSEMBLY_WORKSTATION_ITEM.get());
             output.accept(OWRBlocks.REFINERY_ITEM.get());
+            output.accept(OWRBlocks.RACE_DIRECTOR_ITEM.get());
             output.accept(OWRBlocks.CRUDE_OIL_DEPOSIT_ITEM.get());
             output.accept(OWRBlocks.ASPHALT_TRACK_ITEM.get());
             output.accept(OWRBlocks.ASPHALT_TRACK_SLAB_ITEM.get());
@@ -46,7 +47,6 @@ public final class OWRCreativeTabs {
             output.accept(OWRItems.AERO_KIT.get());
             output.accept(OWRItems.GEARBOX.get());
             output.accept(OWRItems.STEERING_CONTROLS.get());
-            output.accept(OWRItems.RACE_CONTROL.get());
             for (int livery = 0; livery < CarLivery.count(); livery++) {
                 output.accept(PrototypeCarItem.create(PrototypeCarSetup.DEFAULT, 0.0f, 0.0f, livery));
             }

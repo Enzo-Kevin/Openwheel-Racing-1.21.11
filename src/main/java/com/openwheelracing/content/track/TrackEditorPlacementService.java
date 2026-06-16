@@ -127,8 +127,8 @@ public final class TrackEditorPlacementService {
                 int previousX = Math.round(start.getX() + dx * ((i - 1) / (float) steps));
                 int previousZ = Math.round(start.getZ() + dz * ((i - 1) / (float) steps));
                 if (previousX != x && previousZ != z) {
-                    addPresetCrossSection(placements, new BlockPos(previousX, start.getY(), z), outward, operation, includePreset);
-                    addPresetCrossSection(placements, new BlockPos(x, start.getY(), previousZ), outward, operation, includePreset);
+                    addPresetCrossSection(placements, new BlockPos(previousX, start.getY(), z), outward, operation, false);
+                    addPresetCrossSection(placements, new BlockPos(x, start.getY(), previousZ), outward, operation, false);
                 }
             }
         }
@@ -156,6 +156,14 @@ public final class TrackEditorPlacementService {
             int x = Math.round(start.getX() + dx * (i / (float) steps));
             int z = Math.round(start.getZ() + dz * (i / (float) steps));
             addThickPoint(placements, new BlockPos(x, start.getY(), z), width, material, facing);
+            if (i > 0) {
+                int previousX = Math.round(start.getX() + dx * ((i - 1) / (float) steps));
+                int previousZ = Math.round(start.getZ() + dz * ((i - 1) / (float) steps));
+                if (previousX != x && previousZ != z) {
+                    addThickPoint(placements, new BlockPos(previousX, start.getY(), z), width, material, facing);
+                    addThickPoint(placements, new BlockPos(x, start.getY(), previousZ), width, material, facing);
+                }
+            }
         }
     }
 

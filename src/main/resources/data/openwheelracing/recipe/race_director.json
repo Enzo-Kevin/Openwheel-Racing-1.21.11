@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "RER",
+    "ISI",
+    "SSS"
+  ],
+  "key": {
+    "R": "minecraft:redstone",
+    "E": "openwheelracing:racing_electronics",
+    "I": "minecraft:iron_ingot",
+    "S": "minecraft:smooth_stone"
+  },
+  "result": {
+    "id": "openwheelracing:race_director",
+    "count": 1
+  }
+}

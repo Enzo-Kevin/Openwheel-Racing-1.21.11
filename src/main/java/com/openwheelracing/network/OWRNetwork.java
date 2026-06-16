@@ -6,6 +6,9 @@ import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.menu.CarAssemblyMenu;
+import com.openwheelracing.content.menu.RaceDirectorMenu;
+import com.openwheelracing.content.race.OWRLapRecords;
+import com.openwheelracing.content.race.OWRRaceControlState;
 import com.openwheelracing.content.track.TrackEditorMaterial;
 import com.openwheelracing.content.track.TrackEditorMode;
 import com.openwheelracing.content.track.TrackEditorOperation;
@@ -14,9 +17,12 @@ import com.openwheelracing.content.track.TrackEditorPreset;
 import com.openwheelracing.content.track.TrackEditorUndoStore;
 import com.openwheelracing.registry.OWRDataComponents;
 import com.openwheelracing.registry.OWRItems;
+import java.lang.reflect.Method;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -87,6 +93,31 @@ public final class OWRNetwork {
             .encoder(TrackEditorUndoMessage::encode)
             .decoder(TrackEditorUndoMessage::decode)
             .consumerMainThread(TrackEditorUndoMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(RaceDirectorToggleRuleMessage.class)
+            .encoder(RaceDirectorToggleRuleMessage::encode)
+            .decoder(RaceDirectorToggleRuleMessage::decode)
+            .consumerMainThread(RaceDirectorToggleRuleMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(RaceDirectorSetMinLapTicksMessage.class)
+            .encoder(RaceDirectorSetMinLapTicksMessage::encode)
+            .decoder(RaceDirectorSetMinLapTicksMessage::decode)
+            .consumerMainThread(RaceDirectorSetMinLapTicksMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(RaceDirectorSetPageMessage.class)
+            .encoder(RaceDirectorSetPageMessage::encode)
+            .decoder(RaceDirectorSetPageMessage::decode)
+            .consumerMainThread(RaceDirectorSetPageMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(RaceDirectorInvalidateLapMessage.class)
+            .encoder(RaceDirectorInvalidateLapMessage::encode)
+            .decoder(RaceDirectorInvalidateLapMessage::decode)
+            .consumerMainThread(RaceDirectorInvalidateLapMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(RaceDirectorSnapshotMessage.class)
+            .encoder(RaceDirectorSnapshotMessage::encode)
+            .decoder(RaceDirectorSnapshotMessage::decode)
+            .consumerMainThread(RaceDirectorSnapshotMessage::handle)
             .add();
     }
 
@@ -374,5 +405,197 @@ public final class OWRNetwork {
             });
             context.setPacketHandled(true);
         }
+    }
+
+    public static void sendRaceDirectorSnapshot(ServerPlayer player, RaceDirectorSnapshot snapshot) {
+        CHANNEL.send(new RaceDirectorSnapshotMessage(snapshot), net.minecraftforge.network.PacketDistributor.PLAYER.with(player));
+    }
+
+    public record RaceDirectorSnapshot(boolean checkpointCheckEnabled, boolean offTrackCheckEnabled, int minimumValidLapTicks, int page, int maxPage, int raceControlRevision, int lapRecordsRevision, List<RaceDirectorLapRow> laps) {
+        public static RaceDirectorSnapshot empty() {
+            return new RaceDirectorSnapshot(false, true, OWRLapRecords.DEFAULT_MIN_VALID_LAP_TICKS, 0, 0, 0, 0, List.of());
+        }
+    }
+
+    public record RaceDirectorLapRow(long id, String driverName, int lapTicks, int checkpointCount, boolean invalidated, String invalidationReason, long startFinishPos, int power, int grip, int aero, int gearing, int damagePercent, int tyreWearPercent, boolean absEnabled) {
+        public static RaceDirectorLapRow fromRecord(OWRLapRecords.LapRecord record) {
+            OWRLapRecords.CarSnapshot car = record.car();
+            return new RaceDirectorLapRow(record.id(), record.driverName(), record.lapTicks(), record.checkpointCount(), record.invalidated(), record.invalidationReason(), record.startFinishPos(), car.power(), car.grip(), car.aero(), car.gearing(), car.damagePercent(), car.tyreWearPercent(), car.absEnabled());
+        }
+
+        private static void encode(RaceDirectorLapRow row, FriendlyByteBuf buffer) {
+            buffer.writeLong(row.id);
+            buffer.writeUtf(row.driverName);
+            buffer.writeInt(row.lapTicks);
+            buffer.writeInt(row.checkpointCount);
+            buffer.writeBoolean(row.invalidated);
+            buffer.writeUtf(row.invalidationReason);
+            buffer.writeLong(row.startFinishPos);
+            buffer.writeInt(row.power);
+            buffer.writeInt(row.grip);
+            buffer.writeInt(row.aero);
+            buffer.writeInt(row.gearing);
+            buffer.writeInt(row.damagePercent);
+            buffer.writeInt(row.tyreWearPercent);
+            buffer.writeBoolean(row.absEnabled);
+        }
+
+        private static RaceDirectorLapRow decode(FriendlyByteBuf buffer) {
+            return new RaceDirectorLapRow(buffer.readLong(), buffer.readUtf(), buffer.readInt(), buffer.readInt(), buffer.readBoolean(), buffer.readUtf(), buffer.readLong(), buffer.readInt(), buffer.readInt(), buffer.readInt(), buffer.readInt(), buffer.readInt(), buffer.readInt(), buffer.readBoolean());
+        }
+    }
+
+    public record RaceDirectorSnapshotMessage(RaceDirectorSnapshot snapshot) {
+        private static void encode(RaceDirectorSnapshotMessage message, FriendlyByteBuf buffer) {
+            RaceDirectorSnapshot snapshot = message.snapshot;
+            buffer.writeBoolean(snapshot.checkpointCheckEnabled());
+            buffer.writeBoolean(snapshot.offTrackCheckEnabled());
+            buffer.writeInt(snapshot.minimumValidLapTicks());
+            buffer.writeInt(snapshot.page());
+            buffer.writeInt(snapshot.maxPage());
+            buffer.writeInt(snapshot.raceControlRevision());
+            buffer.writeInt(snapshot.lapRecordsRevision());
+            buffer.writeVarInt(snapshot.laps().size());
+            for (RaceDirectorLapRow row : snapshot.laps()) {
+                RaceDirectorLapRow.encode(row, buffer);
+            }
+        }
+
+        private static RaceDirectorSnapshotMessage decode(FriendlyByteBuf buffer) {
+            boolean checkpointCheckEnabled = buffer.readBoolean();
+            boolean offTrackCheckEnabled = buffer.readBoolean();
+            int minimumValidLapTicks = buffer.readInt();
+            int page = buffer.readInt();
+            int maxPage = buffer.readInt();
+            int raceControlRevision = buffer.readInt();
+            int lapRecordsRevision = buffer.readInt();
+            int lapCount = buffer.readVarInt();
+            java.util.ArrayList<RaceDirectorLapRow> laps = new java.util.ArrayList<>(lapCount);
+            for (int index = 0; index < lapCount; index++) {
+                laps.add(RaceDirectorLapRow.decode(buffer));
+            }
+            return new RaceDirectorSnapshotMessage(new RaceDirectorSnapshot(checkpointCheckEnabled, offTrackCheckEnabled, minimumValidLapTicks, page, maxPage, raceControlRevision, lapRecordsRevision, laps));
+        }
+
+        private static void handle(RaceDirectorSnapshotMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> applyRaceDirectorSnapshot(message.snapshot));
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record RaceDirectorToggleRuleMessage(int rule) {
+        public static final int CHECKPOINTS = 0;
+        public static final int OFF_TRACK = 1;
+
+        private static void encode(RaceDirectorToggleRuleMessage message, FriendlyByteBuf buffer) {
+            buffer.writeInt(message.rule);
+        }
+
+        private static RaceDirectorToggleRuleMessage decode(FriendlyByteBuf buffer) {
+            return new RaceDirectorToggleRuleMessage(buffer.readInt());
+        }
+
+        private static void handle(RaceDirectorToggleRuleMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.containerMenu instanceof RaceDirectorMenu)) {
+                    return;
+                }
+                OWRRaceControlState state = OWRRaceControlState.get(player.level());
+                if (message.rule == CHECKPOINTS) {
+                    state.toggleCheckpointCheck();
+                } else if (message.rule == OFF_TRACK) {
+                    state.toggleOffTrackCheck();
+                }
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record RaceDirectorSetMinLapTicksMessage(int ticks) {
+        private static void encode(RaceDirectorSetMinLapTicksMessage message, FriendlyByteBuf buffer) {
+            buffer.writeInt(message.ticks);
+        }
+
+        private static RaceDirectorSetMinLapTicksMessage decode(FriendlyByteBuf buffer) {
+            return new RaceDirectorSetMinLapTicksMessage(buffer.readInt());
+        }
+
+        private static void handle(RaceDirectorSetMinLapTicksMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.containerMenu instanceof RaceDirectorMenu)) {
+                    return;
+                }
+                OWRRaceControlState.get(player.level()).setMinimumValidLapTicks(message.ticks);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record RaceDirectorSetPageMessage(int page) {
+        private static void encode(RaceDirectorSetPageMessage message, FriendlyByteBuf buffer) {
+            buffer.writeInt(message.page);
+        }
+
+        private static RaceDirectorSetPageMessage decode(FriendlyByteBuf buffer) {
+            return new RaceDirectorSetPageMessage(buffer.readInt());
+        }
+
+        private static void handle(RaceDirectorSetPageMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.containerMenu instanceof RaceDirectorMenu menu)) {
+                    return;
+                }
+                menu.setPage(message.page);
+                sendRaceDirectorSnapshot(player, menu.createSnapshot(player.level()));
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record RaceDirectorInvalidateLapMessage(long lapId) {
+        private static void encode(RaceDirectorInvalidateLapMessage message, FriendlyByteBuf buffer) {
+            buffer.writeLong(message.lapId);
+        }
+
+        private static RaceDirectorInvalidateLapMessage decode(FriendlyByteBuf buffer) {
+            return new RaceDirectorInvalidateLapMessage(buffer.readLong());
+        }
+
+        private static void handle(RaceDirectorInvalidateLapMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.containerMenu instanceof RaceDirectorMenu menu)) {
+                    return;
+                }
+                OWRLapRecords records = OWRLapRecords.get(player.level());
+                records.getLap(message.lapId).ifPresent(record -> {
+                    if (records.invalidateLap(message.lapId, player.getUUID(), "race director")) {
+                player.level().getServer().getPlayerList().broadcastSystemMessage(Component.translatable("message.openwheelracing.race_director.lap_invalidated", record.driverName(), formatLapTime(record.lapTicks()), player.getGameProfile().name()), false);
+                        sendRaceDirectorSnapshot(player, menu.createSnapshot(player.level()));
+                    }
+                });
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    private static void applyRaceDirectorSnapshot(RaceDirectorSnapshot snapshot) {
+        try {
+            Class<?> receiver = Class.forName("com.openwheelracing.client.screen.RaceDirectorScreen");
+            Method method = receiver.getMethod("applySnapshot", RaceDirectorSnapshot.class);
+            method.invoke(null, snapshot);
+        } catch (ReflectiveOperationException ignored) {
+        }
+    }
+
+    private static String formatLapTime(int ticks) {
+        int totalCentiseconds = ticks * 5;
+        int minutes = totalCentiseconds / 6000;
+        int seconds = totalCentiseconds / 100 % 60;
+        int centiseconds = totalCentiseconds % 100;
+        return String.format("%d:%02d.%02d", minutes, seconds, centiseconds);
     }
 }

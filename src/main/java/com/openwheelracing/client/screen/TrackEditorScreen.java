@@ -69,7 +69,7 @@ public class TrackEditorScreen extends Screen {
     private static final int OUTER_MARGIN = 20;
     private static final int IMPORT_CHUNK_SIZE = 64;
     private static final int IMPORT_SEND_DISTANCE = 480;
-    private static final double IMPORT_SAMPLE_SPACING = 3.0;
+    private static final double IMPORT_SAMPLE_SPACING = 1.0;
     private static final String IMPORT_PATH = "openwheelracing/imports/lap-simulator-track.json";
     private static final List<QueuedImportOperation> IMPORT_QUEUE = new ArrayList<>();
 

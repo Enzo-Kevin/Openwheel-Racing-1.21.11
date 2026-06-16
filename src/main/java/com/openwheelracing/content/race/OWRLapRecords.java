@@ -1,9 +1,14 @@
 package com.openwheelracing.content.race;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import com.openwheelracing.OpenwheelRacing;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -11,12 +16,16 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.level.saveddata.SavedDataType;
 
 public class OWRLapRecords extends SavedData {
-    public static final int MIN_VALID_LAP_TICKS = 100;
+    public static final int DEFAULT_MIN_VALID_LAP_TICKS = 100;
 
-    private static final Codec<OWRLapRecords> CODEC = Codec.unboundedMap(Codec.STRING, Codec.INT)
-        .fieldOf("player_best_laps")
-        .codec()
-        .xmap(OWRLapRecords::new, OWRLapRecords::pack);
+    private static final Codec<Map<UUID, Integer>> PLAYER_BEST_LAPS_CODEC = Codec.unboundedMap(Codec.STRING, Codec.INT)
+        .xmap(OWRLapRecords::unpackBestLaps, OWRLapRecords::packBestLaps);
+
+    private static final Codec<OWRLapRecords> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+        PLAYER_BEST_LAPS_CODEC.optionalFieldOf("player_best_laps", Map.of()).forGetter(OWRLapRecords::playerBestLaps),
+        LapRecord.CODEC.listOf().optionalFieldOf("laps", List.of()).forGetter(OWRLapRecords::laps),
+        Codec.LONG.optionalFieldOf("next_lap_id", 1L).forGetter(OWRLapRecords::nextLapId)
+    ).apply(instance, OWRLapRecords::new));
 
     private static final SavedDataType<OWRLapRecords> TYPE = new SavedDataType<>(
         OpenwheelRacing.MODID + "_lap_records",
@@ -26,39 +35,74 @@ public class OWRLapRecords extends SavedData {
     );
 
     private final Map<UUID, Integer> playerBestLaps = new HashMap<>();
+    private final List<LapRecord> laps = new ArrayList<>();
+    private long nextLapId = 1L;
+    private int revision;
 
     public OWRLapRecords() {
     }
 
-    private OWRLapRecords(Map<String, Integer> packed) {
-        boolean removedInvalidRecords = false;
-        for (Map.Entry<String, Integer> entry : packed.entrySet()) {
-            try {
-                int ticks = entry.getValue();
-                if (ticks > MIN_VALID_LAP_TICKS) {
-                    playerBestLaps.put(UUID.fromString(entry.getKey()), ticks);
-                } else {
-                    removedInvalidRecords = true;
-                }
-            } catch (IllegalArgumentException ignored) {
-                removedInvalidRecords = true;
-            }
-        }
-        if (removedInvalidRecords) {
-            setDirty();
-        }
+    private OWRLapRecords(Map<UUID, Integer> playerBestLaps, List<LapRecord> laps, long nextLapId) {
+        this.playerBestLaps.putAll(playerBestLaps);
+        this.laps.addAll(laps);
+        this.nextLapId = Math.max(nextLapId, laps.stream().mapToLong(LapRecord::id).max().orElse(0L) + 1L);
     }
 
     public static OWRLapRecords get(ServerLevel level) {
         return level.getServer().getLevel(Level.OVERWORLD).getDataStorage().computeIfAbsent(TYPE);
     }
 
+    public int getRevision() {
+        return revision;
+    }
+
+    public int getLapCount() {
+        return laps.size();
+    }
+
+    public List<LapRecord> getRecentLaps(int page, int pageSize) {
+        int start = Math.max(0, page) * pageSize;
+        return laps.stream()
+            .sorted(Comparator.comparingLong(LapRecord::id).reversed())
+            .skip(start)
+            .limit(pageSize)
+            .toList();
+    }
+
     public int getBestLap(UUID playerId) {
         return playerBestLaps.getOrDefault(playerId, 0);
     }
 
+    public LapRecord recordLap(UUID driverId, String driverName, int lapTicks, long completedGameTime, String dimensionId, long startFinishPos, int checkpointCount, CarSnapshot car) {
+        LapRecord record = new LapRecord(nextLapId++, driverId, driverName, lapTicks, completedGameTime, dimensionId, startFinishPos, checkpointCount, car, false, "", "");
+        laps.add(record);
+        setBestLapIfBetter(driverId, lapTicks);
+        markChanged();
+        return record;
+    }
+
+    public boolean invalidateLap(long lapId, UUID invalidatedBy, String reason) {
+        for (int index = 0; index < laps.size(); index++) {
+            LapRecord record = laps.get(index);
+            if (record.id() == lapId) {
+                if (record.invalidated()) {
+                    return false;
+                }
+                laps.set(index, record.invalidated(invalidatedBy, reason));
+                recomputeBestLap(record.driverId());
+                markChanged();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public Optional<LapRecord> getLap(long lapId) {
+        return laps.stream().filter(record -> record.id() == lapId).findFirst();
+    }
+
     public boolean setBestLapIfBetter(UUID playerId, int ticks) {
-        if (ticks <= MIN_VALID_LAP_TICKS) {
+        if (ticks <= 0) {
             return false;
         }
         int previous = getBestLap(playerId);
@@ -66,17 +110,99 @@ public class OWRLapRecords extends SavedData {
             return false;
         }
         playerBestLaps.put(playerId, ticks);
-        setDirty();
+        markChanged();
         return true;
     }
 
-    private Map<String, Integer> pack() {
+    private void recomputeBestLap(UUID playerId) {
+        int best = laps.stream()
+            .filter(record -> record.driverId().equals(playerId))
+            .filter(record -> !record.invalidated())
+            .mapToInt(LapRecord::lapTicks)
+            .min()
+            .orElse(0);
+        if (best == 0) {
+            playerBestLaps.remove(playerId);
+        } else {
+            playerBestLaps.put(playerId, best);
+        }
+    }
+
+    private void markChanged() {
+        revision++;
+        setDirty();
+    }
+
+    private Map<UUID, Integer> playerBestLaps() {
+        return playerBestLaps;
+    }
+
+    private List<LapRecord> laps() {
+        return laps;
+    }
+
+    private long nextLapId() {
+        return nextLapId;
+    }
+
+    private static Map<UUID, Integer> unpackBestLaps(Map<String, Integer> packed) {
+        Map<UUID, Integer> unpacked = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : packed.entrySet()) {
+            try {
+                int ticks = entry.getValue();
+                if (ticks > 0) {
+                    unpacked.put(UUID.fromString(entry.getKey()), ticks);
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        return unpacked;
+    }
+
+    private static Map<String, Integer> packBestLaps(Map<UUID, Integer> unpacked) {
         Map<String, Integer> packed = new HashMap<>();
-        playerBestLaps.forEach((playerId, ticks) -> {
-            if (ticks > MIN_VALID_LAP_TICKS) {
+        unpacked.forEach((playerId, ticks) -> {
+            if (ticks > 0) {
                 packed.put(playerId.toString(), ticks);
             }
         });
         return packed;
+    }
+
+    private static Codec<UUID> uuidCodec() {
+        return Codec.STRING.xmap(UUID::fromString, UUID::toString);
+    }
+
+    public record CarSnapshot(int power, int grip, int aero, int gearing, int damagePercent, int tyreWearPercent, boolean absEnabled) {
+        public static final Codec<CarSnapshot> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.INT.fieldOf("power").forGetter(CarSnapshot::power),
+            Codec.INT.fieldOf("grip").forGetter(CarSnapshot::grip),
+            Codec.INT.fieldOf("aero").forGetter(CarSnapshot::aero),
+            Codec.INT.fieldOf("gearing").forGetter(CarSnapshot::gearing),
+            Codec.INT.fieldOf("damage_percent").forGetter(CarSnapshot::damagePercent),
+            Codec.INT.fieldOf("tyre_wear_percent").forGetter(CarSnapshot::tyreWearPercent),
+            Codec.BOOL.fieldOf("abs_enabled").forGetter(CarSnapshot::absEnabled)
+        ).apply(instance, CarSnapshot::new));
+    }
+
+    public record LapRecord(long id, UUID driverId, String driverName, int lapTicks, long completedGameTime, String dimensionId, long startFinishPos, int checkpointCount, CarSnapshot car, boolean invalidated, String invalidationReason, String invalidatedBy) {
+        public static final Codec<LapRecord> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+            Codec.LONG.fieldOf("id").forGetter(LapRecord::id),
+            uuidCodec().fieldOf("driver_id").forGetter(LapRecord::driverId),
+            Codec.STRING.fieldOf("driver_name").forGetter(LapRecord::driverName),
+            Codec.INT.fieldOf("lap_ticks").forGetter(LapRecord::lapTicks),
+            Codec.LONG.fieldOf("completed_game_time").forGetter(LapRecord::completedGameTime),
+            Codec.STRING.fieldOf("dimension_id").forGetter(LapRecord::dimensionId),
+            Codec.LONG.fieldOf("start_finish_pos").forGetter(LapRecord::startFinishPos),
+            Codec.INT.fieldOf("checkpoint_count").forGetter(LapRecord::checkpointCount),
+            CarSnapshot.CODEC.fieldOf("car").forGetter(LapRecord::car),
+            Codec.BOOL.optionalFieldOf("invalidated", false).forGetter(LapRecord::invalidated),
+            Codec.STRING.optionalFieldOf("invalidation_reason", "").forGetter(LapRecord::invalidationReason),
+            Codec.STRING.optionalFieldOf("invalidated_by", "").forGetter(LapRecord::invalidatedBy)
+        ).apply(instance, LapRecord::new));
+
+        LapRecord invalidated(UUID invalidatedBy, String reason) {
+            return new LapRecord(id, driverId, driverName, lapTicks, completedGameTime, dimensionId, startFinishPos, checkpointCount, car, true, reason, invalidatedBy.toString());
+        }
     }
 }

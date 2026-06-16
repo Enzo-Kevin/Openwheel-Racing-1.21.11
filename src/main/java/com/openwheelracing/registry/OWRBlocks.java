@@ -5,6 +5,7 @@ import com.openwheelracing.content.block.CarAssemblyWorkstationBlock;
 import com.openwheelracing.content.block.CrudeOilBlock;
 import com.openwheelracing.content.block.DirectionalTrackBlock;
 import com.openwheelracing.content.block.LapMarkerBlock;
+import com.openwheelracing.content.block.RaceDirectorBlock;
 import com.openwheelracing.content.block.RefineryBlock;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -36,6 +37,14 @@ public final class OWRBlocks {
             .requiresCorrectToolForDrops())
     );
 
+    public static final RegistryObject<Block> RACE_DIRECTOR = BLOCKS.register("race_director",
+        () -> new RaceDirectorBlock(BlockBehaviour.Properties.of()
+            .setId(BLOCKS.key("race_director"))
+            .mapColor(MapColor.METAL)
+            .strength(3.5f, 6.0f)
+            .requiresCorrectToolForDrops())
+    );
+
     public static final RegistryObject<Block> CRUDE_OIL_DEPOSIT = BLOCKS.register("crude_oil_deposit",
         () -> new CrudeOilBlock(BlockBehaviour.Properties.of()
             .setId(BLOCKS.key("crude_oil_deposit"))
@@ -55,6 +64,7 @@ public final class OWRBlocks {
 
     public static final RegistryObject<Item> CAR_ASSEMBLY_WORKSTATION_ITEM = registerBlockItem("car_assembly_workstation", CAR_ASSEMBLY_WORKSTATION);
     public static final RegistryObject<Item> REFINERY_ITEM = registerBlockItem("refinery", REFINERY);
+    public static final RegistryObject<Item> RACE_DIRECTOR_ITEM = registerBlockItem("race_director", RACE_DIRECTOR);
     public static final RegistryObject<Item> CRUDE_OIL_DEPOSIT_ITEM = registerBlockItem("crude_oil_deposit", CRUDE_OIL_DEPOSIT);
     public static final RegistryObject<Item> ASPHALT_TRACK_ITEM = registerBlockItem("asphalt_track", ASPHALT_TRACK);
     public static final RegistryObject<Item> ASPHALT_TRACK_SLAB_ITEM = registerBlockItem("asphalt_track_slab", ASPHALT_TRACK_SLAB);

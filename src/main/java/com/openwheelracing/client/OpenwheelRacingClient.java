@@ -3,6 +3,7 @@ package com.openwheelracing.client;
 import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.client.render.OpenwheelCarRenderer;
 import com.openwheelracing.client.screen.CarAssemblyScreen;
+import com.openwheelracing.client.screen.RaceDirectorScreen;
 import com.openwheelracing.client.screen.RefineryScreen;
 import com.openwheelracing.registry.OWREntities;
 import com.openwheelracing.registry.OWRMenus;
@@ -23,6 +24,7 @@ public final class OpenwheelRacingClient {
         event.enqueueWork(() -> {
             MenuScreens.register(OWRMenus.CAR_ASSEMBLY.get(), CarAssemblyScreen::new);
             MenuScreens.register(OWRMenus.REFINERY.get(), RefineryScreen::new);
+            MenuScreens.register(OWRMenus.RACE_DIRECTOR.get(), RaceDirectorScreen::new);
             EntityRenderers.register(OWREntities.PROTOTYPE_CAR.get(), OpenwheelCarRenderer::new);
         });
     }
