@@ -4,6 +4,7 @@ import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
+import com.openwheelracing.content.item.TyreItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
@@ -28,6 +29,7 @@ public final class OWRCreativeTabs {
             output.accept(OWRBlocks.BARRIER_ITEM.get());
             output.accept(OWRBlocks.PIT_LANE_ITEM.get());
             output.accept(OWRBlocks.PIT_LANE_SLAB_ITEM.get());
+            output.accept(OWRBlocks.PIT_STOP_MARK_ITEM.get());
             output.accept(OWRBlocks.START_FINISH_ITEM.get());
             output.accept(OWRBlocks.CHECKPOINT_ITEM.get());
             output.accept(OWRItems.CARBON_FIBER.get());
@@ -43,7 +45,9 @@ public final class OWRCreativeTabs {
             output.accept(OWRItems.RACING_ELECTRONICS.get());
             output.accept(OWRItems.CHASSIS.get());
             output.accept(OWRItems.ENGINE.get());
-            output.accept(OWRItems.TIRES.get());
+            for (int compound = 0; compound <= 4; compound++) {
+                output.accept(TyreItem.create(compound));
+            }
             output.accept(OWRItems.AERO_KIT.get());
             output.accept(OWRItems.GEARBOX.get());
             output.accept(OWRItems.STEERING_CONTROLS.get());

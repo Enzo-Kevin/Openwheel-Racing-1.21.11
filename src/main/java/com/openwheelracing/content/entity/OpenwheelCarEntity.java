@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
+import com.openwheelracing.content.item.TyreItem;
 import com.openwheelracing.content.race.OWRLapRecords;
 import com.openwheelracing.content.race.OWRRaceControlState;
 import com.openwheelracing.registry.OWRBlocks;
@@ -12,6 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
@@ -53,6 +55,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final EntityDataAccessor<Integer> PIT_STOP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> ABS_ENABLED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> LIVERY = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> TYRE_COMPOUND = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
 
     private static final int PIT_STOP_DURATION = 60; // 3 seconds
     private static final int PIT_RUBBER_COST = 2;    // rubber items consumed per stop
@@ -202,6 +205,7 @@ public class OpenwheelCarEntity extends Entity {
         builder.define(PIT_STOP_TICKS, 0);
         builder.define(ABS_ENABLED, true);
         builder.define(LIVERY, 0);
+        builder.define(TYRE_COMPOUND, PrototypeCarSetup.DEFAULT.grip());
     }
 
     @Override
@@ -211,6 +215,15 @@ public class OpenwheelCarEntity extends Entity {
 
     public void setSetup(PrototypeCarSetup setup) {
         this.setup = setup;
+        entityData.set(TYRE_COMPOUND, setup.grip());
+    }
+
+    public void applyTyreCompound(int compound) {
+        setSetup(new PrototypeCarSetup(setup.power(), compound, setup.aero(), setup.gearing()));
+    }
+
+    public int getTyreCompound() {
+        return entityData.get(TYRE_COMPOUND);
     }
 
     public PrototypeCarSetup getSetup() {
@@ -318,8 +331,8 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     public boolean tryStartPitStop(Player player) {
-        if (!isPitLane()) {
-            messageDriver(Component.literal("Pit stop only available in pit lane"));
+        if (!isOnPitStopMark()) {
+            messageDriver(Component.literal("Pit stop only available on the pit stop mark"));
             return false;
         }
         double speed = Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
@@ -339,6 +352,41 @@ public class OpenwheelCarEntity extends Entity {
         entityData.set(PIT_STOP_TICKS, PIT_STOP_DURATION);
         messageDriver(Component.literal("Pit stop: servicing..."));
         return true;
+    }
+
+    private void trySwapTyres(Player player, InteractionHand hand, ItemStack heldStack) {
+        if (!isOnPitStopMark()) {
+            messageDriver(Component.literal("Tyre change only available on the pit stop mark"));
+            return;
+        }
+        double speed = Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
+        if (speed > 0.05) {
+            messageDriver(Component.literal("Come to a stop before tyre change"));
+            return;
+        }
+        if (isInPitStop() || player.getCooldowns().isOnCooldown(heldStack)) {
+            return;
+        }
+
+        int newCompound = TyreItem.getCompound(heldStack);
+        int oldCompound = getTyreCompound();
+        if (newCompound == oldCompound) {
+            messageDriver(Component.literal("Tyres already C" + (newCompound + 1)));
+            player.getCooldowns().addCooldown(heldStack, 10);
+            return;
+        }
+
+        applyTyreCompound(newCompound);
+        setTyreWearPercent(0.0f);
+        player.getCooldowns().addCooldown(heldStack, 10);
+        if (!player.getAbilities().instabuild) {
+            heldStack.shrink(1);
+        }
+        ItemStack oldTyres = TyreItem.create(oldCompound);
+        if (!player.addItem(oldTyres)) {
+            player.drop(oldTyres, false);
+        }
+        messageDriver(Component.literal("Tyres changed to C" + (newCompound + 1)));
     }
 
     public void crossStartFinishLine(BlockPos pos, Direction markerFacing) {
@@ -430,9 +478,17 @@ public class OpenwheelCarEntity extends Entity {
         int bestLap = records.getBestLap(player.getUUID());
         boolean personalBest = bestLap != 0 && bestLap != previousBest && bestLap == lapTicks;
         entityData.set(BEST_LAP_TICKS, bestLap);
+        awardCompleteLapAdvancement(serverLevel, player);
         messageDriver(Component.literal("Lap: " + formatLapTime(lapTicks)
             + " | CPs: " + visitedCheckpoints.size()
             + (personalBest ? " | Personal best" : "")));
+    }
+
+    private void awardCompleteLapAdvancement(ServerLevel serverLevel, Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        serverPlayer.getAdvancements().award(serverLevel.getServer().getAdvancements().get(Identifier.fromNamespaceAndPath("openwheelracing", "progression/complete_lap")), "complete_lap");
     }
 
     private void resetLapProgress() {
@@ -511,8 +567,14 @@ public class OpenwheelCarEntity extends Entity {
             return InteractionResult.PASS;
         }
 
+        ItemStack heldStack = player.getItemInHand(hand);
+        if (heldStack.is(OWRItems.TIRES.get())) {
+            trySwapTyres(player, hand, heldStack);
+            return InteractionResult.CONSUME;
+        }
+
         // Sneak + empty hand on empty car → pick up as item
-        if (getPassengers().isEmpty() && player.isShiftKeyDown() && player.getItemInHand(hand).isEmpty()) {
+        if (getPassengers().isEmpty() && player.isShiftKeyDown() && heldStack.isEmpty()) {
             ItemStack item = PrototypeCarItem.create(setup, getDamagePercent(), getTyreWearPercent(), getLivery());
             if (!player.addItem(item)) {
                 player.drop(item, false);
@@ -592,12 +654,12 @@ public class OpenwheelCarEntity extends Entity {
 
     @Override
     protected void readAdditionalSaveData(ValueInput input) {
-        setup = new PrototypeCarSetup(
+        setSetup(new PrototypeCarSetup(
             input.getIntOr("Power", PrototypeCarSetup.DEFAULT.power()),
             input.getIntOr("Grip", PrototypeCarSetup.DEFAULT.grip()),
             input.getIntOr("Aero", PrototypeCarSetup.DEFAULT.aero()),
             input.getIntOr("Gearing", PrototypeCarSetup.DEFAULT.gearing())
-        );
+        ));
         entityData.set(GEAR, input.getIntOr("Gear", 1));
         entityData.set(RPM, input.getIntOr("Rpm", 900));
         entityData.set(DAMAGE, (float) input.getDoubleOr("Damage", 0.0));
@@ -628,6 +690,11 @@ public class OpenwheelCarEntity extends Entity {
         output.putDouble("SteeringAngle", steeringAngle);
         output.putDouble("YawRate", yawRate);
         output.putLong("LapStartedAt", lapStartedAt);
+    }
+
+    private boolean isOnPitStopMark() {
+        BlockPos basePos = BlockPos.containing(getX(), getBoundingBox().minY - 0.05, getZ());
+        return level().getBlockState(basePos).is(OWRBlocks.PIT_STOP_MARK.get());
     }
 
     private void tickPitStop() {
@@ -700,7 +767,8 @@ public class OpenwheelCarEntity extends Entity {
                 || block == OWRBlocks.START_FINISH.get()
                 || block == OWRBlocks.CHECKPOINT.get()) return SurfaceProfile.ASPHALT;
         if (block == OWRBlocks.PIT_LANE.get()
-                || block == OWRBlocks.PIT_LANE_SLAB.get()) return SurfaceProfile.PIT_LANE;
+                || block == OWRBlocks.PIT_LANE_SLAB.get()
+                || block == OWRBlocks.PIT_STOP_MARK.get()) return SurfaceProfile.PIT_LANE;
         if (block == OWRBlocks.KERB.get()) return SurfaceProfile.KERB;
         if (isConcreteBlock(block)) return SurfaceProfile.CONCRETE;
         if (block == Blocks.GRASS_BLOCK

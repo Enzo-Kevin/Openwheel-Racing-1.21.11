@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+  <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="openwheel-racing-Openwheel-Racing-1.21.11"/>
+  <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="net.minecraftforge.launcher.Main"/>
+  <stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Djava.net.preferIPv6Addresses=system -XstartOnFirstThread -Deventbus.api.strictRuntimeChecks=true -Dforge.enabledGameTestNamespaces=openwheelracing"/>
+  <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="--main net.minecraftforge.bootstrap.ForgeBootstrap --cache /Users/leolong/.gradle/caches/minecraftforge/forgegradle/slime-launcher/cache/net/minecraftforge/forge/1.21.11-61.1.0 --metadata /Users/leolong/Openwheel-Racing-1.21.11/.gradle/mavenizer/repo/net/minecraftforge/forge/1.21.11-61.1.0/forge-1.21.11-61.1.0-metadata.zip --to-srg /Users/leolong/.gradle/caches/minecraftforge/forgegradle/mavenizer/caches/mcp/de/oceanlabs/mcp/mcp_config/1.21.11-20251223.124241/data/mapings/official/1.21.11/official-1.21.11-obf.tsrg.gz --to-obf /Users/leolong/.gradle/caches/minecraftforge/forgegradle/mavenizer/caches/mcp/de/oceanlabs/mcp/mcp_config/1.21.11-20251223.124241/data/mapings/official/1.21.11/official-1.21.11-srg.tsrg.gz -- --launchTarget forge_userdev_server_gametest --gameDir ."/>
+  <stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="/Users/leolong/Openwheel-Racing-1.21.11/run"/>
+  <mapAttribute key="org.eclipse.debug.core.environmentVariables">
+    <mapEntry key="MCP_MAPPINGS" value="official_1.21.11"/>
+  </mapAttribute>
+  <listAttribute key="org.eclipse.jdt.launching.CLASSPATH">
+    <listEntry value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&lt;runtimeClasspathEntry projectName=&quot;openwheel-racing-Openwheel-Racing-1.21.11&quot; type=&quot;1&quot; path=&quot;5&quot; /&gt;"/>
+    <listEntry value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&lt;runtimeClasspathEntry containerPath=&quot;org.eclipse.buildship.core.gradleclasspathcontainer&quot; javaProject=&quot;openwheel-racing-Openwheel-Racing-1.21.11&quot; type=&quot;4&quot; path=&quot;5&quot; /&gt;"/>
+    <listEntry value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&lt;runtimeClasspathEntry externalArchive=&quot;/Users/leolong/.gradle/caches/modules-2/files-2.1/net.minecraftforge/slime-launcher/0.2.1/5a346f3ea6c5990302c967d24d2a5c55503a48d7/slime-launcher-0.2.1.jar&quot; type=&quot;2&quot; path=&quot;5&quot; /&gt;"/>
+    <listEntry value="&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;&lt;runtimeClasspathEntry containerPath=&quot;org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-21&quot; type=&quot;4&quot; path=&quot;5&quot; /&gt;"/>
+  </listAttribute>
+  <booleanAttribute key="org.eclipse.jdt.launching.DEFAULT_CLASSPATH" value="false"/>
+</launchConfiguration>

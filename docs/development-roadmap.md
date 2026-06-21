@@ -1,7 +1,7 @@
 # Openwheel Racing Development Roadmap
 
-**Version**: 1.0  
-**Date**: 2026-06-10  
+**Version**: 1.1  
+**Date**: 2026-06-17  
 **Minecraft Target**: Forge 1.21.11  
 
 ---
@@ -58,6 +58,9 @@ Already implemented:
 - Directional kerb/checkpoint/start-finish blockstates and 3D block item models.
 - Surface effects for track grip/drag, kerb grip/wear penalty, pit lane speed limit, and barrier impact absorption.
 - Basic lap timing with directional start/finish and checkpoint validation.
+- Race Director block, UI, race-control rules, lap review, manual invalidation, and persistent per-player best-lap records.
+- Track editor UI with preset/import-assisted circuit construction.
+- Pit lane speed limiting plus sneak/right-click pit service for damage and tyre restoration.
 - Lap invalidation for reverse marker passes, leaving track entirely, driver exit, or driver death.
 - Basic damage and tyre wear effects, warnings, crash feedback, and destruction material drops.
 - Block/item models and temporary textures sufficient to avoid missing-texture rendering.
@@ -66,8 +69,8 @@ Known limitations:
 
 - Car renderer is still a placeholder code-rendered model, not a polished textured model.
 - Controls remain prototype-level and are not yet server-authoritative enough for multiplayer racing.
-- Lap timing is still coarse: one armed checkpoint flag, no ordered multi-checkpoint route, no sectors, no leaderboard, no persistent per-player best-lap storage beyond entity save data.
-- Pit lane only applies speed limiting; no pit-stop repair/refuel/tyre-change loop yet.
+- Lap timing still lacks explicit ordered checkpoint IDs/sectors and richer leaderboard presentation, though race-director persistence and recent-lap review now exist.
+- Pit lane service exists for damage and tyre restoration, but there is no fuel, timed pit-stop, pit-box, or tyre-compound-change loop yet.
 - Refinery outputs are random item outputs; no fluid system or detailed ratios yet.
 - Crude oil is currently ore/deposit-like, not a real fluid pocket.
 - Survival progression has recipes, but lacks advancements/tutorial guidance.
@@ -176,18 +179,19 @@ Known limitations:
 
 ---
 
-## Phase 5: Pit Lane and Wear Gameplay — Next Major Gap
+## Phase 5: Pit Lane and Wear Gameplay — MVP Started
 
 **Goal**: Make damage/wear management part of the racing loop.
 
 ### Features
 
-- Pit lane zone blocks.
-- Pit stop interaction.
-- Repair car damage.
-- Restore or change tyres.
-- Allow setup changes only in pit lane or workstation.
-- Optional lap invalidation or timing penalty for pit use.
+- [x] Pit lane zone blocks.
+- [x] Pit stop interaction.
+- [x] Repair car damage.
+- [x] Restore tyre condition.
+- [ ] Change tyre compound in a pit-service flow.
+- [ ] Allow setup changes only in pit lane or workstation.
+- [ ] Optional lap invalidation or timing penalty for pit use.
 
 ### Success Criteria
 
@@ -267,11 +271,11 @@ Possible first implementation:
   - rubber tyres
   - asphalt track construction
 - Add advancements:
-  - find crude oil
-  - refine rubber
-  - assemble first car
-  - build first circuit
-  - complete first timed lap
+  - [x] find crude oil
+  - [x] refine rubber
+  - [x] assemble first car
+  - [x] build first circuit
+  - [x] complete first timed lap
 - Improve item names/tooltips.
 
 ### Success Criteria
@@ -326,16 +330,15 @@ Possible first implementation:
 
 ## Near-Term Recommended Order
 
-1. Add survival progression advancements/tutorial hooks.
-2. Add a real pit-stop loop for pit lane:
-   - repair damage
-   - restore/change tyres
-   - optionally refuel later
+1. Expand pit-stop gameplay beyond instant service:
+   - tyre-compound changes
+   - optional timed service or pit-box requirement
+   - refuel once fuel consumption exists
+2. Improve lap timing with ordered checkpoint routes, sectors, and richer leaderboard presentation.
 3. Replace remaining placeholder item/block art and add a textured car model.
-4. Improve lap timing from one checkpoint flag to ordered checkpoints and per-player persistent best laps.
-5. Add a clear car recovery/pick-up flow that writes entity condition back to the item.
-6. Harden controls/networking for future small private multiplayer.
-7. Add config/datagen support once gameplay data stabilizes.
+4. Add a clear car recovery/pick-up flow that writes entity condition back to the item.
+5. Harden controls/networking for future small private multiplayer.
+6. Add config/datagen support once gameplay data stabilizes.
 
 ---
 

@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "W",
+    "P"
+  ],
+  "key": {
+    "W": "minecraft:white_dye",
+    "P": "openwheelracing:pit_lane"
+  },
+  "result": {
+    "id": "openwheelracing:pit_stop_mark",
+    "count": 6
+  }
+}

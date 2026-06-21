@@ -59,6 +59,7 @@ public final class OWRBlocks {
     public static final RegistryObject<Block> BARRIER = registerSimpleBlock("barrier", MapColor.METAL, 4.0f, 8.0f);
     public static final RegistryObject<Block> PIT_LANE = registerSimpleBlock("pit_lane", MapColor.COLOR_GRAY, 2.4f, 6.0f);
     public static final RegistryObject<Block> PIT_LANE_SLAB = registerSlabBlock("pit_lane_slab", MapColor.COLOR_GRAY, 2.4f, 6.0f);
+    public static final RegistryObject<Block> PIT_STOP_MARK = registerSimpleBlock("pit_stop_mark", MapColor.COLOR_GRAY, 2.4f, 6.0f);
     public static final RegistryObject<Block> START_FINISH = registerLapMarker("start_finish", true, MapColor.SNOW);
     public static final RegistryObject<Block> CHECKPOINT = registerLapMarker("checkpoint", false, MapColor.COLOR_LIGHT_BLUE);
 
@@ -72,6 +73,7 @@ public final class OWRBlocks {
     public static final RegistryObject<Item> BARRIER_ITEM = registerBlockItem("barrier", BARRIER);
     public static final RegistryObject<Item> PIT_LANE_ITEM = registerBlockItem("pit_lane", PIT_LANE);
     public static final RegistryObject<Item> PIT_LANE_SLAB_ITEM = registerBlockItem("pit_lane_slab", PIT_LANE_SLAB);
+    public static final RegistryObject<Item> PIT_STOP_MARK_ITEM = registerBlockItem("pit_stop_mark", PIT_STOP_MARK);
     public static final RegistryObject<Item> START_FINISH_ITEM = registerBlockItem("start_finish", START_FINISH);
     public static final RegistryObject<Item> CHECKPOINT_ITEM = registerBlockItem("checkpoint", CHECKPOINT);
 

@@ -1,8 +1,11 @@
 package com.openwheelracing.content.block.entity;
 
+import com.openwheelracing.content.item.TyreItem;
 import com.openwheelracing.content.menu.CarAssemblyMenu;
+import com.openwheelracing.registry.OWRDataComponents;
 import com.openwheelracing.content.recipe.CarAssemblyRecipe;
 import com.openwheelracing.registry.OWRBlockEntities;
+import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.registry.OWRItems;
 import com.openwheelracing.registry.OWRRecipes;
 import net.minecraft.core.BlockPos;
@@ -98,18 +101,19 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
     }
 
     private void assembleCar(CarAssemblyRecipe recipe) {
+        ItemStack tyreStack = getItem(SLOT_TIRES).copy();
         for (int slot = SLOT_CHASSIS; slot <= SLOT_STEERING_CONTROLS; slot++) {
             removeItem(slot, 1);
         }
 
         ItemStack result = recipe.result().copy();
         if (result.is(OWRItems.PROTOTYPE_CAR_SPAWN.get())) {
-            if (result.get(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get()) == null) {
-                result.set(com.openwheelracing.registry.OWRDataComponents.CAR_SETUP.get(), com.openwheelracing.content.car.PrototypeCarSetup.DEFAULT);
-            }
+            PrototypeCarSetup setup = result.getOrDefault(OWRDataComponents.CAR_SETUP.get(), PrototypeCarSetup.DEFAULT);
+            int compound = TyreItem.getCompound(tyreStack);
+            result.set(OWRDataComponents.CAR_SETUP.get(), new PrototypeCarSetup(setup.power(), compound, setup.aero(), setup.gearing()));
             int livery = com.openwheelracing.content.item.PrototypeCarItem.getLivery(result);
-            if (result.get(com.openwheelracing.registry.OWRDataComponents.CAR_LIVERY.get()) == null) {
-                result.set(com.openwheelracing.registry.OWRDataComponents.CAR_LIVERY.get(), livery);
+            if (result.get(OWRDataComponents.CAR_LIVERY.get()) == null) {
+                result.set(OWRDataComponents.CAR_LIVERY.get(), livery);
             }
             com.openwheelracing.content.item.PrototypeCarItem.applyLiveryItemDisplay(result, livery);
         }

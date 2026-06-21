@@ -1,0 +1,20 @@
+{
+  "parent": "openwheelracing:progression/build_circuit",
+  "display": {
+    "icon": {
+      "id": "openwheelracing:prototype_car_spawn"
+    },
+    "title": {
+      "translate": "advancements.openwheelracing.complete_lap.title"
+    },
+    "description": {
+      "translate": "advancements.openwheelracing.complete_lap.description"
+    },
+    "frame": "challenge"
+  },
+  "criteria": {
+    "complete_lap": {
+      "trigger": "minecraft:impossible"
+    }
+  }
+}

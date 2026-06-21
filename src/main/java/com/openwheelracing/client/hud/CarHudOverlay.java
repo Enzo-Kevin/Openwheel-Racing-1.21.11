@@ -41,7 +41,7 @@ public final class CarHudOverlay {
         graphics.fill(setupX, setupY, setupX + 172, setupY + 81, 0x99000000);
         graphics.renderOutline(setupX, setupY, 172, 81, 0xFF555555);
         graphics.drawString(font, "PWR " + car.getSetup().power(), setupX + 7, setupY + 7, 0xFFFF9999, false);
-        graphics.drawString(font, "TYRE C" + (car.getSetup().grip() + 1), setupX + 7, setupY + 18, 0xFFB7FFB7, false);
+        graphics.drawString(font, "TYRE C" + (car.getTyreCompound() + 1), setupX + 7, setupY + 18, 0xFFB7FFB7, false);
         graphics.drawString(font, "AERO " + car.getSetup().aero(), setupX + 7, setupY + 29, 0xFF99DDFF, false);
         graphics.drawString(font, "GEAR " + car.getSetup().gearing(), setupX + 52, setupY + 29, 0xFFFFDD88, false);
         graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.drive"), setupX + 7, setupY + 43, 0xFFDDDDDD, false);

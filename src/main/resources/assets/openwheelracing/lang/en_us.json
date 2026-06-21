@@ -10,6 +10,7 @@
   "block.openwheelracing.barrier": "Barrier",
   "block.openwheelracing.pit_lane": "Pit Lane",
   "block.openwheelracing.pit_lane_slab": "Pit Lane Slab",
+  "block.openwheelracing.pit_stop_mark": "Pit Stop Mark",
   "block.openwheelracing.start_finish": "Start/Finish Line",
   "block.openwheelracing.checkpoint": "Checkpoint",
   "item.openwheelracing.car_assembly_workstation": "Car Assembly Workstation",
@@ -22,6 +23,7 @@
   "item.openwheelracing.barrier": "Barrier",
   "item.openwheelracing.pit_lane": "Pit Lane",
   "item.openwheelracing.pit_lane_slab": "Pit Lane Slab",
+  "item.openwheelracing.pit_stop_mark": "Pit Stop Mark",
   "item.openwheelracing.start_finish": "Start/Finish Line",
   "item.openwheelracing.checkpoint": "Checkpoint",
   "entity.openwheelracing.prototype_car": "Prototype Openwheel Car",
@@ -54,6 +56,7 @@
   "tooltip.openwheelracing.prototype_car.livery": "Livery: %s",
   "tooltip.openwheelracing.prototype_car.damage": "Damage: %s%%",
   "tooltip.openwheelracing.prototype_car.tyres": "Tyre Condition: %s%%",
+  "tooltip.openwheelracing.tires.compound": "Tyre Compound: C%s",
   "message.openwheelracing.race_control.enabled": "ON",
   "message.openwheelracing.race_control.disabled": "OFF",
   "message.openwheelracing.race_director.lap_ignored": "Lap ignored: must be over %s seconds",
@@ -124,5 +127,7 @@
   "advancements.openwheelracing.assemble_car.title": "Into the Cockpit",
   "advancements.openwheelracing.assemble_car.description": "Assemble a prototype openwheel car",
   "advancements.openwheelracing.build_circuit.title": "Race Director",
-  "advancements.openwheelracing.build_circuit.description": "Place a start/finish line to begin timing laps"
+  "advancements.openwheelracing.build_circuit.description": "Place a start/finish line to begin timing laps",
+  "advancements.openwheelracing.complete_lap.title": "Flying Lap",
+  "advancements.openwheelracing.complete_lap.description": "Complete a valid timed lap"
 }

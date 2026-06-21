@@ -63,7 +63,7 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         state.yRot = car.getYRot(partialTick);
         state.frontWheelSteerDegrees = car.getFrontWheelSteerDegrees();
         state.lightCoords = 15728880;
-        state.tyreCompound = car.getSetup().grip();
+        state.tyreCompound = car.getTyreCompound();
         state.livery = car.getLivery();
     }
 

@@ -2,6 +2,7 @@ package com.openwheelracing.registry;
 
 import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.item.PrototypeCarItem;
+import com.openwheelracing.content.item.TyreItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
@@ -27,7 +28,9 @@ public final class OWRItems {
     public static final RegistryObject<Item> RACING_ELECTRONICS = registerSimple("racing_electronics");
     public static final RegistryObject<Item> CHASSIS = registerSimple("chassis");
     public static final RegistryObject<Item> ENGINE = registerSimple("engine");
-    public static final RegistryObject<Item> TIRES = registerSimple("tires");
+    public static final RegistryObject<Item> TIRES = ITEMS.register("tires",
+        () -> new TyreItem(new Item.Properties().setId(ITEMS.key("tires")))
+    );
     public static final RegistryObject<Item> AERO_KIT = registerSimple("aero_kit");
     public static final RegistryObject<Item> GEARBOX = registerSimple("gearbox");
     public static final RegistryObject<Item> STEERING_CONTROLS = registerSimple("steering_controls");

@@ -10,6 +10,7 @@
   "block.openwheelracing.barrier": "防撞护栏",
   "block.openwheelracing.pit_lane": "维修区车道",
   "block.openwheelracing.pit_lane_slab": "维修区车道台阶",
+  "block.openwheelracing.pit_stop_mark": "维修停车标记",
   "block.openwheelracing.start_finish": "起终点线",
   "block.openwheelracing.checkpoint": "检查点",
   "item.openwheelracing.car_assembly_workstation": "赛车装配工作台",
@@ -22,6 +23,7 @@
   "item.openwheelracing.barrier": "防撞护栏",
   "item.openwheelracing.pit_lane": "维修区车道",
   "item.openwheelracing.pit_lane_slab": "维修区车道台阶",
+  "item.openwheelracing.pit_stop_mark": "维修停车标记",
   "item.openwheelracing.start_finish": "起终点线",
   "item.openwheelracing.checkpoint": "检查点",
   "entity.openwheelracing.prototype_car": "原型开轮赛车",
@@ -54,6 +56,7 @@
   "tooltip.openwheelracing.prototype_car.livery": "涂装：%s",
   "tooltip.openwheelracing.prototype_car.damage": "损伤：%s%%",
   "tooltip.openwheelracing.prototype_car.tyres": "轮胎状态：%s%%",
+  "tooltip.openwheelracing.tires.compound": "轮胎配方：C%s",
   "message.openwheelracing.race_control.enabled": "开",
   "message.openwheelracing.race_control.disabled": "关",
   "message.openwheelracing.race_director.lap_ignored": "圈速已忽略：必须超过 %s 秒",
@@ -124,5 +127,7 @@
   "advancements.openwheelracing.assemble_car.title": "进入驾驶舱",
   "advancements.openwheelracing.assemble_car.description": "装配一辆原型开轮赛车",
   "advancements.openwheelracing.build_circuit.title": "赛事总监",
-  "advancements.openwheelracing.build_circuit.description": "放置起终点线，开始圈速计时"
+  "advancements.openwheelracing.build_circuit.description": "放置起终点线，开始圈速计时",
+  "advancements.openwheelracing.complete_lap.title": "飞驰圈",
+  "advancements.openwheelracing.complete_lap.description": "完成一个有效计时圈"
 }

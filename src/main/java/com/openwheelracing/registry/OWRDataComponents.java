@@ -40,6 +40,13 @@ public final class OWRDataComponents {
             .build()
     );
 
+    public static final RegistryObject<DataComponentType<Integer>> TYRE_COMPOUND = DATA_COMPONENTS.register("tyre_compound",
+        () -> DataComponentType.<Integer>builder()
+            .persistent(Codec.intRange(0, 4))
+            .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.VAR_INT)
+            .build()
+    );
+
     private OWRDataComponents() {
     }
 
