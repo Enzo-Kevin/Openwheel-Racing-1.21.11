@@ -77,7 +77,7 @@ public class TrackEditorScreen extends Screen {
     private int runoffMaterialIndex;
     private int presetIndex;
     private int zoomIndex = 2;
-    private int width = 3;
+    private int trackWidth = 3;
     private int editY;
     private double centerX;
     private double centerZ;
@@ -116,16 +116,19 @@ public class TrackEditorScreen extends Screen {
             initialized = true;
         }
         MapBounds map = mapBounds();
-        clearQueueButton = addRenderableWidget(Button.builder(Component.translatable("screen.openwheelracing.track_editor.clear_queue"), button -> clearPendingQueue())
-            .bounds(map.right - 112, map.top + 8, 104, 20)
-            .build());
+        int controlTop = map.bottom - 24;
+        int controlWidth = Math.min(112, Math.max(80, (map.width() - 24) / 4));
+        int sliderWidth = Math.max(128, map.width() - controlWidth * 3 - 24);
         elevationModeButton = addRenderableWidget(Button.builder(elevationModeLabel(), button -> toggleElevationMode())
-            .bounds(map.right - 360, map.top + 8, 116, 20)
+            .bounds(map.left, controlTop, controlWidth, 20)
             .build());
         surfaceApplicationButton = addRenderableWidget(Button.builder(surfaceApplicationLabel(), button -> toggleSurfaceApplication())
-            .bounds(map.right - 240, map.top + 8, 124, 20)
+            .bounds(map.left + controlWidth + 8, controlTop, controlWidth, 20)
             .build());
-        clearHeightSlider = addRenderableWidget(new ClearHeightSlider(map.right - 360, map.top + 32, 352, 20));
+        clearHeightSlider = addRenderableWidget(new ClearHeightSlider(map.left + (controlWidth + 8) * 2, controlTop, sliderWidth, 20));
+        clearQueueButton = addRenderableWidget(Button.builder(Component.translatable("screen.openwheelracing.track_editor.clear_queue"), button -> clearPendingQueue())
+            .bounds(map.right - controlWidth, controlTop, controlWidth, 20)
+            .build());
         updateClearQueueButton();
         updateToggleButtons();
     }
@@ -213,11 +216,11 @@ public class TrackEditorScreen extends Screen {
                 return true;
             }
             case GLFW.GLFW_KEY_EQUAL, GLFW.GLFW_KEY_KP_ADD -> {
-                width = Math.min(TrackEditorOperation.MAX_WIDTH, width + 1);
+                trackWidth = Math.min(TrackEditorOperation.MAX_WIDTH, trackWidth + 1);
                 return true;
             }
             case GLFW.GLFW_KEY_MINUS, GLFW.GLFW_KEY_KP_SUBTRACT -> {
-                width = Math.max(1, width - 1);
+                trackWidth = Math.max(1, trackWidth - 1);
                 return true;
             }
             case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
@@ -285,6 +288,7 @@ public class TrackEditorScreen extends Screen {
         renderQueuedOperations(graphics);
         renderPendingGeometry(graphics);
         renderPlayerMarker(graphics);
+        renderControlStrip(graphics);
         renderOverlayHud(graphics);
         renderNotice(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
@@ -384,26 +388,31 @@ public class TrackEditorScreen extends Screen {
         graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.player"), x + 6, y - 4, 0xFF55AAFF, false);
     }
 
+    private void renderControlStrip(GuiGraphics graphics) {
+        MapBounds map = mapBounds();
+        graphics.fill(map.left, map.bottom - 28, map.right, map.bottom, 0x88000000);
+    }
+
     private void renderOverlayHud(GuiGraphics graphics) {
         MapBounds map = mapBounds();
         int x = map.left + 8;
         int y = map.top + 8;
-        int panelWidth = showHelp ? 360 : 292;
-        int panelHeight = showHelp ? 160 : 76;
-        graphics.fill(x, y, x + panelWidth, y + panelHeight, 0xAA000000);
+        int panelWidth = showHelp ? Math.min(360, map.width() - 16) : Math.min(292, map.width() - 16);
+        int panelHeight = showHelp ? 150 : 64;
+        graphics.fill(x, y, x + panelWidth, y + panelHeight, 0x88000000);
         graphics.renderOutline(x, y, panelWidth, panelHeight, 0xFFDA1A20);
-        graphics.drawString(font, title, x + 8, y + 8, 0xFFFFFFFF, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_line1", mode().name(), material().name(), width, blocksPerPixel()), x + 8, y + 22, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_line2", preset().displayName(), runoffMaterial().name(), editY, elevationModeText(), surfaceApplicationText()), x + 8, y + 34, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_line3", points.size(), requiredPointsText(), PENDING_QUEUE.size(), clearHeight), x + 8, y + 46, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_hint"), x + 8, y + 60, 0xFFB7FFB7, false);
+        graphics.drawString(font, title, x + 6, y + 6, 0xFFFFFFFF, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_line1", mode().name(), material().name(), trackWidth, blocksPerPixel()), x + 6, y + 18, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_line2", preset().displayName(), runoffMaterial().name(), editY, elevationModeText(), surfaceApplicationText()), x + 6, y + 30, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_line3", points.size(), requiredPointsText(), PENDING_QUEUE.size(), clearHeight), x + 6, y + 42, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_hint"), x + 6, y + 54, 0xFFB7FFB7, false);
         if (showHelp) {
-            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help1"), x + 8, y + 82, 0xFFB7FFB7, false);
-            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help2"), x + 8, y + 94, 0xFFB7FFB7, false);
-            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help3"), x + 8, y + 106, 0xFFB7FFB7, false);
-            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help4"), x + 8, y + 118, 0xFFB7FFB7, false);
-            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help5"), x + 8, y + 130, 0xFFB7FFB7, false);
-            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help6"), x + 8, y + 142, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help1"), x + 6, y + 76, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help2"), x + 6, y + 88, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help3"), x + 6, y + 100, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help4"), x + 6, y + 112, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help5"), x + 6, y + 124, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help6"), x + 6, y + 136, 0xFFB7FFB7, false);
         }
     }
 
@@ -582,7 +591,7 @@ public class TrackEditorScreen extends Screen {
             if (chunk.size() < 2) {
                 continue;
             }
-            PENDING_QUEUE.add(new PendingEditorOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), width, chunk, facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL, clearHeight), reason));
+            PENDING_QUEUE.add(new PendingEditorOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), trackWidth, chunk, facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL, clearHeight), reason));
             chunks++;
         }
         if (reason == QueueReason.IMPORT && pathPoints.size() > 2) {
@@ -666,7 +675,7 @@ public class TrackEditorScreen extends Screen {
         if (mode == TrackEditorMode.POLYGON && points.size() < 3) {
             return;
         }
-        TrackEditorOperation operation = new TrackEditorOperation(mode, material(), width, new ArrayList<>(points), facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL, clearHeight);
+        TrackEditorOperation operation = new TrackEditorOperation(mode, material(), trackWidth, new ArrayList<>(points), facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL, clearHeight);
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null && !isOperationNearPlayer(operation, minecraft.player.blockPosition())) {
             enqueueOperation(operation, QueueReason.TOO_FAR);

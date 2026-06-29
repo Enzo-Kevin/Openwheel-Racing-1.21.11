@@ -69,8 +69,11 @@ public class OpenwheelCarEntity extends Entity {
         new Vec3(0.0, 0.0, -1.65)
     };
 
+    private static final int REVERSE_GEAR = -1;
+    private static final int NEUTRAL_GEAR = 0;
     private static final int MAX_GEAR = 8;
     private static final double SPEED_TO_BLOCKS_PER_TICK = 1.0 / 72.0;
+    private static final double REVERSE_TOP_SPEED = 35.0 * SPEED_TO_BLOCKS_PER_TICK;
     private static final double[] GEAR_TOP_SPEEDS = {0.0, 80.0 * SPEED_TO_BLOCKS_PER_TICK, 120.0 * SPEED_TO_BLOCKS_PER_TICK, 150.0 * SPEED_TO_BLOCKS_PER_TICK, 190.0 * SPEED_TO_BLOCKS_PER_TICK, 235.0 * SPEED_TO_BLOCKS_PER_TICK, 275.0 * SPEED_TO_BLOCKS_PER_TICK, 310.0 * SPEED_TO_BLOCKS_PER_TICK, 350.0 * SPEED_TO_BLOCKS_PER_TICK};
     private static final double CAR_MASS_KG = 805.0;
     private static final double GRAVITY = 9.81;
@@ -207,7 +210,7 @@ public class OpenwheelCarEntity extends Entity {
 
     @Override
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
-        builder.define(GEAR, 1);
+        builder.define(GEAR, NEUTRAL_GEAR);
         builder.define(RPM, 900);
         builder.define(SPEED, 0.0f);
         builder.define(DAMAGE, 0.0f);
@@ -262,6 +265,34 @@ public class OpenwheelCarEntity extends Entity {
 
     public int getGear() {
         return entityData.get(GEAR);
+    }
+
+    public String getGearLabel() {
+        return gearLabel(getGear());
+    }
+
+    private static int clampGear(int gear) {
+        return Math.max(REVERSE_GEAR, Math.min(MAX_GEAR, gear));
+    }
+
+    private static String gearLabel(int gear) {
+        if (gear == REVERSE_GEAR) {
+            return "R";
+        }
+        if (gear == NEUTRAL_GEAR) {
+            return "N";
+        }
+        return Integer.toString(gear);
+    }
+
+    private static double gearTopSpeed(int gear) {
+        if (gear == REVERSE_GEAR) {
+            return REVERSE_TOP_SPEED;
+        }
+        if (gear == NEUTRAL_GEAR) {
+            return 0.0;
+        }
+        return GEAR_TOP_SPEEDS[gear];
     }
 
     public int getRpm() {
@@ -514,27 +545,27 @@ public class OpenwheelCarEntity extends Entity {
 
     public void shiftUp() {
         if (getGear() < MAX_GEAR) {
-            entityData.set(GEAR, getGear() + 1);
+            entityData.set(GEAR, clampGear(getGear() + 1));
             playShiftFeedback(1.1f);
-            messageDriver(Component.literal("Gear " + getGear()));
+            messageDriver(Component.literal("Gear " + getGearLabel()));
             logShift("up");
         }
     }
 
     public void shiftDown() {
-        if (getGear() > 1) {
-            entityData.set(GEAR, getGear() - 1);
+        if (getGear() > REVERSE_GEAR) {
+            entityData.set(GEAR, clampGear(getGear() - 1));
             playShiftFeedback(0.8f);
-            messageDriver(Component.literal("Gear " + getGear()));
+            messageDriver(Component.literal("Gear " + getGearLabel()));
             logShift("down");
         }
     }
 
     public void shiftLocal(int direction) {
         if (direction > 0 && getGear() < MAX_GEAR) {
-            entityData.set(GEAR, getGear() + 1);
-        } else if (direction < 0 && getGear() > 1) {
-            entityData.set(GEAR, getGear() - 1);
+            entityData.set(GEAR, clampGear(getGear() + 1));
+        } else if (direction < 0 && getGear() > REVERSE_GEAR) {
+            entityData.set(GEAR, clampGear(getGear() - 1));
         }
     }
 
@@ -674,7 +705,7 @@ public class OpenwheelCarEntity extends Entity {
             input.getIntOr("Aero", PrototypeCarSetup.DEFAULT.aero()),
             input.getIntOr("Gearing", PrototypeCarSetup.DEFAULT.gearing())
         ));
-        entityData.set(GEAR, input.getIntOr("Gear", 1));
+        entityData.set(GEAR, clampGear(input.getIntOr("Gear", NEUTRAL_GEAR)));
         entityData.set(RPM, input.getIntOr("Rpm", 900));
         entityData.set(DAMAGE, (float) input.getDoubleOr("Damage", 0.0));
         entityData.set(TYRE_WEAR, (float) input.getDoubleOr("TyreWear", 0.0));
@@ -924,11 +955,11 @@ public class OpenwheelCarEntity extends Entity {
 
         double damageFactor    = 1.0 - getDamagePercent()   / 140.0;
         double tyreFactor      = 1.0 - getTyreWearPercent() / 180.0;
-        int gear = Math.max(1, Math.min(MAX_GEAR, getGear()));
+        int gear = clampGear(getGear());
         if (gear != getGear()) {
             entityData.set(GEAR, gear);
         }
-        double gearTopSpeed = GEAR_TOP_SPEEDS[gear];
+        double gearTopSpeed = gearTopSpeed(gear);
         double maxSpeed = GEAR_TOP_SPEEDS[MAX_GEAR];
         if (isPitLane()) {
             gearTopSpeed = Math.min(gearTopSpeed, 0.52);
@@ -947,7 +978,10 @@ public class OpenwheelCarEntity extends Entity {
             resetTyreRelaxation();
         }
         boolean autoClutch = throttle > 0.0 && gear == 1 && horizontalSpeed < LAUNCH_CLUTCH_SPEED;
-        int engineRpm = calculateRpm(horizontalSpeed, gear, gearTopSpeed, autoClutch);
+        int engineRpm = calculateRpm(horizontalSpeed, gear, gearTopSpeed, throttle, autoClutch);
+        if (autoClutch) {
+            engineRpm = Math.max(engineRpm, getRpm());
+        }
         double power = enginePowerWatts(engineRpm) * setup.powerMultiplier() * damageFactor;
         double tyreSlip = 0.0;
 
@@ -1003,8 +1037,9 @@ public class OpenwheelCarEntity extends Entity {
             double subAeroRearLoad = subDownforce * (1.0 - FRONT_AERO_BALANCE);
 
             double subSpeedBlocksPerTick = subSpeed / 20.0;
-            double subDriveForceRequest = throttle > 0.0 && subSpeedBlocksPerTick < gearTopSpeed
-                ? power * throttle / Math.max(MIN_POWER_SPEED, Math.abs(velocityLong))
+            double driveDirection = gear == REVERSE_GEAR ? -1.0 : gear > NEUTRAL_GEAR ? 1.0 : 0.0;
+            double subDriveForceRequest = driveDirection != 0.0 && throttle > 0.0 && Math.abs(velocityLong) / 20.0 < gearTopSpeed
+                ? driveDirection * power * throttle / Math.max(MIN_POWER_SPEED, Math.abs(velocityLong))
                 : 0.0;
             double subForwardRollingFraction = Math.abs(velocityLong) / Math.max(1.0, subSpeed);
             if (subSpeed > 3.0 && subForwardRollingFraction < 0.45) {
@@ -1192,11 +1227,11 @@ public class OpenwheelCarEntity extends Entity {
             double subAccelerationLat = lateralForce / CAR_MASS_KG - yawRate * velocityLong;
 
             velocityLong += forceAccelerationLong * subDt;
-            if (subVelocityLongBefore >= 0.0 && velocityLong < 0.0 && subDriveForceRequest <= subBrakeForceRequest) {
+            if (subVelocityLongBefore >= 0.0 && velocityLong < 0.0 && driveDirection >= 0.0 && subDriveForceRequest <= subBrakeForceRequest) {
                 velocityLong = 0.0;
             }
             velocityLong += couplingAccelerationLong * subDt;
-            if (subVelocityLongBefore >= -0.05 && velocityLong < 0.0 && throttle >= 0.0 && Math.abs(yawDelta) < Math.PI * 0.5) {
+            if (subVelocityLongBefore >= -0.05 && velocityLong < 0.0 && !(gear == REVERSE_GEAR && throttle > 0.0) && Math.abs(yawDelta) < Math.PI * 0.5) {
                 velocityLong = 0.0;
             } else if (subVelocityLongBefore < 0.0 && velocityLong > 0.0 && throttle == 0.0) {
                 velocityLong = 0.0;
@@ -1204,7 +1239,7 @@ public class OpenwheelCarEntity extends Entity {
             velocityLat += subAccelerationLat * subDt;
             yawRate += yawAcceleration * subDt;
             yawDelta += yawRate * subDt;
-            driveWorkJoules += Math.max(0.0, rearLongForce + frontLongForce) * Math.max(0.0, velocityLong) * subDt;
+            driveWorkJoules += Math.max(0.0, (rearLongForce + frontLongForce) * velocityLong) * subDt;
 
             finalFrontLatForce = frontLatForce;
             finalRearLatForce = rearLatForce;
@@ -1286,7 +1321,11 @@ public class OpenwheelCarEntity extends Entity {
             double speedScale = adjustedHorizontalSpeed / actualHorizontalSpeed;
             actualMovement = new Vec3(actualMovement.x * speedScale, actualMovement.y, actualMovement.z * speedScale);
         }
-        setDeltaMovement(actualMovement);
+        double carriedVerticalMovement = actualMovement.y;
+        if (elevationDelta > 1.0E-4 && onGround()) {
+            carriedVerticalMovement = 0.0;
+        }
+        setDeltaMovement(new Vec3(actualMovement.x, carriedVerticalMovement, actualMovement.z));
         scanLapMarkers(beforeMove, actualMovement);
 
         boolean shouldDebugMovement = debugMovement && (getControllingPassenger() != null || throttle != 0.0 || brake != 0.0 || steering != 0.0 || horizontalSpeed > 0.01 || actualMovement.horizontalDistance() > 0.01);
@@ -1312,7 +1351,7 @@ public class OpenwheelCarEntity extends Entity {
         }
 
         double newSpeed = Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z);
-        int rpm = calculateRpm(newSpeed, gear, gearTopSpeed, throttle > 0.0 && gear == 1 && newSpeed < LAUNCH_CLUTCH_SPEED);
+        int rpm = calculateRpm(newSpeed, gear, gearTopSpeed, throttle, throttle > 0.0 && gear == 1 && newSpeed < LAUNCH_CLUTCH_SPEED);
         entityData.set(SPEED, (float)(newSpeed * 72.0));
         entityData.set(RPM, rpm);
         entityData.set(TYRE_SLIP, (float) Math.max(0.0, Math.min(1.0, tyreSlip)));
@@ -1375,9 +1414,6 @@ public class OpenwheelCarEntity extends Entity {
     public void prepareForDriver(Player player) {
         syncPlayerBestLap(player);
         double speed = Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
-        if (speed < 0.04) {
-            entityData.set(GEAR, 1);
-        }
         if (!level().isClientSide()) {
             LOGGER.info("OWR car mounted id={} player={} pos=({}, {}, {}) delta={} gear={} speed={} bbox={}",
                 getId(),
@@ -1506,7 +1542,10 @@ public class OpenwheelCarEntity extends Entity {
         messageDriver(Component.literal("INVALID LAP: " + reason));
     }
 
-    private static int calculateRpm(double speed, int gear, double gearTopSpeed, boolean autoClutch) {
+    private static int calculateRpm(double speed, int gear, double gearTopSpeed, double throttle, boolean autoClutch) {
+        if (gear == NEUTRAL_GEAR) {
+            return (int) Math.max(IDLE_RPM, Math.min(REDLINE_RPM, IDLE_RPM + (REDLINE_RPM - IDLE_RPM) * throttle));
+        }
         double wheelRpm = gearTopSpeed <= 0.0 ? IDLE_RPM : speed / gearTopSpeed * REDLINE_RPM;
         double rpm = Math.max(IDLE_RPM, wheelRpm);
         if (autoClutch) {

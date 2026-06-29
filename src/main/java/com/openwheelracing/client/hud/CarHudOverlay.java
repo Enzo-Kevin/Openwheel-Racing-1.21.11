@@ -27,7 +27,7 @@ public final class CarHudOverlay {
         graphics.fill(x, y, x + PANEL_WIDTH, y + PANEL_HEIGHT, 0x99000000);
         graphics.renderOutline(x, y, PANEL_WIDTH, PANEL_HEIGHT, 0xFFDA1A20);
         graphics.drawString(font, String.format("SPD %3.0f km/h", car.getSpeedKmh()), x + 8, y + 7, 0xFFFFFFFF, false);
-        graphics.drawString(font, "GEAR " + car.getGear(), x + 8, y + 18, 0xFFFFFFFF, false);
+        graphics.drawString(font, "GEAR " + car.getGearLabel(), x + 8, y + 18, 0xFFFFFFFF, false);
         graphics.drawString(font, "RPM  " + car.getRpm(), x + 8, y + 29, 0xFFFFFFFF, false);
         graphics.drawString(font, String.format("TYRE %3.0f%%", Math.max(0.0f, 100.0f - car.getTyreWearPercent())), x + 8, y + 40, car.getTyreWearPercent() > 70.0f ? 0xFFFFDD66 : 0xFFB7FFB7, false);
         graphics.drawString(font, String.format("DMG %3.0f%%", car.getDamagePercent()), x + 68, y + 40, car.getDamagePercent() > 70.0f ? 0xFFFF7777 : 0xFFFFFFFF, false);
@@ -68,7 +68,7 @@ public final class CarHudOverlay {
         int lineHeight = 8;
         int row = y;
         debugLine(graphics, font, x, row, 0xFF99DDFF, "OWR Phys"); row += lineHeight;
-        debugLine(graphics, font, x, row, 0xFFFFFFFF, String.format("spd %.1f rpm %d g%d", car.getSpeedKmh(), car.getRpm(), car.getGear())); row += lineHeight;
+        debugLine(graphics, font, x, row, 0xFFFFFFFF, String.format("spd %.1f rpm %d g%s", car.getSpeedKmh(), car.getRpm(), car.getGearLabel())); row += lineHeight;
         debugLine(graphics, font, x, row, 0xFFFFFFFF, String.format("vL %.2f vY %.2f yaw %.3f", car.getDebugVelocityLong(), car.getDebugVelocityLat(), car.getDebugYawRate())); row += lineHeight;
         debugLine(graphics, font, x, row, 0xFFFFFFFF, String.format("steer %.1f slip %.2f", car.getFrontWheelSteerDegrees(), car.getTyreSlipIntensity())); row += lineHeight;
         debugLine(graphics, font, x, row, 0xFFFFDD88, String.format("drv %.0f drag %.0f df %.0f", car.getDebugDriveForce(), car.getDebugDragForce(), car.getDebugDownforce())); row += lineHeight;
