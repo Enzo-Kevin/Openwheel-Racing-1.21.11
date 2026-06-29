@@ -4,10 +4,12 @@ import com.openwheelracing.registry.OWRBlocks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,28 +24,41 @@ public final class TrackEditorPlacementService {
     private TrackEditorPlacementService() {
     }
 
-    public static void place(ServerPlayer player, TrackEditorOperation operation) {
+    public enum PlacementResult {
+        PLACED,
+        INVALID_OPERATION,
+        TOO_MANY_BLOCKS,
+        TOO_FAR,
+        OUT_OF_BOUNDS,
+        BLOCKED
+    }
+
+    public static PlacementResult place(ServerPlayer player, TrackEditorOperation operation) {
         if (!isValidOperation(operation)) {
-            return;
+            return PlacementResult.INVALID_OPERATION;
         }
 
         if (!(player.level() instanceof net.minecraft.server.level.ServerLevel level)) {
-            return;
+            return PlacementResult.INVALID_OPERATION;
         }
-        LinkedHashMap<BlockPos, BlockState> placements = generatePlacements(operation);
+        LinkedHashMap<BlockPos, BlockState> placements = generatePlacements(level, operation);
+        addClearance(level, placements, operation.clearHeight());
         if (placements.isEmpty() || placements.size() > MAX_BLOCKS_PER_OPERATION) {
-            return;
+            return PlacementResult.TOO_MANY_BLOCKS;
         }
 
         List<TrackEditorUndoStore.Entry> undo = new ArrayList<>();
         for (Map.Entry<BlockPos, BlockState> entry : placements.entrySet()) {
             BlockPos pos = entry.getKey();
-            if (!level.isInWorldBounds(pos) || !isNearPlayer(player, pos)) {
-                return;
+            if (!level.isInWorldBounds(pos)) {
+                return PlacementResult.OUT_OF_BOUNDS;
+            }
+            if (!isNearPlayer(player, pos)) {
+                return PlacementResult.TOO_FAR;
             }
             BlockState previous = level.getBlockState(pos);
             if (!canReplace(previous)) {
-                return;
+                return PlacementResult.BLOCKED;
             }
             if (!previous.equals(entry.getValue())) {
                 undo.add(new TrackEditorUndoStore.Entry(pos.immutable(), previous));
@@ -54,6 +69,23 @@ public final class TrackEditorPlacementService {
             level.setBlock(entry.getKey(), entry.getValue(), 3);
         }
         TrackEditorUndoStore.push(player, undo);
+        return PlacementResult.PLACED;
+    }
+
+    private static void addClearance(Level level, LinkedHashMap<BlockPos, BlockState> placements, int clearHeight) {
+        if (clearHeight <= 0) {
+            return;
+        }
+        List<BlockPos> surfacePositions = new ArrayList<>(placements.keySet());
+        for (BlockPos pos : surfacePositions) {
+            for (int dy = 1; dy <= clearHeight; dy++) {
+                BlockPos clearPos = pos.above(dy);
+                if (!level.isInWorldBounds(clearPos)) {
+                    continue;
+                }
+                placements.putIfAbsent(clearPos, Blocks.AIR.defaultBlockState());
+            }
+        }
     }
 
     private static boolean isValidOperation(TrackEditorOperation operation) {
@@ -70,19 +102,19 @@ public final class TrackEditorPlacementService {
         };
     }
 
-    private static LinkedHashMap<BlockPos, BlockState> generatePlacements(TrackEditorOperation operation) {
+    private static LinkedHashMap<BlockPos, BlockState> generatePlacements(Level level, TrackEditorOperation operation) {
         LinkedHashMap<BlockPos, BlockState> placements = new LinkedHashMap<>();
         switch (operation.mode()) {
-            case STRAIGHT -> addLine(placements, operation.points().get(0), operation.points().get(1), operation, true);
-            case FREEHAND -> addPath(placements, operation.points(), operation);
-            case EDGE -> addManualEdgePath(placements, operation.points(), operation.width(), operation.material(), operation.facing());
-            case ARC -> addArc(placements, operation.points().get(0), operation.points().get(1), operation.points().get(2), operation);
-            case POLYGON -> addPolygon(placements, operation.points(), operation.material(), operation.facing());
+            case STRAIGHT -> addLine(placements, level, operation.points().get(0), operation.points().get(1), operation, true);
+            case FREEHAND -> addPath(placements, level, operation.points(), operation);
+            case EDGE -> addManualEdgePath(placements, level, operation.points(), operation.width(), operation.material(), operation.facing(), operation.fullSurface());
+            case ARC -> addArc(placements, level, operation.points().get(0), operation.points().get(1), operation.points().get(2), operation);
+            case POLYGON -> addPolygon(placements, level, operation.points(), operation.material(), operation.facing(), operation.fullSurface());
         }
         return placements;
     }
 
-    private static void addPath(LinkedHashMap<BlockPos, BlockState> placements, List<BlockPos> points, TrackEditorOperation operation) {
+    private static void addPath(LinkedHashMap<BlockPos, BlockState> placements, Level level, List<BlockPos> points, TrackEditorOperation operation) {
         int[] segmentLengths = new int[points.size() - 1];
         int totalSteps = 0;
         for (int i = 1; i < points.size(); i++) {
@@ -92,24 +124,25 @@ public final class TrackEditorPlacementService {
         }
         int walkedSteps = 0;
         for (int i = 1; i < points.size(); i++) {
-            addLine(placements, points.get(i - 1), points.get(i), operation, walkedSteps, totalSteps, true);
+            addLine(placements, level, points.get(i - 1), points.get(i), operation, walkedSteps, totalSteps, true);
             walkedSteps += segmentLengths[i - 1];
         }
     }
 
-    private static void addManualEdgePath(LinkedHashMap<BlockPos, BlockState> placements, List<BlockPos> points, int width, TrackEditorMaterial material, Direction fallbackFacing) {
+    private static void addManualEdgePath(LinkedHashMap<BlockPos, BlockState> placements, Level level, List<BlockPos> points, int width, TrackEditorMaterial material, Direction fallbackFacing, boolean fullSurface) {
         for (int i = 1; i < points.size(); i++) {
             Direction facing = horizontalFacing(points.get(i - 1), points.get(i), fallbackFacing);
-            addManualLine(placements, points.get(i - 1), points.get(i), width, material, facing);
+            addManualLine(placements, level, points.get(i - 1), points.get(i), width, material, facing, fullSurface);
         }
     }
 
-    private static void addLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, TrackEditorOperation operation, boolean trimPresetEnds) {
-        addLine(placements, start, end, operation, 0, lineSteps(start, end), trimPresetEnds);
+    private static void addLine(LinkedHashMap<BlockPos, BlockState> placements, Level level, BlockPos start, BlockPos end, TrackEditorOperation operation, boolean trimPresetEnds) {
+        addLine(placements, level, start, end, operation, 0, lineSteps(start, end), trimPresetEnds);
     }
 
-    private static void addLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, TrackEditorOperation operation, int walkedSteps, int totalSteps, boolean trimPresetEnds) {
+    private static void addLine(LinkedHashMap<BlockPos, BlockState> placements, Level level, BlockPos start, BlockPos end, TrackEditorOperation operation, int walkedSteps, int totalSteps, boolean trimPresetEnds) {
         int dx = end.getX() - start.getX();
+        int dy = end.getY() - start.getY();
         int dz = end.getZ() - start.getZ();
         int steps = lineSteps(start, end);
         Direction pathFacing = horizontalFacing(start, end, operation.facing());
@@ -119,16 +152,21 @@ public final class TrackEditorPlacementService {
             return;
         }
         for (int i = 0; i <= steps; i++) {
-            int x = Math.round(start.getX() + dx * (i / (float) steps));
-            int z = Math.round(start.getZ() + dz * (i / (float) steps));
+            float t = i / (float) steps;
+            int x = Math.round(start.getX() + dx * t);
+            int y = Math.round(start.getY() + dy * t);
+            int z = Math.round(start.getZ() + dz * t);
             boolean includePreset = !trimPresetEnds || isInsideTrimmedPresetRange(walkedSteps + i, totalSteps, operation.width());
-            addPresetCrossSection(placements, new BlockPos(x, start.getY(), z), outward, operation, includePreset);
+            BlockPos center = surfacePosition(level, new BlockPos(x, y, z), operation.fullSurface());
+            addPresetCrossSection(placements, center, outward, operation, includePreset);
             if (i > 0) {
-                int previousX = Math.round(start.getX() + dx * ((i - 1) / (float) steps));
-                int previousZ = Math.round(start.getZ() + dz * ((i - 1) / (float) steps));
+                float previousT = (i - 1) / (float) steps;
+                int previousX = Math.round(start.getX() + dx * previousT);
+                int previousY = Math.round(start.getY() + dy * previousT);
+                int previousZ = Math.round(start.getZ() + dz * previousT);
                 if (previousX != x && previousZ != z) {
-                    addPresetCrossSection(placements, new BlockPos(previousX, start.getY(), z), outward, operation, false);
-                    addPresetCrossSection(placements, new BlockPos(x, start.getY(), previousZ), outward, operation, false);
+                    addPresetCrossSection(placements, surfacePosition(level, new BlockPos(previousX, previousY, z), operation.fullSurface()), outward, operation, false);
+                    addPresetCrossSection(placements, surfacePosition(level, new BlockPos(x, y, previousZ), operation.fullSurface()), outward, operation, false);
                 }
             }
         }
@@ -144,30 +182,35 @@ public final class TrackEditorPlacementService {
         return step >= width && step <= totalSteps - width;
     }
 
-    private static void addManualLine(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos end, int width, TrackEditorMaterial material, Direction facing) {
+    private static void addManualLine(LinkedHashMap<BlockPos, BlockState> placements, Level level, BlockPos start, BlockPos end, int width, TrackEditorMaterial material, Direction facing, boolean fullSurface) {
         int dx = end.getX() - start.getX();
+        int dy = end.getY() - start.getY();
         int dz = end.getZ() - start.getZ();
         int steps = Math.max(Math.abs(dx), Math.abs(dz));
         if (steps == 0) {
-            addThickPoint(placements, start, width, material, facing);
+            addThickPoint(placements, surfacePosition(level, start, fullSurface), width, material, facing);
             return;
         }
         for (int i = 0; i <= steps; i++) {
-            int x = Math.round(start.getX() + dx * (i / (float) steps));
-            int z = Math.round(start.getZ() + dz * (i / (float) steps));
-            addThickPoint(placements, new BlockPos(x, start.getY(), z), width, material, facing);
+            float t = i / (float) steps;
+            int x = Math.round(start.getX() + dx * t);
+            int y = Math.round(start.getY() + dy * t);
+            int z = Math.round(start.getZ() + dz * t);
+            addThickPoint(placements, surfacePosition(level, new BlockPos(x, y, z), fullSurface), width, material, facing);
             if (i > 0) {
-                int previousX = Math.round(start.getX() + dx * ((i - 1) / (float) steps));
-                int previousZ = Math.round(start.getZ() + dz * ((i - 1) / (float) steps));
+                float previousT = (i - 1) / (float) steps;
+                int previousX = Math.round(start.getX() + dx * previousT);
+                int previousY = Math.round(start.getY() + dy * previousT);
+                int previousZ = Math.round(start.getZ() + dz * previousT);
                 if (previousX != x && previousZ != z) {
-                    addThickPoint(placements, new BlockPos(previousX, start.getY(), z), width, material, facing);
-                    addThickPoint(placements, new BlockPos(x, start.getY(), previousZ), width, material, facing);
+                    addThickPoint(placements, surfacePosition(level, new BlockPos(previousX, previousY, z), fullSurface), width, material, facing);
+                    addThickPoint(placements, surfacePosition(level, new BlockPos(x, y, previousZ), fullSurface), width, material, facing);
                 }
             }
         }
     }
 
-    private static void addArc(LinkedHashMap<BlockPos, BlockState> placements, BlockPos start, BlockPos control, BlockPos end, TrackEditorOperation operation) {
+    private static void addArc(LinkedHashMap<BlockPos, BlockState> placements, Level level, BlockPos start, BlockPos control, BlockPos end, TrackEditorOperation operation) {
         double length = start.distSqr(control) + control.distSqr(end);
         int samples = Math.min(128, Math.max(12, (int) Math.sqrt(length) * 2));
         BlockPos previous = start;
@@ -175,9 +218,10 @@ public final class TrackEditorPlacementService {
             double t = i / (double) samples;
             double u = 1.0 - t;
             int x = (int) Math.round(u * u * start.getX() + 2.0 * u * t * control.getX() + t * t * end.getX());
+            int y = (int) Math.round(u * u * start.getY() + 2.0 * u * t * control.getY() + t * t * end.getY());
             int z = (int) Math.round(u * u * start.getZ() + 2.0 * u * t * control.getZ() + t * t * end.getZ());
-            BlockPos next = new BlockPos(x, start.getY(), z);
-            addLine(placements, previous, next, operation, true);
+            BlockPos next = new BlockPos(x, y, z);
+            addLine(placements, level, previous, next, operation, true);
             previous = next;
         }
     }
@@ -250,7 +294,7 @@ public final class TrackEditorPlacementService {
         };
     }
 
-    private static void addPolygon(LinkedHashMap<BlockPos, BlockState> placements, List<BlockPos> points, TrackEditorMaterial material, Direction facing) {
+    private static void addPolygon(LinkedHashMap<BlockPos, BlockState> placements, Level level, List<BlockPos> points, TrackEditorMaterial material, Direction facing, boolean fullSurface) {
         int minX = points.stream().mapToInt(BlockPos::getX).min().orElse(0);
         int maxX = points.stream().mapToInt(BlockPos::getX).max().orElse(0);
         int minZ = points.stream().mapToInt(BlockPos::getZ).min().orElse(0);
@@ -263,10 +307,18 @@ public final class TrackEditorPlacementService {
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
                 if (isInsidePolygon(x + 0.5, z + 0.5, points)) {
-                    placements.put(new BlockPos(x, y, z), state);
+                    placements.put(surfacePosition(level, new BlockPos(x, y, z), fullSurface), state);
                 }
             }
         }
+    }
+
+    private static BlockPos surfacePosition(Level level, BlockPos pos, boolean fullSurface) {
+        if (!fullSurface || !level.hasChunkAt(pos)) {
+            return pos;
+        }
+        int surfaceY = level.getHeight(Heightmap.Types.WORLD_SURFACE, pos.getX(), pos.getZ()) - 1;
+        return surfaceY < level.getMinY() ? pos : new BlockPos(pos.getX(), surfaceY, pos.getZ());
     }
 
     private static void addThickPoint(LinkedHashMap<BlockPos, BlockState> placements, BlockPos center, int width, TrackEditorMaterial material, Direction facing) {

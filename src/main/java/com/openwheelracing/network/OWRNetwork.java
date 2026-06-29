@@ -352,6 +352,8 @@ public final class OWRNetwork {
             buffer.writeEnum(message.operation.facing());
             buffer.writeEnum(message.operation.preset());
             buffer.writeEnum(message.operation.runoffMaterial());
+            buffer.writeBoolean(message.operation.fullSurface());
+            buffer.writeVarInt(message.operation.clearHeight());
             buffer.writeVarInt(message.operation.points().size());
             for (BlockPos point : message.operation.points()) {
                 buffer.writeBlockPos(point);
@@ -365,6 +367,8 @@ public final class OWRNetwork {
             Direction facing = buffer.readEnum(Direction.class);
             TrackEditorPreset preset = buffer.readEnum(TrackEditorPreset.class);
             TrackEditorMaterial runoffMaterial = buffer.readEnum(TrackEditorMaterial.class);
+            boolean fullSurface = buffer.readBoolean();
+            int clearHeight = buffer.readVarInt();
             int declaredSize = buffer.readVarInt();
             int size = Math.min(declaredSize, TrackEditorOperation.MAX_POINTS);
             java.util.List<BlockPos> points = new java.util.ArrayList<>(size);
@@ -374,14 +378,17 @@ public final class OWRNetwork {
                     points.add(point);
                 }
             }
-            return new TrackEditorPlaceMessage(new TrackEditorOperation(mode, material, width, points, facing, preset, runoffMaterial));
+            return new TrackEditorPlaceMessage(new TrackEditorOperation(mode, material, width, points, facing, preset, runoffMaterial, fullSurface, clearHeight));
         }
 
         private static void handle(TrackEditorPlaceMessage message, CustomPayloadEvent.Context context) {
             context.enqueueWork(() -> {
                 ServerPlayer player = context.getSender();
                 if (player != null) {
-                    TrackEditorPlacementService.place(player, message.operation());
+                    TrackEditorPlacementService.PlacementResult result = TrackEditorPlacementService.place(player, message.operation());
+                    if (result != TrackEditorPlacementService.PlacementResult.PLACED) {
+                        player.displayClientMessage(Component.translatable("message.openwheelracing.track_editor.place_failed." + result.name().toLowerCase(java.util.Locale.ROOT)), true);
+                    }
                 }
             });
             context.setPacketHandled(true);

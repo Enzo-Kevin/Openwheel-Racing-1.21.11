@@ -13,6 +13,7 @@ import com.openwheelracing.network.OWRNetwork;
 import com.openwheelracing.registry.OWRBlocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -21,9 +22,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
@@ -64,14 +62,13 @@ public class TrackEditorScreen extends Screen {
     };
     private static final TrackEditorPreset[] PRESETS = TrackEditorPreset.values();
     private static final double[] ZOOM_LEVELS = {0.25, 0.5, 1.0, 2.0, 4.0};
-    private static final int SIDE_PANEL_WIDTH = 280;
-    private static final int PANEL_GAP = 12;
-    private static final int OUTER_MARGIN = 20;
-    private static final int IMPORT_CHUNK_SIZE = 64;
-    private static final int IMPORT_SEND_DISTANCE = 480;
+    private static final int OUTER_MARGIN = 8;
+    private static final int QUEUE_CHUNK_SIZE = 64;
+    private static final int QUEUE_SEND_DISTANCE = 480;
+    private static final int QUEUE_SENDS_PER_TICK = 2;
     private static final double IMPORT_SAMPLE_SPACING = 1.0;
     private static final String IMPORT_PATH = "openwheelracing/imports/lap-simulator-track.json";
-    private static final List<QueuedImportOperation> IMPORT_QUEUE = new ArrayList<>();
+    private static final List<PendingEditorOperation> PENDING_QUEUE = new ArrayList<>();
 
     private final List<BlockPos> points = new ArrayList<>();
     private int modeIndex;
@@ -88,9 +85,17 @@ public class TrackEditorScreen extends Screen {
     private boolean dragging;
     private double lastDragX;
     private double lastDragY;
-    private Component importStatus;
+    private final TrackEditorMapCache mapCache = new TrackEditorMapCache();
+    private OverlayNotice notice;
     private Button clearQueueButton;
+    private Button elevationModeButton;
+    private Button surfaceApplicationButton;
+    private ClearHeightSlider clearHeightSlider;
     private int lastQueuedCount;
+    private int clearHeight = 3;
+    private ElevationMode elevationMode = ElevationMode.SURFACE;
+    private SurfaceApplication surfaceApplication = SurfaceApplication.KEYPOINT;
+    private boolean showHelp;
 
     public TrackEditorScreen() {
         super(Component.translatable("screen.openwheelracing.track_editor"));
@@ -111,10 +116,18 @@ public class TrackEditorScreen extends Screen {
             initialized = true;
         }
         MapBounds map = mapBounds();
-        clearQueueButton = addRenderableWidget(Button.builder(Component.translatable("screen.openwheelracing.track_editor.clear_queue"), button -> clearImportQueue())
-            .bounds(map.right + PANEL_GAP + 8, map.top + 214, SIDE_PANEL_WIDTH - 16, 20)
+        clearQueueButton = addRenderableWidget(Button.builder(Component.translatable("screen.openwheelracing.track_editor.clear_queue"), button -> clearPendingQueue())
+            .bounds(map.right - 112, map.top + 8, 104, 20)
             .build());
+        elevationModeButton = addRenderableWidget(Button.builder(elevationModeLabel(), button -> toggleElevationMode())
+            .bounds(map.right - 360, map.top + 8, 116, 20)
+            .build());
+        surfaceApplicationButton = addRenderableWidget(Button.builder(surfaceApplicationLabel(), button -> toggleSurfaceApplication())
+            .bounds(map.right - 240, map.top + 8, 124, 20)
+            .build());
+        clearHeightSlider = addRenderableWidget(new ClearHeightSlider(map.right - 360, map.top + 32, 352, 20));
         updateClearQueueButton();
+        updateToggleButtons();
     }
 
     @Override
@@ -174,7 +187,7 @@ public class TrackEditorScreen extends Screen {
             return true;
         }
         if (keyCode == GLFW.GLFW_KEY_C) {
-            clearImportQueue();
+            clearPendingQueue();
             return true;
         }
         switch (keyCode) {
@@ -221,6 +234,10 @@ public class TrackEditorScreen extends Screen {
                 recenterOnPlayer();
                 return true;
             }
+            case GLFW.GLFW_KEY_H -> {
+                showHelp = !showHelp;
+                return true;
+            }
             case GLFW.GLFW_KEY_PAGE_UP, GLFW.GLFW_KEY_RIGHT_BRACKET -> {
                 editY++;
                 return true;
@@ -253,16 +270,23 @@ public class TrackEditorScreen extends Screen {
 
     @Override
     public void tick() {
-        flushImportQueue();
+        flushPendingQueue();
+        if (notice != null && notice.ticksRemaining() > 0) {
+            notice = new OverlayNotice(notice.text(), notice.color(), notice.ticksRemaining() - 1);
+            if (notice.ticksRemaining() <= 0) {
+                notice = null;
+            }
+        }
     }
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         renderMap(graphics);
-        renderQueuedImports(graphics);
+        renderQueuedOperations(graphics);
         renderPendingGeometry(graphics);
         renderPlayerMarker(graphics);
-        renderSidePanel(graphics);
+        renderOverlayHud(graphics);
+        renderNotice(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
     }
 
@@ -287,7 +311,7 @@ public class TrackEditorScreen extends Screen {
         for (int sx = map.left; sx < map.right; sx += pixelStep) {
             for (int sy = map.top; sy < map.bottom; sy += pixelStep) {
                 BlockPos pos = screenToBlock(sx + pixelStep * 0.5, sy + pixelStep * 0.5);
-                int color = surfaceColor(level, pos.getX(), pos.getZ());
+                int color = mapCache.color(level, pos.getX(), pos.getZ(), editY);
                 graphics.fill(sx, sy, Math.min(map.right, sx + pixelStep), Math.min(map.bottom, sy + pixelStep), color);
             }
         }
@@ -325,8 +349,8 @@ public class TrackEditorScreen extends Screen {
         graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.scale_100m"), x + length + 6, y - 4, 0xFFFFFFFF, false);
     }
 
-    private void renderQueuedImports(GuiGraphics graphics) {
-        for (QueuedImportOperation queued : IMPORT_QUEUE) {
+    private void renderQueuedOperations(GuiGraphics graphics) {
+        for (PendingEditorOperation queued : PENDING_QUEUE) {
             List<BlockPos> queuedPoints = queued.operation().points();
             for (int i = 1; i < queuedPoints.size(); i++) {
                 drawLine(graphics, queuedPoints.get(i - 1), queuedPoints.get(i), 0xFF55FFAA);
@@ -360,33 +384,38 @@ public class TrackEditorScreen extends Screen {
         graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.player"), x + 6, y - 4, 0xFF55AAFF, false);
     }
 
-    private void renderSidePanel(GuiGraphics graphics) {
-        int panelWidth = SIDE_PANEL_WIDTH;
+    private void renderOverlayHud(GuiGraphics graphics) {
         MapBounds map = mapBounds();
-        int x = map.right + PANEL_GAP;
-        int y = map.top;
-        int h = 236;
-        graphics.fill(x, y, x + panelWidth, y + h, 0xCC000000);
-        graphics.renderOutline(x, y, panelWidth, h, 0xFFDA1A20);
+        int x = map.left + 8;
+        int y = map.top + 8;
+        int panelWidth = showHelp ? 360 : 292;
+        int panelHeight = showHelp ? 160 : 76;
+        graphics.fill(x, y, x + panelWidth, y + panelHeight, 0xAA000000);
+        graphics.renderOutline(x, y, panelWidth, panelHeight, 0xFFDA1A20);
         graphics.drawString(font, title, x + 8, y + 8, 0xFFFFFFFF, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.preset", preset().displayName()), x + 8, y + 22, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.runoff", runoffMaterial().name()), x + 8, y + 34, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.mode", mode().name()), x + 8, y + 46, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.material", material().name()), x + 8, y + 58, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.width", width), x + 8, y + 70, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.zoom", blocksPerPixel()), x + 8, y + 82, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.y_level", editY), x + 8, y + 94, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.points", points.size(), requiredPointsText()), x + 8, y + 106, 0xFFE6E6E6, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help1"), x + 8, y + 122, 0xFFB7FFB7, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help2"), x + 8, y + 134, 0xFFB7FFB7, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help3"), x + 8, y + 146, 0xFFB7FFB7, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help4"), x + 8, y + 158, 0xFFB7FFB7, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help5"), x + 8, y + 170, 0xFFB7FFB7, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help6"), x + 8, y + 182, 0xFFB7FFB7, false);
-        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help7"), x + 8, y + 194, 0xFFB7FFB7, false);
-        if (importStatus != null) {
-            graphics.drawString(font, importStatus, x + 8, y + 206, 0xFFFFDD55, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_line1", mode().name(), material().name(), width, blocksPerPixel()), x + 8, y + 22, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_line2", preset().displayName(), runoffMaterial().name(), editY, elevationModeText(), surfaceApplicationText()), x + 8, y + 34, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_line3", points.size(), requiredPointsText(), PENDING_QUEUE.size(), clearHeight), x + 8, y + 46, 0xFFE6E6E6, false);
+        graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.hud_hint"), x + 8, y + 60, 0xFFB7FFB7, false);
+        if (showHelp) {
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help1"), x + 8, y + 82, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help2"), x + 8, y + 94, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help3"), x + 8, y + 106, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help4"), x + 8, y + 118, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help5"), x + 8, y + 130, 0xFFB7FFB7, false);
+            graphics.drawString(font, Component.translatable("screen.openwheelracing.track_editor.map_help6"), x + 8, y + 142, 0xFFB7FFB7, false);
         }
+    }
+
+    private void renderNotice(GuiGraphics graphics) {
+        if (notice == null) {
+            return;
+        }
+        int textWidth = font.width(notice.text());
+        int x = (this.width - textWidth) / 2;
+        int y = mapBounds().top + 12;
+        graphics.fill(x - 8, y - 6, x + textWidth + 8, y + 14, 0xBB000000);
+        graphics.drawString(font, notice.text(), x, y, notice.color(), false);
     }
 
     private void importLapSimulatorTrack() {
@@ -399,15 +428,15 @@ public class TrackEditorScreen extends Screen {
             List<LapSimulatorSection> sections = parseLapSimulatorSections(Files.readString(path, StandardCharsets.UTF_8));
             List<BlockPos> importedPoints = mapImportedPoints(sampleLapSimulatorCenterline(sections), sections.get(0));
             if (importedPoints.size() < 2) {
-                importStatus = Component.translatable("screen.openwheelracing.track_editor.import_failed", "not enough unique points");
+                showNotice(Component.translatable("screen.openwheelracing.track_editor.import_failed", "not enough unique points"), 0xFFFF7777);
                 return;
             }
-            int chunks = queueImportedPath(importedPoints);
-            updateImportQueueStatus(Component.translatable("screen.openwheelracing.track_editor.import_queued", sections.size(), importedPoints.size(), chunks));
+            int chunks = queuePath(importedPoints, QueueReason.IMPORT);
+            updatePendingQueueStatus(Component.translatable("screen.openwheelracing.track_editor.import_queued", sections.size(), importedPoints.size(), chunks));
         } catch (IOException e) {
-            importStatus = Component.translatable("screen.openwheelracing.track_editor.import_failed", IMPORT_PATH);
+            showNotice(Component.translatable("screen.openwheelracing.track_editor.import_failed", IMPORT_PATH), 0xFFFF7777);
         } catch (IllegalArgumentException | JsonSyntaxException e) {
-            importStatus = Component.translatable("screen.openwheelracing.track_editor.import_failed", e.getMessage());
+            showNotice(Component.translatable("screen.openwheelracing.track_editor.import_failed", e.getMessage()), 0xFFFF7777);
         }
     }
 
@@ -530,9 +559,8 @@ public class TrackEditorScreen extends Screen {
         int anchorX = (int) Math.round(centerX);
         int anchorZ = (int) Math.round(centerZ);
         for (Vec2 point : importedPoints) {
-            BlockPos pos = new BlockPos(
+            BlockPos pos = withEditorY(
                 (int) Math.round(anchorX + point.x() - origin.x()),
-                editY,
                 (int) Math.round(anchorZ + point.y() - origin.y())
             );
             if (!pos.equals(previous)) {
@@ -546,72 +574,77 @@ public class TrackEditorScreen extends Screen {
         return mapped;
     }
 
-    private int queueImportedPath(List<BlockPos> importedPoints) {
+    private int queuePath(List<BlockPos> pathPoints, QueueReason reason) {
         int chunks = 0;
-        for (int start = 0; start < importedPoints.size() - 1; start += IMPORT_CHUNK_SIZE - 1) {
-            int end = Math.min(importedPoints.size(), start + IMPORT_CHUNK_SIZE);
-            List<BlockPos> chunk = new ArrayList<>(importedPoints.subList(start, end));
+        for (int start = 0; start < pathPoints.size() - 1; start += QUEUE_CHUNK_SIZE - 1) {
+            int end = Math.min(pathPoints.size(), start + QUEUE_CHUNK_SIZE);
+            List<BlockPos> chunk = new ArrayList<>(pathPoints.subList(start, end));
             if (chunk.size() < 2) {
                 continue;
             }
-            IMPORT_QUEUE.add(new QueuedImportOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), width, chunk, facing(), preset(), runoffMaterial())));
+            PENDING_QUEUE.add(new PendingEditorOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), width, chunk, facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL, clearHeight), reason));
             chunks++;
         }
-        if (importedPoints.size() > 2) {
-            List<BlockPos> closingChunk = List.of(importedPoints.get(importedPoints.size() - 1), importedPoints.get(0));
-            IMPORT_QUEUE.add(new QueuedImportOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), width, closingChunk, facing(), preset(), runoffMaterial())));
+        if (reason == QueueReason.IMPORT && pathPoints.size() > 2) {
+            List<BlockPos> closingChunk = List.of(pathPoints.get(pathPoints.size() - 1), pathPoints.get(0));
+            PENDING_QUEUE.add(new PendingEditorOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), width, closingChunk, facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL), reason));
             chunks++;
         }
         return chunks;
     }
 
-    private void flushImportQueue() {
+    private void enqueueOperation(TrackEditorOperation operation, QueueReason reason) {
+        PENDING_QUEUE.add(new PendingEditorOperation(operation, reason));
+        updatePendingQueueStatus(Component.translatable("screen.openwheelracing.track_editor.operation_queued", reason.displayName(), PENDING_QUEUE.size()));
+    }
+
+    private void flushPendingQueue() {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || IMPORT_QUEUE.isEmpty()) {
+        if (minecraft.player == null || PENDING_QUEUE.isEmpty()) {
             return;
         }
         BlockPos playerPos = minecraft.player.blockPosition();
         int sent = 0;
-        for (int i = 0; i < IMPORT_QUEUE.size(); ) {
-            QueuedImportOperation queued = IMPORT_QUEUE.get(i);
+        for (int i = 0; i < PENDING_QUEUE.size() && sent < QUEUE_SENDS_PER_TICK; ) {
+            PendingEditorOperation queued = PENDING_QUEUE.get(i);
             if (!isOperationNearPlayer(queued.operation(), playerPos)) {
                 i++;
                 continue;
             }
             OWRNetwork.CHANNEL.send(new OWRNetwork.TrackEditorPlaceMessage(queued.operation()), PacketDistributor.SERVER.noArg());
-            IMPORT_QUEUE.remove(i);
+            PENDING_QUEUE.remove(i);
             sent++;
         }
-        if (sent > 0 || lastQueuedCount != IMPORT_QUEUE.size()) {
-            updateImportQueueStatus(Component.translatable("screen.openwheelracing.track_editor.import_queue", IMPORT_QUEUE.size()));
+        if (sent > 0 || lastQueuedCount != PENDING_QUEUE.size()) {
+            updatePendingQueueStatus(Component.translatable("screen.openwheelracing.track_editor.queue", PENDING_QUEUE.size()));
         }
     }
 
-    private void clearImportQueue() {
-        int cleared = IMPORT_QUEUE.size();
+    private void clearPendingQueue() {
+        int cleared = PENDING_QUEUE.size();
         if (cleared <= 0) {
             updateClearQueueButton();
             return;
         }
-        IMPORT_QUEUE.clear();
-        updateImportQueueStatus(Component.translatable("screen.openwheelracing.track_editor.import_queue_cleared", cleared));
+        PENDING_QUEUE.clear();
+        updatePendingQueueStatus(Component.translatable("screen.openwheelracing.track_editor.queue_cleared", cleared));
     }
 
-    private void updateImportQueueStatus(Component status) {
-        lastQueuedCount = IMPORT_QUEUE.size();
-        importStatus = status;
+    private void updatePendingQueueStatus(Component status) {
+        lastQueuedCount = PENDING_QUEUE.size();
+        showNotice(status, 0xFFFFDD55);
         updateClearQueueButton();
     }
 
     private void updateClearQueueButton() {
         if (clearQueueButton != null) {
-            clearQueueButton.active = !IMPORT_QUEUE.isEmpty();
+            clearQueueButton.active = !PENDING_QUEUE.isEmpty();
         }
     }
 
     private boolean isOperationNearPlayer(TrackEditorOperation operation, BlockPos playerPos) {
         for (BlockPos point : operation.points()) {
-            if (playerPos.distManhattan(point) > IMPORT_SEND_DISTANCE) {
+            if (playerPos.distManhattan(point) > QUEUE_SEND_DISTANCE) {
                 return false;
             }
         }
@@ -633,7 +666,13 @@ public class TrackEditorScreen extends Screen {
         if (mode == TrackEditorMode.POLYGON && points.size() < 3) {
             return;
         }
-        OWRNetwork.CHANNEL.send(new OWRNetwork.TrackEditorPlaceMessage(new TrackEditorOperation(mode, material(), width, new ArrayList<>(points), facing(), preset(), runoffMaterial())), PacketDistributor.SERVER.noArg());
+        TrackEditorOperation operation = new TrackEditorOperation(mode, material(), width, new ArrayList<>(points), facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL, clearHeight);
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player != null && !isOperationNearPlayer(operation, minecraft.player.blockPosition())) {
+            enqueueOperation(operation, QueueReason.TOO_FAR);
+        } else {
+            OWRNetwork.CHANNEL.send(new OWRNetwork.TrackEditorPlaceMessage(operation), PacketDistributor.SERVER.noArg());
+        }
         if (mode == TrackEditorMode.FREEHAND || mode == TrackEditorMode.EDGE) {
             BlockPos last = points.get(points.size() - 1);
             points.clear();
@@ -730,7 +769,16 @@ public class TrackEditorScreen extends Screen {
         MapBounds map = mapBounds();
         int worldX = (int) Math.floor(centerX + (x - (map.left + map.width() / 2.0)) * blocksPerPixel());
         int worldZ = (int) Math.floor(centerZ + (y - (map.top + map.height() / 2.0)) * blocksPerPixel());
-        return new BlockPos(worldX, editY, worldZ);
+        return withEditorY(worldX, worldZ);
+    }
+
+    private BlockPos withEditorY(int worldX, int worldZ) {
+        Minecraft minecraft = Minecraft.getInstance();
+        int y = editY;
+        if (elevationMode == ElevationMode.SURFACE && minecraft.level != null) {
+            y = mapCache.surfaceY(minecraft.level, worldX, worldZ, editY);
+        }
+        return new BlockPos(worldX, y, worldZ);
     }
 
     private int worldToScreenX(double worldX) {
@@ -760,71 +808,128 @@ public class TrackEditorScreen extends Screen {
         }
     }
 
-    private int surfaceColor(Level level, int x, int z) {
-        if (!level.hasChunkAt(new BlockPos(x, editY, z))) {
-            return 0xFF181A1C;
-        }
-        int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
-        if (y < level.getMinY()) {
-            return 0xFF101214;
-        }
-        Block block = level.getBlockState(new BlockPos(x, y, z)).getBlock();
-        int color = colorFor(block);
-        return color == 0 ? 0xFF2B352B : color;
-    }
-
-    private int colorFor(Block block) {
-        if (block == OWRBlocks.ASPHALT_TRACK.get()) {
-            return 0xFF202020;
-        }
-        if (block == OWRBlocks.PIT_LANE.get()) {
-            return 0xFF4A4A4A;
-        }
-        if (block == OWRBlocks.KERB.get()) {
-            return 0xFFCC3333;
-        }
-        if (block == OWRBlocks.BARRIER.get()) {
-            return 0xFF888888;
-        }
-        if (block == Blocks.GRASS_BLOCK) {
-            return 0xFF4B7D3A;
-        }
-        if (block == Blocks.DIRT) {
-            return 0xFF74543A;
-        }
-        if (block == Blocks.SAND) {
-            return 0xFFC8B77B;
-        }
-        if (block == Blocks.GRAVEL) {
-            return 0xFF737373;
-        }
-        if (block == Blocks.WHITE_CONCRETE || block == Blocks.LIGHT_GRAY_CONCRETE) {
-            return 0xFFBEBEBE;
-        }
-        if (block == Blocks.GRAY_CONCRETE || block == Blocks.BLACK_CONCRETE) {
-            return 0xFF505050;
-        }
-        if (block == Blocks.RED_CONCRETE) {
-            return 0xFF8F2B25;
-        }
-        return 0;
-    }
-
     private int floorToStep(int value, int step) {
         return Math.floorDiv(value, step) * step;
     }
 
-    private MapBounds mapBounds() {
-        int availableWidth = Math.max(240, this.width - OUTER_MARGIN * 2);
-        int availableHeight = Math.max(160, this.height - OUTER_MARGIN * 2);
-        int mapWidth = Math.max(160, availableWidth - SIDE_PANEL_WIDTH - PANEL_GAP);
-        int totalWidth = mapWidth + PANEL_GAP + SIDE_PANEL_WIDTH;
-        int left = Math.max(OUTER_MARGIN, (this.width - totalWidth) / 2);
-        int top = Math.max(OUTER_MARGIN, (this.height - availableHeight) / 2);
-        return new MapBounds(left, top, left + mapWidth, top + availableHeight);
+    private Component elevationModeText() {
+        return Component.translatable(elevationMode.translationKey());
     }
 
-    private record QueuedImportOperation(TrackEditorOperation operation) {
+    private Component surfaceApplicationText() {
+        return Component.translatable(surfaceApplication.translationKey());
+    }
+
+    private Component elevationModeLabel() {
+        return Component.translatable("screen.openwheelracing.track_editor.elevation_button", elevationModeText());
+    }
+
+    private Component surfaceApplicationLabel() {
+        return Component.translatable("screen.openwheelracing.track_editor.surface_button", surfaceApplicationText());
+    }
+
+    private Component clearHeightLabel() {
+        return Component.translatable("screen.openwheelracing.track_editor.clear_height", clearHeight);
+    }
+
+    private void toggleElevationMode() {
+        elevationMode = elevationMode == ElevationMode.SURFACE ? ElevationMode.HEIGHT : ElevationMode.SURFACE;
+        updateToggleButtons();
+        showNotice(Component.translatable("screen.openwheelracing.track_editor.elevation_mode_changed", elevationModeText()), 0xFFB7FFB7);
+    }
+
+    private void toggleSurfaceApplication() {
+        surfaceApplication = surfaceApplication == SurfaceApplication.KEYPOINT ? SurfaceApplication.FULL : SurfaceApplication.KEYPOINT;
+        updateToggleButtons();
+        showNotice(Component.translatable("screen.openwheelracing.track_editor.surface_application_changed", surfaceApplicationText()), 0xFFB7FFB7);
+    }
+
+    private void updateToggleButtons() {
+        if (elevationModeButton != null) {
+            elevationModeButton.setMessage(elevationModeLabel());
+        }
+        if (surfaceApplicationButton != null) {
+            surfaceApplicationButton.setMessage(surfaceApplicationLabel());
+        }
+    }
+
+    private void showNotice(Component text, int color) {
+        notice = new OverlayNotice(text, color, 80);
+    }
+
+    private MapBounds mapBounds() {
+        int left = OUTER_MARGIN;
+        int top = OUTER_MARGIN;
+        return new MapBounds(left, top, Math.max(left + 160, this.width - OUTER_MARGIN), Math.max(top + 120, this.height - OUTER_MARGIN));
+    }
+
+    private record PendingEditorOperation(TrackEditorOperation operation, QueueReason reason) {
+    }
+
+    private enum QueueReason {
+        IMPORT("screen.openwheelracing.track_editor.queue_reason.import"),
+        TOO_FAR("screen.openwheelracing.track_editor.queue_reason.too_far"),
+        TOO_MANY_POINTS("screen.openwheelracing.track_editor.queue_reason.too_many_points"),
+        TOO_LARGE("screen.openwheelracing.track_editor.queue_reason.too_large");
+
+        private final String key;
+
+        QueueReason(String key) {
+            this.key = key;
+        }
+
+        private Component displayName() {
+            return Component.translatable(key);
+        }
+    }
+
+    private record OverlayNotice(Component text, int color, int ticksRemaining) {
+    }
+
+    private class ClearHeightSlider extends AbstractSliderButton {
+        private ClearHeightSlider(int x, int y, int width, int height) {
+            super(x, y, width, height, clearHeightLabel(), clearHeight / (double) TrackEditorOperation.MAX_CLEAR_HEIGHT);
+        }
+
+        @Override
+        protected void updateMessage() {
+            setMessage(clearHeightLabel());
+        }
+
+        @Override
+        protected void applyValue() {
+            clearHeight = (int) Math.round(value * TrackEditorOperation.MAX_CLEAR_HEIGHT);
+        }
+    }
+
+    private enum ElevationMode {
+        SURFACE("screen.openwheelracing.track_editor.elevation.surface"),
+        HEIGHT("screen.openwheelracing.track_editor.elevation.height");
+
+        private final String translationKey;
+
+        ElevationMode(String translationKey) {
+            this.translationKey = translationKey;
+        }
+
+        private String translationKey() {
+            return translationKey;
+        }
+    }
+
+    private enum SurfaceApplication {
+        KEYPOINT("screen.openwheelracing.track_editor.surface.keypoint"),
+        FULL("screen.openwheelracing.track_editor.surface.full");
+
+        private final String translationKey;
+
+        SurfaceApplication(String translationKey) {
+            this.translationKey = translationKey;
+        }
+
+        private String translationKey() {
+            return translationKey;
+        }
     }
 
     private record LapSimulatorSection(String id, double x, double y, double direction, double width) {

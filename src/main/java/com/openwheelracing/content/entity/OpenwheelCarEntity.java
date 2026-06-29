@@ -116,6 +116,17 @@ public class OpenwheelCarEntity extends Entity {
     private static final double STEERING_DEADZONE = 0.08;
     private static final double LOW_SPEED_STEER_ANGLE = Math.toRadians(24.0);
     private static final double HIGH_SPEED_STEER_ANGLE = Math.toRadians(2.2);
+    private static final double STEERING_HIGH_SPEED_CURVE_POWER = 0.72;
+    private static final double STEERING_TRAIL_BRAKE_RELEASE = 0.35;
+    private static final double TRAIL_BRAKE_REAR_PRESSURE_RELIEF = 0.42;
+    private static final double TRAIL_BRAKE_REAR_RELIEF_MAX_STEER = Math.toRadians(6.0);
+    private static final double FRONT_UNDERSTEER_WARNING_THRESHOLD = 0.94;
+    private static final double FRONT_UNDERSTEER_WARNING_RECOVERY = 0.84;
+    private static final long FRONT_UNDERSTEER_WARNING_COOLDOWN = 20L;
+    private static final double STEERING_OFF_GRIP_RELIEF_START = 0.92;
+    private static final double STEERING_OFF_GRIP_RELIEF_FULL = 1.28;
+    private static final double STEERING_OFF_GRIP_LOCK_BONUS = 0.45;
+    private static final double STEERING_OFF_GRIP_RATE_BONUS = 1.35;
     private static final double LOW_SPEED_STEERING_RACK_RATE = Math.toRadians(120.0);
     private static final double HIGH_SPEED_STEERING_RACK_RATE = Math.toRadians(4.0);
     private static final double LOW_SPEED_STEERING_CENTERING_RATE = Math.toRadians(90.0);
@@ -136,6 +147,8 @@ public class OpenwheelCarEntity extends Entity {
     private long lastStartFinishTriggerAt = -20L;
     private long lastLowTyreWarningAt = -200L;
     private long lastDamageWarningAt = -200L;
+    private long lastFrontUndersteerWarningAt = -200L;
+    private boolean frontUndersteerWarningActive;
     // Checkpoint positions (packed BlockPos longs) visited in the current lap, in order
     private final java.util.LinkedList<Long> visitedCheckpoints = new java.util.LinkedList<>();
     private final java.util.HashSet<Long> visitedCheckpointSet = new java.util.HashSet<>();
@@ -146,6 +159,7 @@ public class OpenwheelCarEntity extends Entity {
     private long lastMovementDebugAt = -20L;
     private boolean wasRiddenLastTick;
     private double steeringAngle;
+    private double frontSteeringOffGripRelief;
     private double yawRate;
     private double relaxedFlLatForce;
     private double relaxedFrLatForce;
@@ -210,7 +224,7 @@ public class OpenwheelCarEntity extends Entity {
 
     @Override
     public float maxUpStep() {
-        return 0.5f;
+        return 1.1f;
     }
 
     public void setSetup(PrototypeCarSetup setup) {
@@ -940,8 +954,12 @@ public class OpenwheelCarEntity extends Entity {
         double steerInput = Math.abs(steering) > STEERING_DEADZONE ? steering : 0.0;
         double speedRatio = speedMetersPerSecond / STEERING_SPEED_SCALE;
         double speedSteerT = square(speedRatio) / (1.0 + square(speedRatio));
-        double steeringLock = LOW_SPEED_STEER_ANGLE + (HIGH_SPEED_STEER_ANGLE - LOW_SPEED_STEER_ANGLE) * speedSteerT;
-        double rackRate = LOW_SPEED_STEERING_RACK_RATE + (HIGH_SPEED_STEERING_RACK_RATE - LOW_SPEED_STEERING_RACK_RATE) * speedSteerT;
+        double steeringLockT = Math.pow(speedSteerT, STEERING_HIGH_SPEED_CURVE_POWER);
+        double offGripRelief = frontSteeringOffGripRelief;
+        double steeringLock = (LOW_SPEED_STEER_ANGLE + (HIGH_SPEED_STEER_ANGLE - LOW_SPEED_STEER_ANGLE) * steeringLockT)
+            * (1.0 + offGripRelief * STEERING_OFF_GRIP_LOCK_BONUS);
+        double rackRate = (LOW_SPEED_STEERING_RACK_RATE + (HIGH_SPEED_STEERING_RACK_RATE - LOW_SPEED_STEERING_RACK_RATE) * speedSteerT)
+            * (1.0 + offGripRelief * STEERING_OFF_GRIP_RATE_BONUS);
         double centeringRate = LOW_SPEED_STEERING_CENTERING_RATE + (HIGH_SPEED_STEERING_CENTERING_RATE - LOW_SPEED_STEERING_CENTERING_RATE) * speedSteerT;
         double targetSteeringAngle = steerInput * steeringLock;
         double steeringError = targetSteeringAngle - steeringAngle;
@@ -949,6 +967,10 @@ public class OpenwheelCarEntity extends Entity {
         double steeringRate = centering ? centeringRate : rackRate;
         double steeringGain = 1.0 - Math.exp(-steeringRate * PHYSICS_DT / Math.max(Math.toRadians(0.25), steeringLock));
         steeringAngle += steeringError * steeringGain;
+        if (brake > 0.0 && Math.abs(steeringAngle) > SLIP_ANGLE_DEADBAND && speedMetersPerSecond > 8.0) {
+            double release = Math.min(0.35, brake * STEERING_TRAIL_BRAKE_RELEASE * Math.min(1.0, speedMetersPerSecond / 35.0));
+            steeringAngle *= 1.0 - release;
+        }
 
         double previousKineticEnergy = 0.5 * CAR_MASS_KG * (velocityLong * velocityLong + velocityLat * velocityLat) + 0.5 * YAW_INERTIA * yawRate * yawRate;
         double previousVelocityLong = velocityLong;
@@ -1041,6 +1063,9 @@ public class OpenwheelCarEntity extends Entity {
 
             double brakeFront = subBrakeForceRequest * BRAKE_FRONT_BIAS * 0.5;
             double brakeRear = subBrakeForceRequest * (1.0 - BRAKE_FRONT_BIAS) * 0.5;
+            double trailBrakeSteerUse = Math.min(1.0, Math.abs(steeringAngle) / TRAIL_BRAKE_REAR_RELIEF_MAX_STEER);
+            double trailBrakeRelease = brake * trailBrakeSteerUse * TRAIL_BRAKE_REAR_PRESSURE_RELIEF;
+            brakeRear *= 1.0 - trailBrakeRelease;
             double driveRear = subDriveForceRequest * 0.5;
             double brakeSign = velocityLong >= 0.0 ? 1.0 : -1.0;
             double flLongRequest = -brakeSign * brakeFront;
@@ -1227,6 +1252,8 @@ public class OpenwheelCarEntity extends Entity {
         debugRearSlipAngle = finalRearSlipAngle;
         debugDownforce = finalDownforce;
         setYRot(getYRot() + (float) Math.toDegrees(yawDelta));
+        updateFrontSteeringOffGripRelief(finalFrontSaturation, finalRearSaturation);
+        tickFrontUndersteerWarning(finalFrontSaturation, finalRearSaturation, speedMetersPerSecond);
 
         double frontExcess = Math.max(0.0, finalFrontSaturation - 1.0);
         double rearExcess = Math.max(0.0, finalRearSaturation - 1.0);
@@ -1250,6 +1277,15 @@ public class OpenwheelCarEntity extends Entity {
         Vec3 beforeMove = position();
         move(MoverType.SELF, delta);
         Vec3 actualMovement = position().subtract(beforeMove);
+        double elevationDelta = actualMovement.y - delta.y;
+        double actualHorizontalSpeed = actualMovement.horizontalDistance() * 20.0;
+        if (Math.abs(elevationDelta) > 1.0E-4 && actualHorizontalSpeed > 1.0E-4) {
+            double horizontalKineticEnergy = 0.5 * CAR_MASS_KG * actualHorizontalSpeed * actualHorizontalSpeed;
+            double adjustedHorizontalKineticEnergy = Math.max(0.0, horizontalKineticEnergy - CAR_MASS_KG * GRAVITY * elevationDelta);
+            double adjustedHorizontalSpeed = Math.sqrt(2.0 * adjustedHorizontalKineticEnergy / CAR_MASS_KG);
+            double speedScale = adjustedHorizontalSpeed / actualHorizontalSpeed;
+            actualMovement = new Vec3(actualMovement.x * speedScale, actualMovement.y, actualMovement.z * speedScale);
+        }
         setDeltaMovement(actualMovement);
         scanLapMarkers(beforeMove, actualMovement);
 
@@ -1419,6 +1455,33 @@ public class OpenwheelCarEntity extends Entity {
         spawnAtLocation(serverLevel, new ItemStack(OWRItems.RUBBER.get(), Math.max(1, 4 - Math.round(getTyreWearPercent() / 25.0f))));
         serverLevel.explode(this, getX(), getY(), getZ(), 1.8f, Level.ExplosionInteraction.NONE);
         discard();
+    }
+
+    private void updateFrontSteeringOffGripRelief(double frontSaturation, double rearSaturation) {
+        double frontDominance = Math.max(0.0, frontSaturation - rearSaturation * 0.85);
+        double saturationRelief = (Math.max(frontSaturation, frontDominance) - STEERING_OFF_GRIP_RELIEF_START) / (STEERING_OFF_GRIP_RELIEF_FULL - STEERING_OFF_GRIP_RELIEF_START);
+        frontSteeringOffGripRelief = clamp(saturationRelief, 0.0, 1.0);
+    }
+
+    private void tickFrontUndersteerWarning(double frontSaturation, double rearSaturation, double speedMetersPerSecond) {
+        boolean frontLimited = frontSaturation >= FRONT_UNDERSTEER_WARNING_THRESHOLD
+            && frontSaturation > rearSaturation + 0.08
+            && Math.abs(steeringAngle) > Math.toRadians(0.8)
+            && speedMetersPerSecond > 10.0;
+        if (!frontLimited) {
+            if (frontSaturation < FRONT_UNDERSTEER_WARNING_RECOVERY) {
+                frontUndersteerWarningActive = false;
+            }
+            return;
+        }
+
+        long time = level().getGameTime();
+        if (!frontUndersteerWarningActive || time - lastFrontUndersteerWarningAt >= FRONT_UNDERSTEER_WARNING_COOLDOWN) {
+            frontUndersteerWarningActive = true;
+            lastFrontUndersteerWarningAt = time;
+            level().playSound(null, getX(), getY(), getZ(), SoundEvents.ARMADILLO_SCUTE_DROP, SoundSource.PLAYERS, 0.45f, 1.65f);
+            messageDriver(Component.literal("Front tyres washing wide"));
+        }
     }
 
     private void playShiftFeedback(float pitch) {
