@@ -54,6 +54,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final EntityDataAccessor<Boolean> CHECKPOINT_ARMED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> PIT_STOP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> ABS_ENABLED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
+    private static final EntityDataAccessor<Boolean> TRACTION_CONTROL_ENABLED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> LIVERY = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> TYRE_COMPOUND = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
 
@@ -116,6 +117,12 @@ public class OpenwheelCarEntity extends Entity {
     private static final double LAUNCH_RPM = 4000.0;
     private static final double LAUNCH_CLUTCH_SPEED = 0.42;
     private static final double REDLINE_RPM = 13000.0;
+    private static final int CLUTCH_RELEASE_TICKS = 12;
+    private static final double NEUTRAL_RPM_RISE_PER_SECOND = 18_000.0;
+    private static final double NEUTRAL_RPM_DECAY_PER_SECOND = 3_800.0;
+    private static final double CLUTCH_RPM_DROP_PER_SECOND = 12_000.0;
+    private static final double ENGINE_BRAKE_RPM_DROP_PER_SECOND = 7_000.0;
+    private static final double CLUTCH_RELEASE_TRACTION_LIMIT = 0.95;
     private static final double STEERING_DEADZONE = 0.08;
     private static final double LOW_SPEED_STEER_ANGLE = Math.toRadians(24.0);
     private static final double HIGH_SPEED_STEER_ANGLE = Math.toRadians(2.2);
@@ -164,6 +171,8 @@ public class OpenwheelCarEntity extends Entity {
     private double steeringAngle;
     private double frontSteeringOffGripRelief;
     private double yawRate;
+    private int clutchReleaseTicks;
+    private int clutchReleaseRpm;
     private double relaxedFlLatForce;
     private double relaxedFrLatForce;
     private double relaxedRlLatForce;
@@ -221,6 +230,7 @@ public class OpenwheelCarEntity extends Entity {
         builder.define(CHECKPOINT_ARMED, false);
         builder.define(PIT_STOP_TICKS, 0);
         builder.define(ABS_ENABLED, true);
+        builder.define(TRACTION_CONTROL_ENABLED, true);
         builder.define(LIVERY, 0);
         builder.define(TYRE_COMPOUND, PrototypeCarSetup.DEFAULT.grip());
     }
@@ -325,6 +335,18 @@ public class OpenwheelCarEntity extends Entity {
 
     public void toggleAbs() {
         setAbsEnabled(!isAbsEnabled());
+    }
+
+    public boolean isTractionControlEnabled() {
+        return entityData.get(TRACTION_CONTROL_ENABLED);
+    }
+
+    public void setTractionControlEnabled(boolean enabled) {
+        entityData.set(TRACTION_CONTROL_ENABLED, enabled);
+    }
+
+    public void toggleTractionControl() {
+        setTractionControlEnabled(!isTractionControlEnabled());
     }
 
     public float getFrontWheelSteerDegrees() {
@@ -545,7 +567,7 @@ public class OpenwheelCarEntity extends Entity {
 
     public void shiftUp() {
         if (getGear() < MAX_GEAR) {
-            entityData.set(GEAR, clampGear(getGear() + 1));
+            setGear(clampGear(getGear() + 1));
             playShiftFeedback(1.1f);
             messageDriver(Component.literal("Gear " + getGearLabel()));
             logShift("up");
@@ -554,7 +576,7 @@ public class OpenwheelCarEntity extends Entity {
 
     public void shiftDown() {
         if (getGear() > REVERSE_GEAR) {
-            entityData.set(GEAR, clampGear(getGear() - 1));
+            setGear(clampGear(getGear() - 1));
             playShiftFeedback(0.8f);
             messageDriver(Component.literal("Gear " + getGearLabel()));
             logShift("down");
@@ -563,9 +585,22 @@ public class OpenwheelCarEntity extends Entity {
 
     public void shiftLocal(int direction) {
         if (direction > 0 && getGear() < MAX_GEAR) {
-            entityData.set(GEAR, clampGear(getGear() + 1));
+            setGear(clampGear(getGear() + 1));
         } else if (direction < 0 && getGear() > REVERSE_GEAR) {
-            entityData.set(GEAR, clampGear(getGear() - 1));
+            setGear(clampGear(getGear() - 1));
+        }
+    }
+
+    private void setGear(int gear) {
+        int previousGear = getGear();
+        entityData.set(GEAR, gear);
+        if (previousGear == NEUTRAL_GEAR && gear != NEUTRAL_GEAR && getRpm() > LAUNCH_RPM) {
+            clutchReleaseTicks = CLUTCH_RELEASE_TICKS;
+            clutchReleaseRpm = getRpm();
+        }
+        if (gear == NEUTRAL_GEAR) {
+            clutchReleaseTicks = 0;
+            clutchReleaseRpm = 0;
         }
     }
 
@@ -707,12 +742,15 @@ public class OpenwheelCarEntity extends Entity {
         ));
         entityData.set(GEAR, clampGear(input.getIntOr("Gear", NEUTRAL_GEAR)));
         entityData.set(RPM, input.getIntOr("Rpm", 900));
+        clutchReleaseTicks = input.getIntOr("ClutchReleaseTicks", 0);
+        clutchReleaseRpm = input.getIntOr("ClutchReleaseRpm", 0);
         entityData.set(DAMAGE, (float) input.getDoubleOr("Damage", 0.0));
         entityData.set(TYRE_WEAR, (float) input.getDoubleOr("TyreWear", 0.0));
         setLivery(input.getIntOr("Livery", 0));
         entityData.set(CURRENT_LAP_TICKS, input.getIntOr("CurrentLapTicks", 0));
         entityData.set(BEST_LAP_TICKS, input.getIntOr("BestLapTicks", 0));
         entityData.set(CHECKPOINT_ARMED, input.getBooleanOr("CheckpointArmed", false));
+        setTractionControlEnabled(input.getBooleanOr("TractionControlEnabled", true));
         steeringAngle = input.getDoubleOr("SteeringAngle", 0.0);
         yawRate = input.getDoubleOr("YawRate", 0.0);
         lapStartedAt = input.getLongOr("LapStartedAt", -1L);
@@ -726,12 +764,15 @@ public class OpenwheelCarEntity extends Entity {
         output.putInt("Gearing", setup.gearing());
         output.putInt("Gear", getGear());
         output.putInt("Rpm", getRpm());
+        output.putInt("ClutchReleaseTicks", clutchReleaseTicks);
+        output.putInt("ClutchReleaseRpm", clutchReleaseRpm);
         output.putDouble("Damage", getDamagePercent());
         output.putDouble("TyreWear", getTyreWearPercent());
         output.putInt("Livery", getLivery());
         output.putInt("CurrentLapTicks", getCurrentLapTicks());
         output.putInt("BestLapTicks", getBestLapTicks());
         output.putBoolean("CheckpointArmed", hasCheckpoint());
+        output.putBoolean("TractionControlEnabled", isTractionControlEnabled());
         output.putDouble("SteeringAngle", steeringAngle);
         output.putDouble("YawRate", yawRate);
         output.putLong("LapStartedAt", lapStartedAt);
@@ -815,7 +856,7 @@ public class OpenwheelCarEntity extends Entity {
                 || block == OWRBlocks.PIT_LANE_SLAB.get()
                 || block == OWRBlocks.PIT_STOP_MARK.get()) return SurfaceProfile.PIT_LANE;
         if (block == OWRBlocks.KERB.get()) return SurfaceProfile.KERB;
-        if (isConcreteBlock(block)) return SurfaceProfile.CONCRETE;
+        if (isPavedBlock(block)) return SurfaceProfile.CONCRETE;
         if (block == Blocks.GRASS_BLOCK
                 || block == Blocks.DIRT_PATH
                 || block == Blocks.PODZOL
@@ -828,7 +869,7 @@ public class OpenwheelCarEntity extends Entity {
         return SurfaceProfile.DIRT;
     }
 
-    private static boolean isConcreteBlock(Block block) {
+    private static boolean isPavedBlock(Block block) {
         return block == Blocks.WHITE_CONCRETE
                 || block == Blocks.ORANGE_CONCRETE
                 || block == Blocks.MAGENTA_CONCRETE
@@ -844,7 +885,37 @@ public class OpenwheelCarEntity extends Entity {
                 || block == Blocks.BROWN_CONCRETE
                 || block == Blocks.GREEN_CONCRETE
                 || block == Blocks.RED_CONCRETE
-                || block == Blocks.BLACK_CONCRETE;
+                || block == Blocks.BLACK_CONCRETE
+                || block == Blocks.STONE
+                || block == Blocks.STONE_SLAB
+                || block == Blocks.SMOOTH_STONE
+                || block == Blocks.SMOOTH_STONE_SLAB
+                || block == Blocks.STONE_BRICKS
+                || block == Blocks.STONE_BRICK_SLAB
+                || block == Blocks.CRACKED_STONE_BRICKS
+                || block == Blocks.MOSSY_STONE_BRICKS
+                || block == Blocks.MOSSY_STONE_BRICK_SLAB
+                || block == Blocks.ANDESITE
+                || block == Blocks.ANDESITE_SLAB
+                || block == Blocks.POLISHED_ANDESITE
+                || block == Blocks.POLISHED_ANDESITE_SLAB
+                || block == Blocks.DIORITE
+                || block == Blocks.DIORITE_SLAB
+                || block == Blocks.POLISHED_DIORITE
+                || block == Blocks.POLISHED_DIORITE_SLAB
+                || block == Blocks.GRANITE
+                || block == Blocks.GRANITE_SLAB
+                || block == Blocks.POLISHED_GRANITE
+                || block == Blocks.POLISHED_GRANITE_SLAB
+                || block == Blocks.DEEPSLATE
+                || block == Blocks.COBBLED_DEEPSLATE
+                || block == Blocks.COBBLED_DEEPSLATE_SLAB
+                || block == Blocks.POLISHED_DEEPSLATE
+                || block == Blocks.POLISHED_DEEPSLATE_SLAB
+                || block == Blocks.DEEPSLATE_BRICKS
+                || block == Blocks.DEEPSLATE_BRICK_SLAB
+                || block == Blocks.DEEPSLATE_TILES
+                || block == Blocks.DEEPSLATE_TILE_SLAB;
     }
 
     private SurfaceProfile getCurrentSurface() {
@@ -977,11 +1048,9 @@ public class OpenwheelCarEntity extends Entity {
             yawRate = 0.0;
             resetTyreRelaxation();
         }
-        boolean autoClutch = throttle > 0.0 && gear == 1 && horizontalSpeed < LAUNCH_CLUTCH_SPEED;
-        int engineRpm = calculateRpm(horizontalSpeed, gear, gearTopSpeed, throttle, autoClutch);
-        if (autoClutch) {
-            engineRpm = Math.max(engineRpm, getRpm());
-        }
+        boolean launchClutch = throttle > 0.0 && gear == 1 && horizontalSpeed < LAUNCH_CLUTCH_SPEED;
+        boolean clutchReleasing = clutchReleaseTicks > 0 && gear != NEUTRAL_GEAR;
+        int engineRpm = updateEngineRpm(horizontalSpeed, gear, gearTopSpeed, throttle, launchClutch, clutchReleasing);
         double power = enginePowerWatts(engineRpm) * setup.powerMultiplier() * damageFactor;
         double tyreSlip = 0.0;
 
@@ -1041,13 +1110,24 @@ public class OpenwheelCarEntity extends Entity {
             double subDriveForceRequest = driveDirection != 0.0 && throttle > 0.0 && Math.abs(velocityLong) / 20.0 < gearTopSpeed
                 ? driveDirection * power * throttle / Math.max(MIN_POWER_SPEED, Math.abs(velocityLong))
                 : 0.0;
+            if (clutchReleasing && driveDirection != 0.0 && Math.abs(velocityLong) / 20.0 < gearTopSpeed) {
+                double releaseT = clutchReleaseTicks / (double) CLUTCH_RELEASE_TICKS;
+                double storedPower = enginePowerWatts(Math.max(engineRpm, clutchReleaseRpm)) * setup.powerMultiplier() * damageFactor;
+                double clutchForce = driveDirection * storedPower * releaseT / MIN_POWER_SPEED;
+                subDriveForceRequest = driveDirection > 0.0
+                    ? Math.max(subDriveForceRequest, clutchForce)
+                    : Math.min(subDriveForceRequest, clutchForce);
+            }
             double subForwardRollingFraction = Math.abs(velocityLong) / Math.max(1.0, subSpeed);
-            if (subSpeed > 3.0 && subForwardRollingFraction < 0.45) {
+            if (subSpeed > 3.0 && subForwardRollingFraction < 0.45 && !clutchReleasing) {
                 subDriveForceRequest *= subForwardRollingFraction / 0.45;
             }
-            if (autoClutch) {
+            if ((launchClutch || clutchReleasing) && isTractionControlEnabled()) {
                 double subStaticRearTraction = ASPHALT_MU_LONGITUDINAL * surface.grip * subStaticRearLoad;
-                subDriveForceRequest = Math.min(subDriveForceRequest, subStaticRearTraction * 0.72);
+                double tractionLimit = subStaticRearTraction * (clutchReleasing ? CLUTCH_RELEASE_TRACTION_LIMIT : 0.86);
+                subDriveForceRequest = driveDirection >= 0.0
+                    ? Math.min(subDriveForceRequest, tractionLimit)
+                    : Math.max(subDriveForceRequest, -tractionLimit);
             }
 
             double subBrakeForceRequest = brake * MAX_BRAKE_FORCE;
@@ -1173,10 +1253,12 @@ public class OpenwheelCarEntity extends Entity {
                     rrLongRequest = driveRear + (rrLongRequest - driveRear) * brakeScale;
                 }
             }
-            double rearLatUse = Math.max(Math.abs(rlLatRequest) / Math.max(1.0, rlMuLat * rlNormal), Math.abs(rrLatRequest) / Math.max(1.0, rrMuLat * rrNormal));
-            double rearTractionControlTarget = rearLatUse < 0.08 ? TRACTION_CONTROL_SLIP_TARGET : Math.sqrt(Math.max(0.0, square(TRACTION_CONTROL_SLIP_TARGET) - square(rearLatUse)));
-            rlLongRequest = clamp(rlLongRequest, -rlMuLong * rlNormal * rearTractionControlTarget, rlMuLong * rlNormal * rearTractionControlTarget);
-            rrLongRequest = clamp(rrLongRequest, -rrMuLong * rrNormal * rearTractionControlTarget, rrMuLong * rrNormal * rearTractionControlTarget);
+            if (isTractionControlEnabled()) {
+                double rearLatUse = Math.max(Math.abs(rlLatRequest) / Math.max(1.0, rlMuLat * rlNormal), Math.abs(rrLatRequest) / Math.max(1.0, rrMuLat * rrNormal));
+                double rearTractionControlTarget = rearLatUse < 0.08 ? TRACTION_CONTROL_SLIP_TARGET : Math.sqrt(Math.max(0.0, square(TRACTION_CONTROL_SLIP_TARGET) - square(rearLatUse)));
+                rlLongRequest = clamp(rlLongRequest, -rlMuLong * rlNormal * rearTractionControlTarget, rlMuLong * rlNormal * rearTractionControlTarget);
+                rrLongRequest = clamp(rrLongRequest, -rrMuLong * rrNormal * rearTractionControlTarget, rrMuLong * rrNormal * rearTractionControlTarget);
+            }
 
             double flLongLimit = flMuLong * flNormal;
             double frLongLimit = frMuLong * frNormal;
@@ -1351,7 +1433,13 @@ public class OpenwheelCarEntity extends Entity {
         }
 
         double newSpeed = Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z);
-        int rpm = calculateRpm(newSpeed, gear, gearTopSpeed, throttle, throttle > 0.0 && gear == 1 && newSpeed < LAUNCH_CLUTCH_SPEED);
+        int rpm = engineRpm;
+        if (clutchReleaseTicks > 0) {
+            clutchReleaseTicks--;
+            if (clutchReleaseTicks == 0) {
+                clutchReleaseRpm = 0;
+            }
+        }
         entityData.set(SPEED, (float)(newSpeed * 72.0));
         entityData.set(RPM, rpm);
         entityData.set(TYRE_SLIP, (float) Math.max(0.0, Math.min(1.0, tyreSlip)));
@@ -1542,15 +1630,39 @@ public class OpenwheelCarEntity extends Entity {
         messageDriver(Component.literal("INVALID LAP: " + reason));
     }
 
-    private static int calculateRpm(double speed, int gear, double gearTopSpeed, double throttle, boolean autoClutch) {
+    private int updateEngineRpm(double speed, int gear, double gearTopSpeed, double throttle, boolean launchClutch, boolean clutchReleasing) {
+        int currentRpm = getRpm();
         if (gear == NEUTRAL_GEAR) {
-            return (int) Math.max(IDLE_RPM, Math.min(REDLINE_RPM, IDLE_RPM + (REDLINE_RPM - IDLE_RPM) * throttle));
+            double rpm = currentRpm;
+            if (throttle > 0.0) {
+                rpm += NEUTRAL_RPM_RISE_PER_SECOND * throttle * PHYSICS_DT;
+            } else {
+                rpm -= NEUTRAL_RPM_DECAY_PER_SECOND * PHYSICS_DT;
+            }
+            return clampRpm(rpm);
         }
-        double wheelRpm = gearTopSpeed <= 0.0 ? IDLE_RPM : speed / gearTopSpeed * REDLINE_RPM;
+
+        double wheelRpm = wheelRpm(speed, gearTopSpeed);
         double rpm = Math.max(IDLE_RPM, wheelRpm);
-        if (autoClutch) {
-            rpm = Math.max(rpm, LAUNCH_RPM);
+        if (launchClutch || clutchReleasing) {
+            int storedRpm = Math.max(currentRpm, clutchReleaseRpm);
+            double releasedRpm = storedRpm - CLUTCH_RPM_DROP_PER_SECOND * PHYSICS_DT;
+            clutchReleaseRpm = clampRpm(releasedRpm);
+            rpm = Math.max(rpm, releasedRpm);
+            if (launchClutch) {
+                rpm = Math.max(rpm, LAUNCH_RPM);
+            }
+        } else if (throttle == 0.0 && currentRpm > rpm) {
+            rpm = Math.max(rpm, currentRpm - ENGINE_BRAKE_RPM_DROP_PER_SECOND * PHYSICS_DT);
         }
+        return clampRpm(rpm);
+    }
+
+    private static double wheelRpm(double speed, double gearTopSpeed) {
+        return gearTopSpeed <= 0.0 ? IDLE_RPM : speed / gearTopSpeed * REDLINE_RPM;
+    }
+
+    private static int clampRpm(double rpm) {
         return (int) Math.max(IDLE_RPM, Math.min(REDLINE_RPM, rpm));
     }
 

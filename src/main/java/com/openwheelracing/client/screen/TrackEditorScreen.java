@@ -22,6 +22,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
@@ -30,7 +34,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TrackEditorScreen extends Screen {
     private static final TrackEditorMode[] MODES = TrackEditorMode.values();
@@ -85,7 +91,7 @@ public class TrackEditorScreen extends Screen {
     private boolean dragging;
     private double lastDragX;
     private double lastDragY;
-    private final TrackEditorMapCache mapCache = new TrackEditorMapCache();
+    private final Map<Long, TerrainSample> terrainSamples = new HashMap<>();
     private OverlayNotice notice;
     private Button clearQueueButton;
     private Button elevationModeButton;
@@ -93,8 +99,8 @@ public class TrackEditorScreen extends Screen {
     private ClearHeightSlider clearHeightSlider;
     private int lastQueuedCount;
     private int clearHeight = 3;
-    private ElevationMode elevationMode = ElevationMode.SURFACE;
-    private SurfaceApplication surfaceApplication = SurfaceApplication.KEYPOINT;
+    private boolean surfaceElevationMode = true;
+    private boolean fullSurfaceApplication;
     private boolean showHelp;
 
     public TrackEditorScreen() {
@@ -315,7 +321,7 @@ public class TrackEditorScreen extends Screen {
         for (int sx = map.left; sx < map.right; sx += pixelStep) {
             for (int sy = map.top; sy < map.bottom; sy += pixelStep) {
                 BlockPos pos = screenToBlock(sx + pixelStep * 0.5, sy + pixelStep * 0.5);
-                int color = mapCache.color(level, pos.getX(), pos.getZ(), editY);
+                int color = terrainColor(level, pos.getX(), pos.getZ());
                 graphics.fill(sx, sy, Math.min(map.right, sx + pixelStep), Math.min(map.bottom, sy + pixelStep), color);
             }
         }
@@ -591,12 +597,12 @@ public class TrackEditorScreen extends Screen {
             if (chunk.size() < 2) {
                 continue;
             }
-            PENDING_QUEUE.add(new PendingEditorOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), trackWidth, chunk, facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL, clearHeight), reason));
+            PENDING_QUEUE.add(new PendingEditorOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), trackWidth, chunk, facing(), preset(), runoffMaterial(), fullSurfaceApplication, clearHeight), reason));
             chunks++;
         }
         if (reason == QueueReason.IMPORT && pathPoints.size() > 2) {
             List<BlockPos> closingChunk = List.of(pathPoints.get(pathPoints.size() - 1), pathPoints.get(0));
-            PENDING_QUEUE.add(new PendingEditorOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), width, closingChunk, facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL), reason));
+            PENDING_QUEUE.add(new PendingEditorOperation(new TrackEditorOperation(TrackEditorMode.FREEHAND, importMaterial(), trackWidth, closingChunk, facing(), preset(), runoffMaterial(), fullSurfaceApplication, clearHeight), reason));
             chunks++;
         }
         return chunks;
@@ -675,7 +681,7 @@ public class TrackEditorScreen extends Screen {
         if (mode == TrackEditorMode.POLYGON && points.size() < 3) {
             return;
         }
-        TrackEditorOperation operation = new TrackEditorOperation(mode, material(), trackWidth, new ArrayList<>(points), facing(), preset(), runoffMaterial(), surfaceApplication == SurfaceApplication.FULL, clearHeight);
+        TrackEditorOperation operation = new TrackEditorOperation(mode, material(), trackWidth, new ArrayList<>(points), facing(), preset(), runoffMaterial(), fullSurfaceApplication, clearHeight);
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null && !isOperationNearPlayer(operation, minecraft.player.blockPosition())) {
             enqueueOperation(operation, QueueReason.TOO_FAR);
@@ -784,8 +790,8 @@ public class TrackEditorScreen extends Screen {
     private BlockPos withEditorY(int worldX, int worldZ) {
         Minecraft minecraft = Minecraft.getInstance();
         int y = editY;
-        if (elevationMode == ElevationMode.SURFACE && minecraft.level != null) {
-            y = mapCache.surfaceY(minecraft.level, worldX, worldZ, editY);
+        if (surfaceElevationMode && minecraft.level != null) {
+            y = surfaceY(minecraft.level, worldX, worldZ);
         }
         return new BlockPos(worldX, y, worldZ);
     }
@@ -817,16 +823,118 @@ public class TrackEditorScreen extends Screen {
         }
     }
 
+    private int terrainColor(Level level, int x, int z) {
+        return terrainSample(level, x, z).colorArgb();
+    }
+
+    private int surfaceY(Level level, int x, int z) {
+        return terrainSample(level, x, z).surfaceY();
+    }
+
+    private TerrainSample terrainSample(Level level, int x, int z) {
+        int sampleX = Math.floorDiv(x, 2) * 2;
+        int sampleZ = Math.floorDiv(z, 2) * 2;
+        long key = ((long) sampleX << 32) ^ (sampleZ & 0xFFFFFFFFL);
+        TerrainSample cached = terrainSamples.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        TerrainSample sampled = sampleTerrain(level, sampleX, sampleZ);
+        terrainSamples.put(key, sampled);
+        return sampled;
+    }
+
+    private TerrainSample sampleTerrain(Level level, int x, int z) {
+        BlockPos chunkCheck = new BlockPos(x, editY, z);
+        if (!level.hasChunkAt(chunkCheck)) {
+            return new TerrainSample(editY, 0xFF181A1C);
+        }
+        int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+        if (y < level.getMinY()) {
+            return new TerrainSample(editY, 0xFF101214);
+        }
+        BlockState state = level.getBlockState(new BlockPos(x, y, z));
+        return new TerrainSample(y, colorFor(state));
+    }
+
+    private int colorFor(BlockState state) {
+        Block block = state.getBlock();
+        if (block == OWRBlocks.ASPHALT_TRACK.get()) {
+            return 0xFF202020;
+        }
+        if (block == OWRBlocks.PIT_LANE.get()) {
+            return 0xFF4A4A4A;
+        }
+        if (block == OWRBlocks.KERB.get()) {
+            return 0xFFCC3333;
+        }
+        if (block == OWRBlocks.BARRIER.get()) {
+            return 0xFF888888;
+        }
+        if (block == Blocks.GRASS_BLOCK) {
+            return 0xFF4B7D3A;
+        }
+        if (block == Blocks.OAK_LEAVES || block == Blocks.BIRCH_LEAVES || block == Blocks.SPRUCE_LEAVES || block == Blocks.JUNGLE_LEAVES || block == Blocks.ACACIA_LEAVES || block == Blocks.DARK_OAK_LEAVES || block == Blocks.MANGROVE_LEAVES || block == Blocks.CHERRY_LEAVES) {
+            return 0xFF2F6B31;
+        }
+        if (block == Blocks.OAK_LOG || block == Blocks.BIRCH_LOG || block == Blocks.SPRUCE_LOG || block == Blocks.JUNGLE_LOG || block == Blocks.ACACIA_LOG || block == Blocks.DARK_OAK_LOG || block == Blocks.MANGROVE_LOG || block == Blocks.CHERRY_LOG) {
+            return 0xFF6F5136;
+        }
+        if (block == Blocks.DIRT || block == Blocks.COARSE_DIRT || block == Blocks.ROOTED_DIRT || block == Blocks.PODZOL) {
+            return 0xFF74543A;
+        }
+        if (block == Blocks.STONE || block == Blocks.COBBLESTONE || block == Blocks.ANDESITE || block == Blocks.DIORITE || block == Blocks.GRANITE) {
+            return 0xFF777777;
+        }
+        if (block == Blocks.SMOOTH_STONE || block == Blocks.STONE_BRICKS || block == Blocks.BRICKS || block == Blocks.POLISHED_ANDESITE || block == Blocks.POLISHED_DIORITE || block == Blocks.POLISHED_GRANITE) {
+            return 0xFF8A8A8A;
+        }
+        if (block == Blocks.SAND || block == Blocks.SANDSTONE || block == Blocks.SMOOTH_SANDSTONE) {
+            return 0xFFC8B77B;
+        }
+        if (block == Blocks.RED_SAND || block == Blocks.RED_SANDSTONE || block == Blocks.SMOOTH_RED_SANDSTONE) {
+            return 0xFFC47745;
+        }
+        if (block == Blocks.WATER) {
+            return 0xFF315EAF;
+        }
+        if (block == Blocks.ICE || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE) {
+            return 0xFF8FC6DD;
+        }
+        if (block == Blocks.SNOW || block == Blocks.SNOW_BLOCK) {
+            return 0xFFE8F0F0;
+        }
+        if (block == Blocks.GLASS || block == Blocks.GLASS_PANE) {
+            return 0xFF9FB8C8;
+        }
+        if (block == Blocks.OAK_PLANKS || block == Blocks.BIRCH_PLANKS || block == Blocks.SPRUCE_PLANKS || block == Blocks.JUNGLE_PLANKS || block == Blocks.ACACIA_PLANKS || block == Blocks.DARK_OAK_PLANKS || block == Blocks.MANGROVE_PLANKS || block == Blocks.CHERRY_PLANKS) {
+            return 0xFFA8794B;
+        }
+        if (block == Blocks.GRAVEL) {
+            return 0xFF737373;
+        }
+        if (block == Blocks.WHITE_CONCRETE || block == Blocks.LIGHT_GRAY_CONCRETE) {
+            return 0xFFBEBEBE;
+        }
+        if (block == Blocks.GRAY_CONCRETE || block == Blocks.BLACK_CONCRETE) {
+            return 0xFF505050;
+        }
+        if (block == Blocks.RED_CONCRETE) {
+            return 0xFF8F2B25;
+        }
+        return 0xFF667066;
+    }
+
     private int floorToStep(int value, int step) {
         return Math.floorDiv(value, step) * step;
     }
 
     private Component elevationModeText() {
-        return Component.translatable(elevationMode.translationKey());
+        return Component.translatable(surfaceElevationMode ? "screen.openwheelracing.track_editor.elevation.surface" : "screen.openwheelracing.track_editor.elevation.height");
     }
 
     private Component surfaceApplicationText() {
-        return Component.translatable(surfaceApplication.translationKey());
+        return Component.translatable(fullSurfaceApplication ? "screen.openwheelracing.track_editor.surface.full" : "screen.openwheelracing.track_editor.surface.keypoint");
     }
 
     private Component elevationModeLabel() {
@@ -842,13 +950,13 @@ public class TrackEditorScreen extends Screen {
     }
 
     private void toggleElevationMode() {
-        elevationMode = elevationMode == ElevationMode.SURFACE ? ElevationMode.HEIGHT : ElevationMode.SURFACE;
+        surfaceElevationMode = !surfaceElevationMode;
         updateToggleButtons();
         showNotice(Component.translatable("screen.openwheelracing.track_editor.elevation_mode_changed", elevationModeText()), 0xFFB7FFB7);
     }
 
     private void toggleSurfaceApplication() {
-        surfaceApplication = surfaceApplication == SurfaceApplication.KEYPOINT ? SurfaceApplication.FULL : SurfaceApplication.KEYPOINT;
+        fullSurfaceApplication = !fullSurfaceApplication;
         updateToggleButtons();
         showNotice(Component.translatable("screen.openwheelracing.track_editor.surface_application_changed", surfaceApplicationText()), 0xFFB7FFB7);
     }
@@ -895,6 +1003,9 @@ public class TrackEditorScreen extends Screen {
     private record OverlayNotice(Component text, int color, int ticksRemaining) {
     }
 
+    private record TerrainSample(int surfaceY, int colorArgb) {
+    }
+
     private class ClearHeightSlider extends AbstractSliderButton {
         private ClearHeightSlider(int x, int y, int width, int height) {
             super(x, y, width, height, clearHeightLabel(), clearHeight / (double) TrackEditorOperation.MAX_CLEAR_HEIGHT);
@@ -908,36 +1019,6 @@ public class TrackEditorScreen extends Screen {
         @Override
         protected void applyValue() {
             clearHeight = (int) Math.round(value * TrackEditorOperation.MAX_CLEAR_HEIGHT);
-        }
-    }
-
-    private enum ElevationMode {
-        SURFACE("screen.openwheelracing.track_editor.elevation.surface"),
-        HEIGHT("screen.openwheelracing.track_editor.elevation.height");
-
-        private final String translationKey;
-
-        ElevationMode(String translationKey) {
-            this.translationKey = translationKey;
-        }
-
-        private String translationKey() {
-            return translationKey;
-        }
-    }
-
-    private enum SurfaceApplication {
-        KEYPOINT("screen.openwheelracing.track_editor.surface.keypoint"),
-        FULL("screen.openwheelracing.track_editor.surface.full");
-
-        private final String translationKey;
-
-        SurfaceApplication(String translationKey) {
-            this.translationKey = translationKey;
-        }
-
-        private String translationKey() {
-            return translationKey;
         }
     }
 

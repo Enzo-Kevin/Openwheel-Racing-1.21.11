@@ -62,6 +62,10 @@ public final class OWRClientInputHandler {
             car.toggleAbs();
             OWRNetwork.CHANNEL.send(new OWRNetwork.ToggleAbsMessage(), PacketDistributor.SERVER.noArg());
         }
+        while (OWRKeyMappings.TOGGLE_TC.consumeClick()) {
+            car.toggleTractionControl();
+            OWRNetwork.CHANNEL.send(new OWRNetwork.ToggleTractionControlMessage(), PacketDistributor.SERVER.noArg());
+        }
     }
 
     /** Poll the raw GLFW key state regardless of Minecraft conflict context. */
