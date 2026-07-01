@@ -35,6 +35,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.LeavesBlock;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
@@ -152,6 +154,8 @@ public class OpenwheelCarEntity extends Entity {
     private static final double[] TRACK_PATCH_LENGTH_OFFSETS = {-0.32, 0.0, 0.32};
     private PrototypeCarSetup setup = PrototypeCarSetup.DEFAULT;
     private double previousHorizontalSpeed;
+    private double lastClimbDelta;
+    private double lastGroundSnapDelta;
     private long lapStartedAt = -1L;
     private long lastStartFinishMarker;
     private long lastStartFinishTriggerAt = -20L;
@@ -625,7 +629,9 @@ public class OpenwheelCarEntity extends Entity {
             wasRiddenLastTick = ridden;
             tickLapTimer();
             tickPitStop();
+            clearHollowCollisionBlocks(false);
             tickMovement(true);
+            clearHollowCollisionBlocks(true);
             tickImpactDamage();
             tickWarnings();
         }
@@ -1394,7 +1400,13 @@ public class OpenwheelCarEntity extends Entity {
         Vec3 beforeMove = position();
         move(MoverType.SELF, delta);
         Vec3 actualMovement = position().subtract(beforeMove);
+        double groundSnapDelta = snapToNearbyGround(delta, actualMovement);
+        if (groundSnapDelta < 0.0) {
+            actualMovement = actualMovement.add(0.0, groundSnapDelta, 0.0);
+        }
         double elevationDelta = actualMovement.y - delta.y;
+        lastClimbDelta = actualMovement.y;
+        lastGroundSnapDelta = groundSnapDelta;
         double actualHorizontalSpeed = actualMovement.horizontalDistance() * 20.0;
         if (Math.abs(elevationDelta) > 1.0E-4 && actualHorizontalSpeed > 1.0E-4) {
             double horizontalKineticEnergy = 0.5 * CAR_MASS_KG * actualHorizontalSpeed * actualHorizontalSpeed;
@@ -1446,10 +1458,58 @@ public class OpenwheelCarEntity extends Entity {
         previousHorizontalSpeed = horizontalSpeed;
     }
 
+    private void clearHollowCollisionBlocks(boolean onlyAfterCollision) {
+        if (!(level() instanceof ServerLevel serverLevel) || (onlyAfterCollision && !horizontalCollision && !verticalCollision)) {
+            return;
+        }
+        for (BlockPos pos : BlockPos.betweenClosed(
+            (int) Math.floor(getBoundingBox().minX) - 1,
+            (int) Math.floor(getBoundingBox().minY),
+            (int) Math.floor(getBoundingBox().minZ) - 1,
+            (int) Math.floor(getBoundingBox().maxX) + 1,
+            (int) Math.floor(getBoundingBox().maxY) + 1,
+            (int) Math.floor(getBoundingBox().maxZ) + 1
+        )) {
+            if (isSoftCollisionBlock(serverLevel.getBlockState(pos))) {
+                serverLevel.destroyBlock(pos, false, this);
+            }
+        }
+    }
+
+    private boolean isSoftCollisionBlock(BlockState state) {
+        Block block = state.getBlock();
+        return state.canBeReplaced()
+            || block instanceof LeavesBlock
+            || block == Blocks.VINE
+            || block == Blocks.SNOW;
+    }
+
+    private double snapToNearbyGround(Vec3 requestedMovement, Vec3 actualMovement) {
+        if (onGround() || verticalCollision || requestedMovement.y >= -0.02 || actualMovement.y < -maxUpStep()) {
+            return 0.0;
+        }
+        double snapDistance = maxUpStep() + 0.05;
+        Vec3 beforeSnap = position();
+        move(MoverType.SELF, new Vec3(0.0, -snapDistance, 0.0));
+        double snappedDelta = getY() - beforeSnap.y;
+        if (onGround() && snappedDelta < -0.02 && snappedDelta >= -snapDistance) {
+            return snappedDelta;
+        }
+        setPos(beforeSnap.x, beforeSnap.y, beforeSnap.z);
+        return 0.0;
+    }
+
+    private boolean isClimbLikeCollision() {
+        return lastClimbDelta > 0.05 && lastClimbDelta <= maxUpStep() + 0.05;
+    }
+
     private void tickImpactDamage() {
         if (horizontalCollision && previousHorizontalSpeed > 0.28) {
             Vec3 barrierNormal = nearbyBarrierNormal();
             boolean barrierImpact = barrierNormal.lengthSqr() > 0.0;
+            if (!barrierImpact && isClimbLikeCollision()) {
+                return;
+            }
             double approachFactor = barrierImpact ? barrierApproachFactor(barrierNormal) : 1.0;
             float severity = (float) ((previousHorizontalSpeed - 0.28) * (barrierImpact ? 14.0 * approachFactor : 40.0));
             addDamage(severity);
