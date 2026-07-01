@@ -29,6 +29,8 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -72,39 +74,78 @@ public class TrackEditorScreen extends Screen {
     private static final int QUEUE_CHUNK_SIZE = 64;
     private static final int QUEUE_SEND_DISTANCE = 480;
     private static final int QUEUE_SENDS_PER_TICK = 2;
+    private static final int TERRAIN_SAMPLES_PER_FRAME = 256;
+    private static final int MAX_TERRAIN_CACHE_SIZE = 8192;
+    private static final int MIN_TERRAIN_PIXEL_STEP = 6;
     private static final double IMPORT_SAMPLE_SPACING = 1.0;
     private static final String IMPORT_PATH = "openwheelracing/imports/lap-simulator-track.json";
     private static final List<PendingEditorOperation> PENDING_QUEUE = new ArrayList<>();
+    private static final Map<Long, TerrainSample> TERRAIN_CACHE = new HashMap<>();
+    private static int savedModeIndex;
+    private static int savedPavementIndex;
+    private static int savedEdgeIndex;
+    private static int savedRunoffMaterialIndex;
+    private static int savedPresetIndex;
+    private static int savedZoomIndex = 2;
+    private static int savedTrackWidth = 3;
+    private static int savedClearHeight = 3;
+    private static boolean savedSurfaceElevationMode = true;
+    private static boolean savedFullSurfaceApplication;
+    private static double savedCenterX = Double.MAX_VALUE;
+    private static double savedCenterZ = Double.MAX_VALUE;
+    private static int savedEditY;
+    private static boolean terrainCacheLoaded;
 
     private final List<BlockPos> points = new ArrayList<>();
-    private int modeIndex;
-    private int pavementIndex;
-    private int edgeIndex;
-    private int runoffMaterialIndex;
-    private int presetIndex;
-    private int zoomIndex = 2;
-    private int trackWidth = 3;
-    private int editY;
-    private double centerX;
-    private double centerZ;
+    private int modeIndex = savedModeIndex;
+    private int pavementIndex = savedPavementIndex;
+    private int edgeIndex = savedEdgeIndex;
+    private int runoffMaterialIndex = savedRunoffMaterialIndex;
+    private int presetIndex = savedPresetIndex;
+    private int zoomIndex = savedZoomIndex;
+    private int trackWidth = savedTrackWidth;
+    private int editY = savedEditY;
+    private double centerX = savedCenterX;
+    private double centerZ = savedCenterZ;
     private boolean initialized;
     private boolean dragging;
     private double lastDragX;
     private double lastDragY;
-    private final Map<Long, TerrainSample> terrainSamples = new HashMap<>();
+    private int terrainSamplesThisFrame;
     private OverlayNotice notice;
     private Button clearQueueButton;
     private Button elevationModeButton;
     private Button surfaceApplicationButton;
     private ClearHeightSlider clearHeightSlider;
     private int lastQueuedCount;
-    private int clearHeight = 3;
-    private boolean surfaceElevationMode = true;
-    private boolean fullSurfaceApplication;
+    private int clearHeight = savedClearHeight;
+    private boolean surfaceElevationMode = savedSurfaceElevationMode;
+    private boolean fullSurfaceApplication = savedFullSurfaceApplication;
     private boolean showHelp;
 
     public TrackEditorScreen() {
         super(Component.translatable("screen.openwheelracing.track_editor"));
+    }
+
+    @Override
+    public void onClose() {
+        savedModeIndex = modeIndex;
+        savedPavementIndex = pavementIndex;
+        savedEdgeIndex = edgeIndex;
+        savedRunoffMaterialIndex = runoffMaterialIndex;
+        savedPresetIndex = presetIndex;
+        savedZoomIndex = zoomIndex;
+        savedTrackWidth = trackWidth;
+        savedClearHeight = clearHeight;
+        savedSurfaceElevationMode = surfaceElevationMode;
+        savedFullSurfaceApplication = fullSurfaceApplication;
+        savedCenterX = centerX;
+        savedCenterZ = centerZ;
+        savedEditY = editY;
+        if (minecraft != null) {
+            saveTerrainCache(minecraft.gameDirectory.toPath());
+        }
+        super.onClose();
     }
 
     @Override
@@ -115,12 +156,21 @@ public class TrackEditorScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        if (!initialized && minecraft != null && minecraft.player != null) {
-            centerX = minecraft.player.getX();
-            centerZ = minecraft.player.getZ();
-            editY = minecraft.player.blockPosition().getY();
-            initialized = true;
+        if (minecraft != null && minecraft.player != null) {
+            if (savedCenterX == Double.MAX_VALUE) {
+                centerX = minecraft.player.getX();
+                centerZ = minecraft.player.getZ();
+                savedCenterX = centerX;
+                savedCenterZ = centerZ;
+                savedEditY = minecraft.player.blockPosition().getY();
+                editY = savedEditY;
+            }
+            if (!terrainCacheLoaded) {
+                terrainCacheLoaded = true;
+                loadTerrainCache(minecraft.gameDirectory.toPath());
+            }
         }
+        initialized = true;
         MapBounds map = mapBounds();
         int controlTop = map.bottom - 24;
         int controlWidth = Math.min(112, Math.max(80, (map.width() - 24) / 4));
@@ -290,6 +340,7 @@ public class TrackEditorScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        terrainSamplesThisFrame = 0;
         renderMap(graphics);
         renderQueuedOperations(graphics);
         renderPendingGeometry(graphics);
@@ -316,12 +367,12 @@ public class TrackEditorScreen extends Screen {
             return;
         }
         double bpp = blocksPerPixel();
-        int sampleBlocks = Math.max(1, (int) Math.ceil(bpp));
-        int pixelStep = Math.max(2, (int) Math.round(sampleBlocks / bpp));
+        int pixelStep = Math.max(MIN_TERRAIN_PIXEL_STEP, (int) Math.round(8.0 / bpp));
         for (int sx = map.left; sx < map.right; sx += pixelStep) {
             for (int sy = map.top; sy < map.bottom; sy += pixelStep) {
-                BlockPos pos = screenToBlock(sx + pixelStep * 0.5, sy + pixelStep * 0.5);
-                int color = terrainColor(level, pos.getX(), pos.getZ());
+                int worldX = screenToWorldX(sx + pixelStep * 0.5, map);
+                int worldZ = screenToWorldZ(sy + pixelStep * 0.5, map);
+                int color = terrainColor(level, worldX, worldZ, false);
                 graphics.fill(sx, sy, Math.min(map.right, sx + pixelStep), Math.min(map.bottom, sy + pixelStep), color);
             }
         }
@@ -782,9 +833,15 @@ public class TrackEditorScreen extends Screen {
 
     private BlockPos screenToBlock(double x, double y) {
         MapBounds map = mapBounds();
-        int worldX = (int) Math.floor(centerX + (x - (map.left + map.width() / 2.0)) * blocksPerPixel());
-        int worldZ = (int) Math.floor(centerZ + (y - (map.top + map.height() / 2.0)) * blocksPerPixel());
-        return withEditorY(worldX, worldZ);
+        return withEditorY(screenToWorldX(x, map), screenToWorldZ(y, map));
+    }
+
+    private int screenToWorldX(double x, MapBounds map) {
+        return (int) Math.floor(centerX + (x - (map.left + map.width() / 2.0)) * blocksPerPixel());
+    }
+
+    private int screenToWorldZ(double y, MapBounds map) {
+        return (int) Math.floor(centerZ + (y - (map.top + map.height() / 2.0)) * blocksPerPixel());
     }
 
     private BlockPos withEditorY(int worldX, int worldZ) {
@@ -823,24 +880,32 @@ public class TrackEditorScreen extends Screen {
         }
     }
 
-    private int terrainColor(Level level, int x, int z) {
-        return terrainSample(level, x, z).colorArgb();
+    private int terrainColor(Level level, int x, int z, boolean forceSample) {
+        return terrainSample(level, x, z, forceSample).colorArgb();
     }
 
     private int surfaceY(Level level, int x, int z) {
-        return terrainSample(level, x, z).surfaceY();
+        return terrainSample(level, x, z, true).surfaceY();
     }
 
-    private TerrainSample terrainSample(Level level, int x, int z) {
-        int sampleX = Math.floorDiv(x, 2) * 2;
-        int sampleZ = Math.floorDiv(z, 2) * 2;
+    private TerrainSample terrainSample(Level level, int x, int z, boolean forceSample) {
+        int sampleStep = forceSample ? 2 : Math.max(2, (int) Math.ceil(blocksPerPixel() * MIN_TERRAIN_PIXEL_STEP));
+        int sampleX = Math.floorDiv(x, sampleStep) * sampleStep;
+        int sampleZ = Math.floorDiv(z, sampleStep) * sampleStep;
         long key = ((long) sampleX << 32) ^ (sampleZ & 0xFFFFFFFFL);
-        TerrainSample cached = terrainSamples.get(key);
+        TerrainSample cached = TERRAIN_CACHE.get(key);
         if (cached != null) {
             return cached;
         }
+        if (!forceSample && terrainSamplesThisFrame >= TERRAIN_SAMPLES_PER_FRAME) {
+            return new TerrainSample(editY, 0xFF181A1C);
+        }
+        if (TERRAIN_CACHE.size() >= MAX_TERRAIN_CACHE_SIZE) {
+            TERRAIN_CACHE.clear();
+        }
         TerrainSample sampled = sampleTerrain(level, sampleX, sampleZ);
-        terrainSamples.put(key, sampled);
+        TERRAIN_CACHE.put(key, sampled);
+        terrainSamplesThisFrame++;
         return sampled;
     }
 
@@ -978,6 +1043,56 @@ public class TrackEditorScreen extends Screen {
         int left = OUTER_MARGIN;
         int top = OUTER_MARGIN;
         return new MapBounds(left, top, Math.max(left + 160, this.width - OUTER_MARGIN), Math.max(top + 120, this.height - OUTER_MARGIN));
+    }
+
+    private static final String TERRAIN_CACHE_PATH = "openwheelracing/terrain-cache.dat";
+    private static final int TERRAIN_CACHE_MAGIC = 0x4F575243; // "OWRC"
+    private static final int TERRAIN_CACHE_VERSION = 1;
+
+    private static void saveTerrainCache(Path gameDir) {
+        if (TERRAIN_CACHE.isEmpty()) {
+            return;
+        }
+        Path file = gameDir.resolve(TERRAIN_CACHE_PATH);
+        try {
+            Files.createDirectories(file.getParent());
+            try (DataOutputStream out = new DataOutputStream(Files.newOutputStream(file))) {
+                out.writeInt(TERRAIN_CACHE_MAGIC);
+                out.writeInt(TERRAIN_CACHE_VERSION);
+                out.writeInt(TERRAIN_CACHE.size());
+                for (Map.Entry<Long, TerrainSample> entry : TERRAIN_CACHE.entrySet()) {
+                    out.writeLong(entry.getKey());
+                    out.writeInt(entry.getValue().surfaceY());
+                    out.writeInt(entry.getValue().colorArgb());
+                }
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    private static void loadTerrainCache(Path gameDir) {
+        Path file = gameDir.resolve(TERRAIN_CACHE_PATH);
+        if (!Files.exists(file)) {
+            return;
+        }
+        try (DataInputStream in = new DataInputStream(Files.newInputStream(file))) {
+            if (in.readInt() != TERRAIN_CACHE_MAGIC || in.readInt() != TERRAIN_CACHE_VERSION) {
+                return;
+            }
+            int count = in.readInt();
+            if (count < 0 || count > MAX_TERRAIN_CACHE_SIZE * 4) {
+                return;
+            }
+            TERRAIN_CACHE.clear();
+            for (int i = 0; i < count; i++) {
+                long key = in.readLong();
+                int surfaceY = in.readInt();
+                int colorArgb = in.readInt();
+                TERRAIN_CACHE.put(key, new TerrainSample(surfaceY, colorArgb));
+            }
+        } catch (IOException ignored) {
+            TERRAIN_CACHE.clear();
+        }
     }
 
     private record PendingEditorOperation(TrackEditorOperation operation, QueueReason reason) {
