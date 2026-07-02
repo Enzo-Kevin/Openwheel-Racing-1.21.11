@@ -1,5 +1,8 @@
 package com.openwheelracing.content.entity;
 
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+
 import com.mojang.logging.LogUtils;
 import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.car.PrototypeCarSetup;
@@ -9,17 +12,18 @@ import com.openwheelracing.content.race.OWRLapRecords;
 import com.openwheelracing.content.race.OWRRaceControlState;
 import com.openwheelracing.registry.OWRBlocks;
 import com.openwheelracing.registry.OWRItems;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -40,8 +44,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
 
 public class OpenwheelCarEntity extends Entity {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -64,7 +66,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final int PIT_RUBBER_COST = 2;    // rubber items consumed per stop
 
     // Seat offset: eye height = car Y + (-0.62) + player eye height (1.62) ≈ 1.0 above ground
-    private static final Vec3 SEAT_OFFSET = new Vec3(0.0, -0.62, 0.1);
+    private static final Vec3 SEAT_OFFSET = new Vec3(0.0, -0.76, 0.05);
     private static final Vec3[] DISMOUNT_OFFSETS = {
         new Vec3(1.1, 0.0, 0.15),
         new Vec3(-1.1, 0.0, 0.15),
@@ -126,8 +128,8 @@ public class OpenwheelCarEntity extends Entity {
     private static final double ENGINE_BRAKE_RPM_DROP_PER_SECOND = 7_000.0;
     private static final double CLUTCH_RELEASE_TRACTION_LIMIT = 0.95;
     private static final double STEERING_DEADZONE = 0.08;
-    private static final double LOW_SPEED_STEER_ANGLE = Math.toRadians(24.0);
-    private static final double HIGH_SPEED_STEER_ANGLE = Math.toRadians(2.2);
+    private static final double LOW_SPEED_STEER_ANGLE = Math.toRadians(34.0);
+    private static final double HIGH_SPEED_STEER_ANGLE = Math.toRadians(2.45);
     private static final double STEERING_HIGH_SPEED_CURVE_POWER = 0.72;
     private static final double STEERING_TRAIL_BRAKE_RELEASE = 0.35;
     private static final double TRAIL_BRAKE_REAR_PRESSURE_RELIEF = 0.42;
@@ -1049,9 +1051,12 @@ public class OpenwheelCarEntity extends Entity {
         double velocityLong = (delta.x * forward.x + delta.z * forward.z) * 20.0;
         double velocityLat = (delta.x * right.x + delta.z * right.z) * 20.0;
         double speedMetersPerSecond = Math.sqrt(velocityLong * velocityLong + velocityLat * velocityLat);
-        if (speedMetersPerSecond < 0.35 && throttle == 0.0 && brake == 0.0) {
+        boolean canApplyDrive = gear != NEUTRAL_GEAR && throttle > 0.0;
+        if (speedMetersPerSecond < 0.35 && !canApplyDrive && brake == 0.0) {
+            velocityLong = 0.0;
             velocityLat = 0.0;
             yawRate = 0.0;
+            steeringAngle = 0.0;
             resetTyreRelaxation();
         }
         boolean launchClutch = throttle > 0.0 && gear == 1 && horizontalSpeed < LAUNCH_CLUTCH_SPEED;
@@ -1077,7 +1082,7 @@ public class OpenwheelCarEntity extends Entity {
         double steeringGain = 1.0 - Math.exp(-steeringRate * PHYSICS_DT / Math.max(Math.toRadians(0.25), steeringLock));
         steeringAngle += steeringError * steeringGain;
         if (brake > 0.0 && Math.abs(steeringAngle) > SLIP_ANGLE_DEADBAND && speedMetersPerSecond > 8.0) {
-            double release = Math.min(0.35, brake * STEERING_TRAIL_BRAKE_RELEASE * Math.min(1.0, speedMetersPerSecond / 35.0));
+            double release = Math.min(0.18, brake * STEERING_TRAIL_BRAKE_RELEASE * Math.min(1.0, speedMetersPerSecond / 35.0));
             steeringAngle *= 1.0 - release;
         }
 
@@ -1185,7 +1190,7 @@ public class OpenwheelCarEntity extends Entity {
             double brakeFront = subBrakeForceRequest * BRAKE_FRONT_BIAS * 0.5;
             double brakeRear = subBrakeForceRequest * (1.0 - BRAKE_FRONT_BIAS) * 0.5;
             double trailBrakeSteerUse = Math.min(1.0, Math.abs(steeringAngle) / TRAIL_BRAKE_REAR_RELIEF_MAX_STEER);
-            double trailBrakeRelease = brake * trailBrakeSteerUse * TRAIL_BRAKE_REAR_PRESSURE_RELIEF;
+            double trailBrakeRelease = brake * trailBrakeSteerUse * TRAIL_BRAKE_REAR_PRESSURE_RELIEF * 0.35;
             brakeRear *= 1.0 - trailBrakeRelease;
             double driveRear = subDriveForceRequest * 0.5;
             double brakeSign = velocityLong >= 0.0 ? 1.0 : -1.0;
@@ -1326,6 +1331,23 @@ public class OpenwheelCarEntity extends Entity {
             }
             velocityLat += subAccelerationLat * subDt;
             yawRate += yawAcceleration * subDt;
+            if (Math.abs(steeringAngle) > SLIP_ANGLE_DEADBAND && velocityLong > 1.0) {
+                double targetYawRate = velocityLong / WHEELBASE * Math.tan(steeringAngle);
+                double targetSign = Math.signum(targetYawRate);
+                double yawSign = Math.signum(yawRate);
+                if (targetSign != 0.0 && yawSign != 0.0 && targetSign != yawSign) {
+                    yawRate += (targetYawRate - yawRate) * 0.35;
+                } else {
+                    double allowedYawRate = targetYawRate * (throttle > 0.0 ? 1.35 : 1.05);
+                    if (Math.abs(yawRate) > Math.abs(allowedYawRate)) {
+                        double recovery = brake > 0.0 ? 0.28 : throttle > 0.0 ? 0.10 : 0.18;
+                        yawRate += (allowedYawRate - yawRate) * recovery;
+                    }
+                }
+            }
+            if (brake > 0.0) {
+                yawRate *= 1.0 - Math.min(0.18, brake * 0.10);
+            }
             yawDelta += yawRate * subDt;
             driveWorkJoules += Math.max(0.0, (rearLongForce + frontLongForce) * velocityLong) * subDt;
 

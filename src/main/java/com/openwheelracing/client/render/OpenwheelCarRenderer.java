@@ -5,6 +5,8 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
+
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -14,38 +16,31 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Mth;
 
 public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, OpenwheelCarRenderer.CarRenderState> {
-    private static final Identifier BODY_TEX = Identifier.fromNamespaceAndPath("openwheelracing", "textures/entity/car_body.png");
+    private static final Identifier CAR_OBJ = Identifier.fromNamespaceAndPath("openwheelracing", "objmodels/f1_car_2026.obj");
     private static final Identifier WHITE_TEX = Identifier.fromNamespaceAndPath("openwheelracing", "textures/entity/car_white.png");
-    private static final Identifier DARK_TEX = Identifier.fromNamespaceAndPath("openwheelracing", "textures/entity/car_dark.png");
-    private static final Identifier WHEEL_TEX = Identifier.fromNamespaceAndPath("openwheelracing", "textures/entity/car_wheel.png");
+    private static final RenderType RT_CAR = RenderTypes.entityCutoutNoCull(WHITE_TEX);
 
-    private static final RenderType RT_BODY = RenderTypes.entitySolid(BODY_TEX);
-    private static final RenderType RT_WHITE = RenderTypes.entitySolid(WHITE_TEX);
-    private static final RenderType RT_DARK = RenderTypes.entitySolid(DARK_TEX);
-    private static final RenderType RT_WHEEL = RenderTypes.entitySolid(WHEEL_TEX);
+    private static final float SOURCE_MIN_X = -0.806891f;
+    private static final float SOURCE_MAX_X = 0.806891f;
+    private static final float SOURCE_MIN_Y = -0.341034f;
+    private static final float SOURCE_MAX_Y = 0.639583f;
+    private static final float SOURCE_MIN_Z = -5.237548f;
+    private static final float SOURCE_MAX_Z = -0.467113f;
+    private static final float TARGET_WIDTH = 2.0f;
+    private static final float TARGET_HEIGHT = 1.2f;
+    private static final float TARGET_LENGTH = 5.5f;
+    private static final float MODEL_X_SCALE = TARGET_WIDTH / (SOURCE_MAX_X - SOURCE_MIN_X);
+    private static final float MODEL_Y_SCALE = TARGET_HEIGHT / (SOURCE_MAX_Y - SOURCE_MIN_Y);
+    private static final float MODEL_Z_SCALE = TARGET_LENGTH / (SOURCE_MAX_Z - SOURCE_MIN_Z);
+    private static final float MODEL_Z_CENTER = (SOURCE_MIN_Z + SOURCE_MAX_Z) * 0.5f;
 
-    private static final int HALO_TOP = rgb(40, 40, 44);
-    private static final int HALO_SIDE = rgb(25, 25, 28);
-    private static final int HALO_BOTTOM = rgb(12, 12, 14);
-    private static final int CARBON_TOP = rgb(48, 48, 52);
-    private static final int CARBON_SIDE = rgb(32, 32, 36);
-    private static final int CARBON_BOTTOM = rgb(18, 18, 20);
-    private static final int TYRE_TOP = rgb(34, 30, 26);
-    private static final int TYRE_SIDE = rgb(22, 18, 16);
-    private static final int TYRE_DARK = rgb(10, 9, 8);
-    private static final int DISC_FACE = rgb(195, 165, 110);
-    private static final int DISC_SIDE = rgb(145, 115, 75);
+    private static final int CARBON = rgb(24, 24, 28);
+    private static final int TYRE = rgb(18, 18, 22);
+    private static final int METAL = rgb(155, 155, 150);
 
-    private static final int[] COMPOUND_RIM_COLORS = {
-        rgb(230, 32, 32),
-        rgb(240, 210, 30),
-        rgb(235, 235, 230),
-        rgb(40, 200, 70),
-        rgb(45, 115, 240)
-    };
+    private static ColoredObjModel carModel;
 
     public OpenwheelCarRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -70,170 +65,86 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     @Override
     public void submit(CarRenderState state, PoseStack poseStack, SubmitNodeCollector nodeCollector, CameraRenderState cameraState) {
         super.submit(state, poseStack, nodeCollector, cameraState);
+        loadModel();
 
         poseStack.pushPose();
-        poseStack.mulPose(Axis.YP.rotationDegrees(180.0f - state.yRot));
-        poseStack.scale(1.22f, 1.28f, 1.50f);
+        poseStack.mulPose(Axis.YP.rotationDegrees(-state.yRot));
 
         int light = state.lightCoords;
-        int rimColor = compoundRimColor(state.tyreCompound);
         CarLivery livery = CarLivery.fromIndex(state.livery);
-
-        nodeCollector.submitCustomGeometry(poseStack, RT_BODY, (pose, consumer) -> {
-            box(consumer, pose, -0.38f, 0.12f, -1.35f, 0.38f, 0.58f, 0.98f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
-            box(consumer, pose, -0.16f, 0.16f, -2.80f, 0.16f, 0.44f, -1.35f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
-            box(consumer, pose, -0.78f, 0.11f, -0.88f, -0.38f, 0.48f, 0.72f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
-            box(consumer, pose, 0.38f, 0.11f, -0.88f, 0.78f, 0.48f, 0.72f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
-            box(consumer, pose, -0.12f, 0.58f, 0.02f, 0.12f, 1.02f, 0.92f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
-            box(consumer, pose, -0.34f, 0.12f, 0.82f, 0.34f, 0.38f, 1.20f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
-            box(consumer, pose, -0.24f, 0.42f, -0.90f, 0.24f, 0.66f, -0.12f, livery.bodyTop(), livery.bodySide(), livery.bodyBottom(), light);
-        });
-
-        nodeCollector.submitCustomGeometry(poseStack, RT_WHITE, (pose, consumer) -> {
-            box(consumer, pose, -0.065f, 0.46f, -2.76f, 0.065f, 0.53f, -0.34f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
-            box(consumer, pose, -0.79f, 0.40f, -0.60f, -0.39f, 0.52f, 0.50f, livery.accent2Top(), livery.accent2Side(), livery.accent2Bottom(), light);
-            box(consumer, pose, 0.39f, 0.40f, -0.60f, 0.79f, 0.52f, 0.50f, livery.accent2Top(), livery.accent2Side(), livery.accent2Bottom(), light);
-            box(consumer, pose, -0.07f, 1.03f, 0.12f, 0.07f, 1.14f, 0.82f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
-            box(consumer, pose, -0.45f, 0.62f, 0.98f, 0.45f, 0.72f, 1.12f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
-        });
-
-        nodeCollector.submitCustomGeometry(poseStack, RT_DARK, (pose, consumer) -> {
-            box(consumer, pose, -1.05f, 0.09f, -3.02f, 1.05f, 0.17f, -2.52f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
-            box(consumer, pose, -1.05f, 0.09f, -3.02f, -0.91f, 0.34f, -2.52f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
-            box(consumer, pose, 0.91f, 0.09f, -3.02f, 1.05f, 0.34f, -2.52f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
-            box(consumer, pose, -0.50f, 0.20f, -3.05f, 0.50f, 0.27f, -2.95f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
-            box(consumer, pose, -0.88f, 0.98f, 1.12f, 0.88f, 1.08f, 1.46f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
-            box(consumer, pose, -0.88f, 0.44f, 1.12f, -0.74f, 1.08f, 1.46f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
-            box(consumer, pose, 0.74f, 0.44f, 1.12f, 0.88f, 1.08f, 1.46f, livery.accent1Top(), livery.accent1Side(), livery.accent1Bottom(), light);
-            box(consumer, pose, -0.88f, 0.76f, 1.22f, 0.88f, 0.85f, 1.34f, livery.accent2Top(), livery.accent2Side(), livery.accent2Bottom(), light);
-            box(consumer, pose, -0.78f, 0.06f, -1.12f, 0.78f, 0.14f, 1.12f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
-            box(consumer, pose, -0.55f, 0.06f, 1.02f, 0.55f, 0.26f, 1.34f, CARBON_TOP, CARBON_SIDE, CARBON_BOTTOM, light);
-        });
-
-        nodeCollector.submitCustomGeometry(poseStack, RT_WHEEL, (pose, consumer) -> {
-            steerableWheel(consumer, pose, -1.10f, 0.26f, -1.98f, 0.14f, state.frontWheelSteerDegrees, rimColor, light);
-            steerableWheel(consumer, pose, 1.10f, 0.26f, -1.98f, 0.14f, state.frontWheelSteerDegrees, rimColor, light);
-            wheel(consumer, pose, -1.10f, 0.26f, 1.02f, 0.17f, rimColor, light);
-            wheel(consumer, pose, 1.10f, 0.26f, 1.02f, 0.17f, rimColor, light);
-        });
+        nodeCollector.submitCustomGeometry(poseStack, RT_CAR, (pose, consumer) -> drawModel(consumer, pose, carModel, livery, light));
 
         poseStack.popPose();
     }
 
-    private static void steerableWheel(VertexConsumer consumer, PoseStack.Pose pose, float cx, float cy, float cz, float halfWidth, float steerDegrees, int rimColor, int light) {
-        float halfHeight = 0.35f;
-        float halfLength = 0.35f;
-
-        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth, cy - halfHeight, cz - halfLength, cx + halfWidth, cy + halfHeight, cz + halfLength, TYRE_TOP, TYRE_SIDE, TYRE_DARK, light);
-        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy - 0.04f, cz - halfLength, cx + halfWidth + 0.01f, cy + 0.04f, cz - halfLength + 0.04f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
-        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy - 0.04f, cz + halfLength - 0.04f, cx + halfWidth + 0.01f, cy + 0.04f, cz + halfLength, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
-        steeredBox(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.01f, cy + halfHeight - 0.055f, cz - 0.27f, cx + halfWidth + 0.01f, cy + halfHeight + 0.01f, cz + 0.27f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
-
-        steeredRimFace(consumer, pose, cx, cz, steerDegrees, cx - halfWidth - 0.03f, cy, cz, 0.06f, rimColor, light);
-        steeredRimFace(consumer, pose, cx, cz, steerDegrees, cx + halfWidth + 0.03f, cy, cz, 0.06f, rimColor, light);
+    private static void loadModel() {
+        if (carModel == null) {
+            carModel = ColoredObjModel.load(Minecraft.getInstance().getResourceManager(), CAR_OBJ);
+        }
     }
 
-    private static void wheel(VertexConsumer consumer, PoseStack.Pose pose, float cx, float cy, float cz, float halfWidth, int rimColor, int light) {
-        float halfHeight = 0.35f;
-        float halfLength = 0.35f;
-
-        box(consumer, pose, cx - halfWidth, cy - halfHeight, cz - halfLength, cx + halfWidth, cy + halfHeight, cz + halfLength, TYRE_TOP, TYRE_SIDE, TYRE_DARK, light);
-        box(consumer, pose, cx - halfWidth - 0.01f, cy - 0.04f, cz - halfLength, cx + halfWidth + 0.01f, cy + 0.04f, cz - halfLength + 0.04f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
-        box(consumer, pose, cx - halfWidth - 0.01f, cy - 0.04f, cz + halfLength - 0.04f, cx + halfWidth + 0.01f, cy + 0.04f, cz + halfLength, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
-        box(consumer, pose, cx - halfWidth - 0.01f, cy + halfHeight - 0.055f, cz - 0.27f, cx + halfWidth + 0.01f, cy + halfHeight + 0.01f, cz + 0.27f, TYRE_DARK, TYRE_DARK, TYRE_DARK, light);
-
-        rimFace(consumer, pose, cx - halfWidth - 0.03f, cy, cz, 0.06f, rimColor, light);
-        rimFace(consumer, pose, cx + halfWidth + 0.03f, cy, cz, 0.06f, rimColor, light);
+    private static void drawModel(VertexConsumer consumer, PoseStack.Pose pose, ColoredObjModel model, CarLivery livery, int light) {
+        for (ColoredObjModel.Face face : model.faces) {
+            int color = liveryColor(face, livery);
+            vertex(consumer, pose, face.x0(), face.y0(), face.z0(), face.nx(), face.ny(), face.nz(), color, light);
+            vertex(consumer, pose, face.x1(), face.y1(), face.z1(), face.nx(), face.ny(), face.nz(), color, light);
+            vertex(consumer, pose, face.x2(), face.y2(), face.z2(), face.nx(), face.ny(), face.nz(), color, light);
+            vertex(consumer, pose, face.x2(), face.y2(), face.z2(), face.nx(), face.ny(), face.nz(), color, light);
+        }
     }
 
-    private static void steeredRimFace(VertexConsumer consumer, PoseStack.Pose pose, float pivotX, float pivotZ, float steerDegrees, float x, float y, float z, float thickness, int rimColor, int light) {
-        float x0 = x - thickness * 0.5f;
-        float x1 = x + thickness * 0.5f;
-        float top = y + 0.24f;
-        float bottom = y - 0.24f;
-        float front = z - 0.24f;
-        float back = z + 0.24f;
+    private static int liveryColor(ColoredObjModel.Face face, CarLivery livery) {
+        int materialRgb = face.materialRgb();
+        int r = (materialRgb >> 16) & 255;
+        int g = (materialRgb >> 8) & 255;
+        int b = materialRgb & 255;
+        int brightness = Math.max(r, Math.max(g, b));
 
-        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, top - 0.055f, front, x1, top + 0.055f, back, rimColor, rimColor, rimColor, light);
-        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, bottom - 0.055f, front, x1, bottom + 0.055f, back, rimColor, rimColor, rimColor, light);
-        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, bottom, front - 0.055f, x1, top, front + 0.055f, rimColor, rimColor, rimColor, light);
-        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0, bottom, back - 0.055f, x1, top, back + 0.055f, rimColor, rimColor, rimColor, light);
-        steeredBox(consumer, pose, pivotX, pivotZ, steerDegrees, x0 - 0.005f, y - 0.075f, z - 0.075f, x1 + 0.005f, y + 0.075f, z + 0.075f, DISC_FACE, DISC_SIDE, DISC_SIDE, light);
+        if (isWheelFace(face)) {
+            return TYRE;
+        }
+        if (r == 0 && g == 0 && b == 0) {
+            return CARBON;
+        }
+        if (brightness <= 4) {
+            return livery.bodySide();
+        }
+        if (brightness <= 40) {
+            return TYRE;
+        }
+        if (r > 180 && g < 90 && b < 80) {
+            return livery.accent2Side();
+        }
+        if (r > 220 && g > 180 && b > 120) {
+            return livery.accent2Top();
+        }
+        if (brightness > 120 && Math.abs(r - g) < 18 && Math.abs(g - b) < 18) {
+            return livery.accent1Side();
+        }
+        if (brightness > 120) {
+            return METAL;
+        }
+        return livery.bodyBottom();
     }
 
-    private static void rimFace(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float thickness, int rimColor, int light) {
-        float x0 = x - thickness * 0.5f;
-        float x1 = x + thickness * 0.5f;
-        float top = y + 0.24f;
-        float bottom = y - 0.24f;
-        float front = z - 0.24f;
-        float back = z + 0.24f;
-
-        box(consumer, pose, x0, top - 0.055f, front, x1, top + 0.055f, back, rimColor, rimColor, rimColor, light);
-        box(consumer, pose, x0, bottom - 0.055f, front, x1, bottom + 0.055f, back, rimColor, rimColor, rimColor, light);
-        box(consumer, pose, x0, bottom, front - 0.055f, x1, top, front + 0.055f, rimColor, rimColor, rimColor, light);
-        box(consumer, pose, x0, bottom, back - 0.055f, x1, top, back + 0.055f, rimColor, rimColor, rimColor, light);
-        box(consumer, pose, x0 - 0.005f, y - 0.075f, z - 0.075f, x1 + 0.005f, y + 0.075f, z + 0.075f, DISC_FACE, DISC_SIDE, DISC_SIDE, light);
+    private static boolean isWheelFace(ColoredObjModel.Face face) {
+        float centerX = (face.x0() + face.x1() + face.x2()) / 3.0f;
+        float centerY = (face.y0() + face.y1() + face.y2()) / 3.0f;
+        float centerZ = (face.z0() + face.z1() + face.z2()) / 3.0f;
+        return inWheelBox(centerX, centerY, centerZ, -0.84f, -0.40f, -4.78f, -4.05f)
+            || inWheelBox(centerX, centerY, centerZ, 0.40f, 0.84f, -4.78f, -4.05f)
+            || inWheelBox(centerX, centerY, centerZ, -0.84f, -0.40f, -1.85f, -1.20f)
+            || inWheelBox(centerX, centerY, centerZ, 0.40f, 0.84f, -1.85f, -1.20f);
     }
 
-    private static int compoundRimColor(int tyreCompound) {
-        return COMPOUND_RIM_COLORS[Math.max(0, Math.min(COMPOUND_RIM_COLORS.length - 1, tyreCompound))];
+    private static boolean inWheelBox(float x, float y, float z, float minX, float maxX, float minZ, float maxZ) {
+        return x >= minX && x <= maxX
+            && y >= -0.32f && y <= 0.25f
+            && z >= minZ && z <= maxZ;
     }
 
-    private static void steeredBox(VertexConsumer consumer, PoseStack.Pose pose, float pivotX, float pivotZ, float steerDegrees,
-                                   float minX, float minY, float minZ, float maxX, float maxY, float maxZ,
-                                   int top, int side, int bottom, int light) {
-        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, minX, maxY, minZ, maxX, maxY, minZ, maxX, minY, minZ, minX, minY, minZ, side, light, 0.0f, 0.0f, -1.0f);
-        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, maxX, maxY, maxZ, minX, maxY, maxZ, minX, minY, maxZ, maxX, minY, maxZ, side, light, 0.0f, 0.0f, 1.0f);
-        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, minX, maxY, maxZ, minX, maxY, minZ, minX, minY, minZ, minX, minY, maxZ, side, light, -1.0f, 0.0f, 0.0f);
-        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, maxX, maxY, minZ, maxX, maxY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, side, light, 1.0f, 0.0f, 0.0f);
-        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, minX, maxY, minZ, top, light, 0.0f, 1.0f, 0.0f);
-        steeredFace(consumer, pose, pivotX, pivotZ, steerDegrees, minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, minX, minY, maxZ, bottom, light, 0.0f, -1.0f, 0.0f);
-    }
-
-    private static void box(VertexConsumer consumer, PoseStack.Pose pose,
-                            float minX, float minY, float minZ, float maxX, float maxY, float maxZ,
-                            int top, int side, int bottom, int light) {
-        face(consumer, pose, minX, maxY, minZ, maxX, maxY, minZ, maxX, minY, minZ, minX, minY, minZ, side, light, 0.0f, 0.0f, -1.0f);
-        face(consumer, pose, maxX, maxY, maxZ, minX, maxY, maxZ, minX, minY, maxZ, maxX, minY, maxZ, side, light, 0.0f, 0.0f, 1.0f);
-        face(consumer, pose, minX, maxY, maxZ, minX, maxY, minZ, minX, minY, minZ, minX, minY, maxZ, side, light, -1.0f, 0.0f, 0.0f);
-        face(consumer, pose, maxX, maxY, minZ, maxX, maxY, maxZ, maxX, minY, maxZ, maxX, minY, minZ, side, light, 1.0f, 0.0f, 0.0f);
-        face(consumer, pose, minX, maxY, maxZ, maxX, maxY, maxZ, maxX, maxY, minZ, minX, maxY, minZ, top, light, 0.0f, 1.0f, 0.0f);
-        face(consumer, pose, minX, minY, minZ, maxX, minY, minZ, maxX, minY, maxZ, minX, minY, maxZ, bottom, light, 0.0f, -1.0f, 0.0f);
-    }
-
-    private static void steeredFace(VertexConsumer consumer, PoseStack.Pose pose, float pivotX, float pivotZ, float steerDegrees,
-                                    float x1, float y1, float z1, float x2, float y2, float z2,
-                                    float x3, float y3, float z3, float x4, float y4, float z4,
-                                    int color, int light, float normalX, float normalY, float normalZ) {
-        steeredVertex(consumer, pose, pivotX, pivotZ, steerDegrees, x1, y1, z1, color, light, normalX, normalY, normalZ);
-        steeredVertex(consumer, pose, pivotX, pivotZ, steerDegrees, x2, y2, z2, color, light, normalX, normalY, normalZ);
-        steeredVertex(consumer, pose, pivotX, pivotZ, steerDegrees, x3, y3, z3, color, light, normalX, normalY, normalZ);
-        steeredVertex(consumer, pose, pivotX, pivotZ, steerDegrees, x4, y4, z4, color, light, normalX, normalY, normalZ);
-    }
-
-    private static void face(VertexConsumer consumer, PoseStack.Pose pose,
-                             float x1, float y1, float z1, float x2, float y2, float z2,
-                             float x3, float y3, float z3, float x4, float y4, float z4,
-                             int color, int light, float normalX, float normalY, float normalZ) {
-        vertex(consumer, pose, x1, y1, z1, color, light, normalX, normalY, normalZ);
-        vertex(consumer, pose, x2, y2, z2, color, light, normalX, normalY, normalZ);
-        vertex(consumer, pose, x3, y3, z3, color, light, normalX, normalY, normalZ);
-        vertex(consumer, pose, x4, y4, z4, color, light, normalX, normalY, normalZ);
-    }
-
-    private static void steeredVertex(VertexConsumer consumer, PoseStack.Pose pose, float pivotX, float pivotZ, float steerDegrees,
-                                      float x, float y, float z, int color, int light, float normalX, float normalY, float normalZ) {
-        float radians = (float) Math.toRadians(steerDegrees);
-        float localX = x - pivotX;
-        float localZ = z - pivotZ;
-        float rotatedX = pivotX + localX * Mth.cos(radians) - localZ * Mth.sin(radians);
-        float rotatedZ = pivotZ + localX * Mth.sin(radians) + localZ * Mth.cos(radians);
-        vertex(consumer, pose, rotatedX, y, rotatedZ, color, light, normalX, normalY, normalZ);
-    }
-
-    private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, int color, int light, float normalX, float normalY, float normalZ) {
-        consumer.addVertex(pose, x, y, z)
+    private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float normalX, float normalY, float normalZ, int color, int light) {
+        consumer.addVertex(pose, x * MODEL_X_SCALE, (y - SOURCE_MIN_Y) * MODEL_Y_SCALE, (z - MODEL_Z_CENTER) * MODEL_Z_SCALE)
             .setColor(color)
             .setUv(0.0f, 0.0f)
             .setOverlay(OverlayTexture.NO_OVERLAY)
