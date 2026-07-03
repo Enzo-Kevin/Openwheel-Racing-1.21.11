@@ -118,6 +118,8 @@
   "screen.openwheelracing.track_editor.hud_line3": "Points %s/%s | Queued %s | Clear +%s",
   "screen.openwheelracing.track_editor.hud_hint": "H: help | C: clear queue | use buttons for elevation",
   "screen.openwheelracing.track_editor.clear_queue": "Clear Queue",
+  "screen.openwheelracing.track_editor.rerender_tiles": "Re-render Nearby",
+  "screen.openwheelracing.track_editor.rerender_started": "Re-rendering nearby terrain tiles",
   "screen.openwheelracing.track_editor.clear_height": "Clear height: +%s blocks",
   "screen.openwheelracing.track_editor.elevation_button": "Height: %s",
   "screen.openwheelracing.track_editor.surface_button": "Surface: %s",

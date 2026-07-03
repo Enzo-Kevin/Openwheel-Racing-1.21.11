@@ -57,7 +57,7 @@ public final class TrackEditorPlacementService {
                 return PlacementResult.TOO_FAR;
             }
             BlockState previous = level.getBlockState(pos);
-            if (!canReplace(previous)) {
+            if (!canReplace(level, pos, previous)) {
                 return PlacementResult.BLOCKED;
             }
             if (!previous.equals(entry.getValue())) {
@@ -359,8 +359,12 @@ public final class TrackEditorPlacementService {
         return player.blockPosition().distManhattan(pos) <= MAX_DISTANCE_FROM_PLAYER;
     }
 
-    private static boolean canReplace(BlockState state) {
-        return state.isAir() || state.canBeReplaced() || isEditorMaterial(state.getBlock());
+    private static boolean canReplace(Level level, BlockPos pos, BlockState state) {
+        Block block = state.getBlock();
+        return state.isAir()
+            || state.canBeReplaced()
+            || isEditorMaterial(block)
+            || (level.getBlockEntity(pos) == null && block != Blocks.BEDROCK && block != Blocks.END_PORTAL && block != Blocks.END_PORTAL_FRAME && block != Blocks.NETHER_PORTAL);
     }
 
     private static boolean isEditorMaterial(Block block) {

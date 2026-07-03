@@ -118,6 +118,8 @@
   "screen.openwheelracing.track_editor.hud_line3": "点位 %s/%s | 队列 %s | 清空 +%s",
   "screen.openwheelracing.track_editor.hud_hint": "H：帮助 | C：清空队列 | 用按钮选择高度",
   "screen.openwheelracing.track_editor.clear_queue": "清空队列",
+  "screen.openwheelracing.track_editor.rerender_tiles": "重绘附近",
+  "screen.openwheelracing.track_editor.rerender_started": "正在重绘附近地形瓦片",
   "screen.openwheelracing.track_editor.clear_height": "清空高度：+%s 格",
   "screen.openwheelracing.track_editor.elevation_button": "高度：%s",
   "screen.openwheelracing.track_editor.surface_button": "表面：%s",

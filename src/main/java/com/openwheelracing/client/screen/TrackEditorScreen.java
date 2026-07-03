@@ -18,6 +18,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -35,10 +36,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TrackEditorScreen extends Screen {
     private static final TrackEditorMode[] MODES = TrackEditorMode.values();
@@ -71,16 +77,27 @@ public class TrackEditorScreen extends Screen {
     private static final TrackEditorPreset[] PRESETS = TrackEditorPreset.values();
     private static final double[] ZOOM_LEVELS = {0.25, 0.5, 1.0, 2.0, 4.0};
     private static final int OUTER_MARGIN = 8;
+    private static final int CONTROL_STRIP_HEIGHT = 34;
     private static final int QUEUE_CHUNK_SIZE = 64;
     private static final int QUEUE_SEND_DISTANCE = 480;
     private static final int QUEUE_SENDS_PER_TICK = 2;
-    private static final int TERRAIN_SAMPLES_PER_FRAME = 256;
-    private static final int MAX_TERRAIN_CACHE_SIZE = 8192;
-    private static final int MIN_TERRAIN_PIXEL_STEP = 6;
+    private static final int TERRAIN_SAMPLES_PER_FRAME = 384;
+    private static final int TERRAIN_PRELOAD_SAMPLES_PER_TICK = 12;
+    private static final int TERRAIN_PRELOAD_RADIUS_BLOCKS = 192;
+    private static final int TERRAIN_TILE_BLOCKS = 64;
+    private static final int MAX_TERRAIN_TILE_CACHE_SIZE = 8192;
+    private static final int TERRAIN_CACHE_FLUSH_TILE_LIMIT = 2;
+    private static final int TERRAIN_CACHE_FLUSH_TICKS = 600;
     private static final double IMPORT_SAMPLE_SPACING = 1.0;
     private static final String IMPORT_PATH = "openwheelracing/imports/lap-simulator-track.json";
     private static final List<PendingEditorOperation> PENDING_QUEUE = new ArrayList<>();
-    private static final Map<Long, TerrainSample> TERRAIN_CACHE = new HashMap<>();
+    private static final Map<Long, TerrainTile> TERRAIN_TILES = new LinkedHashMap<>(16, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<Long, TerrainTile> eldest) {
+            return size() > MAX_TERRAIN_TILE_CACHE_SIZE;
+        }
+    };
+    private static final Set<Long> TERRAIN_TILE_DISK_MISSES = new HashSet<>();
     private static int savedModeIndex;
     private static int savedPavementIndex;
     private static int savedEdgeIndex;
@@ -95,6 +112,13 @@ public class TrackEditorScreen extends Screen {
     private static double savedCenterZ = Double.MAX_VALUE;
     private static int savedEditY;
     private static boolean terrainCacheLoaded;
+    private static String terrainCacheNamespace = "unknown";
+    private static int preloadCenterX = Integer.MIN_VALUE;
+    private static int preloadCenterZ = Integer.MIN_VALUE;
+    private static int preloadCenterY;
+    private static int preloadCursor;
+    private static boolean terrainCacheDirty;
+    private static int terrainCacheFlushTicks;
 
     private final List<BlockPos> points = new ArrayList<>();
     private int modeIndex = savedModeIndex;
@@ -114,6 +138,7 @@ public class TrackEditorScreen extends Screen {
     private int terrainSamplesThisFrame;
     private OverlayNotice notice;
     private Button clearQueueButton;
+    private Button rerenderButton;
     private Button elevationModeButton;
     private Button surfaceApplicationButton;
     private ClearHeightSlider clearHeightSlider;
@@ -143,7 +168,7 @@ public class TrackEditorScreen extends Screen {
         savedCenterZ = centerZ;
         savedEditY = editY;
         if (minecraft != null) {
-            saveTerrainCache(minecraft.gameDirectory.toPath());
+            flushDirtyTerrainTiles(minecraft.gameDirectory.toPath(), TERRAIN_CACHE_FLUSH_TILE_LIMIT);
         }
         super.onClose();
     }
@@ -172,18 +197,23 @@ public class TrackEditorScreen extends Screen {
         }
         initialized = true;
         MapBounds map = mapBounds();
-        int controlTop = map.bottom - 24;
-        int controlWidth = Math.min(112, Math.max(80, (map.width() - 24) / 4));
-        int sliderWidth = Math.max(128, map.width() - controlWidth * 3 - 24);
+        int controlTop = map.bottom + 6;
+        int gap = 8;
+        int buttonWidth = Math.min(104, Math.max(72, (map.width() - gap * 4) / 5));
+        int sliderX = map.left + (buttonWidth + gap) * 3;
+        int sliderWidth = Math.max(104, map.right - buttonWidth - gap - sliderX);
         elevationModeButton = addRenderableWidget(Button.builder(elevationModeLabel(), button -> toggleElevationMode())
-            .bounds(map.left, controlTop, controlWidth, 20)
+            .bounds(map.left, controlTop, buttonWidth, 20)
             .build());
         surfaceApplicationButton = addRenderableWidget(Button.builder(surfaceApplicationLabel(), button -> toggleSurfaceApplication())
-            .bounds(map.left + controlWidth + 8, controlTop, controlWidth, 20)
+            .bounds(map.left + buttonWidth + gap, controlTop, buttonWidth, 20)
             .build());
-        clearHeightSlider = addRenderableWidget(new ClearHeightSlider(map.left + (controlWidth + 8) * 2, controlTop, sliderWidth, 20));
+        rerenderButton = addRenderableWidget(Button.builder(Component.translatable("screen.openwheelracing.track_editor.rerender_tiles"), button -> rerenderNearbyTerrain())
+            .bounds(map.left + (buttonWidth + gap) * 2, controlTop, buttonWidth, 20)
+            .build());
+        clearHeightSlider = addRenderableWidget(new ClearHeightSlider(sliderX, controlTop, sliderWidth, 20));
         clearQueueButton = addRenderableWidget(Button.builder(Component.translatable("screen.openwheelracing.track_editor.clear_queue"), button -> clearPendingQueue())
-            .bounds(map.right - controlWidth, controlTop, controlWidth, 20)
+            .bounds(map.right - buttonWidth, controlTop, buttonWidth, 20)
             .build());
         updateClearQueueButton();
         updateToggleButtons();
@@ -330,6 +360,8 @@ public class TrackEditorScreen extends Screen {
     @Override
     public void tick() {
         flushPendingQueue();
+        sampleVisibleTerrain(TERRAIN_SAMPLES_PER_FRAME);
+        flushTerrainCacheIfDue();
         if (notice != null && notice.ticksRemaining() > 0) {
             notice = new OverlayNotice(notice.text(), notice.color(), notice.ticksRemaining() - 1);
             if (notice.ticksRemaining() <= 0) {
@@ -362,18 +394,69 @@ public class TrackEditorScreen extends Screen {
 
     private void renderTerrainSamples(GuiGraphics graphics, MapBounds map) {
         Minecraft minecraft = Minecraft.getInstance();
-        Level level = minecraft.level;
-        if (level == null) {
+        if (minecraft.level == null) {
             return;
         }
-        double bpp = blocksPerPixel();
-        int pixelStep = Math.max(MIN_TERRAIN_PIXEL_STEP, (int) Math.round(8.0 / bpp));
-        for (int sx = map.left; sx < map.right; sx += pixelStep) {
-            for (int sy = map.top; sy < map.bottom; sy += pixelStep) {
-                int worldX = screenToWorldX(sx + pixelStep * 0.5, map);
-                int worldZ = screenToWorldZ(sy + pixelStep * 0.5, map);
-                int color = terrainColor(level, worldX, worldZ, false);
-                graphics.fill(sx, sy, Math.min(map.right, sx + pixelStep), Math.min(map.bottom, sy + pixelStep), color);
+        int minWorldX = Math.min(screenToWorldX(map.left, map), screenToWorldX(map.right, map));
+        int maxWorldX = Math.max(screenToWorldX(map.left, map), screenToWorldX(map.right, map));
+        int minWorldZ = Math.min(screenToWorldZ(map.top, map), screenToWorldZ(map.bottom, map));
+        int maxWorldZ = Math.max(screenToWorldZ(map.top, map), screenToWorldZ(map.bottom, map));
+        int minTileX = tileCoord(minWorldX);
+        int maxTileX = tileCoord(maxWorldX);
+        int minTileZ = tileCoord(minWorldZ);
+        int maxTileZ = tileCoord(maxWorldZ);
+        int centerTileX = tileCoord((int) Math.floor(centerX));
+        int centerTileZ = tileCoord((int) Math.floor(centerZ));
+        int maxRadius = Math.max(Math.max(Math.abs(centerTileX - minTileX), Math.abs(centerTileX - maxTileX)), Math.max(Math.abs(centerTileZ - minTileZ), Math.abs(centerTileZ - maxTileZ)));
+        for (int radius = 0; radius <= maxRadius; radius++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dx = -radius; dx <= radius; dx++) {
+                    if (radius > 0 && Math.abs(dx) != radius && Math.abs(dz) != radius) {
+                        continue;
+                    }
+                    int tileX = centerTileX + dx;
+                    int tileZ = centerTileZ + dz;
+                    if (tileX < minTileX || tileX > maxTileX || tileZ < minTileZ || tileZ > maxTileZ) {
+                        continue;
+                    }
+                    renderTerrainTile(graphics, map, terrainTile(tileX, tileZ, editY));
+                }
+            }
+        }
+    }
+
+    private void renderTerrainTile(GuiGraphics graphics, MapBounds map, TerrainTile tile) {
+        int renderStepBlocks = Math.max(1, (int) Math.ceil(blocksPerPixel()));
+        for (int localZ = 0; localZ < TERRAIN_TILE_BLOCKS; localZ += renderStepBlocks) {
+            int rowTop = worldToScreenY(tile.baseZ + localZ);
+            int rowBottom = worldToScreenY(tile.baseZ + Math.min(TERRAIN_TILE_BLOCKS, localZ + renderStepBlocks));
+            int top = Math.max(map.top, Math.min(rowTop, rowBottom));
+            int bottom = Math.min(map.bottom, Math.max(rowTop, rowBottom));
+            if (bottom <= top) {
+                bottom = Math.min(map.bottom, top + 1);
+            }
+            if (top >= map.bottom || bottom <= map.top) {
+                continue;
+            }
+            int runStart = 0;
+            int runColor = tile.colorAt(0, localZ);
+            for (int localX = renderStepBlocks; localX <= TERRAIN_TILE_BLOCKS; localX += renderStepBlocks) {
+                int color = localX < TERRAIN_TILE_BLOCKS ? tile.colorAt(localX, localZ) : Integer.MIN_VALUE;
+                if (color == runColor) {
+                    continue;
+                }
+                int runLeft = worldToScreenX(tile.baseX + runStart);
+                int runRight = worldToScreenX(tile.baseX + Math.min(TERRAIN_TILE_BLOCKS, localX));
+                int left = Math.max(map.left, Math.min(runLeft, runRight));
+                int right = Math.min(map.right, Math.max(runLeft, runRight));
+                if (right <= left) {
+                    right = Math.min(map.right, left + 1);
+                }
+                if (left < map.right && right > map.left) {
+                    graphics.fill(left, top, right, bottom, runColor);
+                }
+                runStart = localX;
+                runColor = color;
             }
         }
     }
@@ -447,7 +530,7 @@ public class TrackEditorScreen extends Screen {
 
     private void renderControlStrip(GuiGraphics graphics) {
         MapBounds map = mapBounds();
-        graphics.fill(map.left, map.bottom - 28, map.right, map.bottom, 0x88000000);
+        graphics.fill(map.left, map.bottom + 2, map.right, this.height - OUTER_MARGIN, 0x88000000);
     }
 
     private void renderOverlayHud(GuiGraphics graphics) {
@@ -880,8 +963,115 @@ public class TrackEditorScreen extends Screen {
         }
     }
 
+    private void sampleVisibleTerrain(int budget) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null) {
+            return;
+        }
+        MapBounds map = mapBounds();
+        int minWorldX = Math.min(screenToWorldX(map.left, map), screenToWorldX(map.right, map));
+        int maxWorldX = Math.max(screenToWorldX(map.left, map), screenToWorldX(map.right, map));
+        int minWorldZ = Math.min(screenToWorldZ(map.top, map), screenToWorldZ(map.bottom, map));
+        int maxWorldZ = Math.max(screenToWorldZ(map.top, map), screenToWorldZ(map.bottom, map));
+        sampleTerrainTiles(minecraft.level, (int) Math.floor(centerX), (int) Math.floor(centerZ), editY, tileCoord(minWorldX), tileCoord(maxWorldX), tileCoord(minWorldZ), tileCoord(maxWorldZ), budget);
+    }
+
+    private static void sampleTerrainTiles(Level level, int centerBlockX, int centerBlockZ, int fallbackY, int minTileX, int maxTileX, int minTileZ, int maxTileZ, int budget) {
+        int centerTileX = tileCoord(centerBlockX);
+        int centerTileZ = tileCoord(centerBlockZ);
+        int maxRadius = Math.max(Math.max(Math.abs(centerTileX - minTileX), Math.abs(centerTileX - maxTileX)), Math.max(Math.abs(centerTileZ - minTileZ), Math.abs(centerTileZ - maxTileZ)));
+        int remaining = budget;
+        for (int radius = 0; radius <= maxRadius && remaining > 0; radius++) {
+            for (int dz = -radius; dz <= radius && remaining > 0; dz++) {
+                for (int dx = -radius; dx <= radius && remaining > 0; dx++) {
+                    if (radius > 0 && Math.abs(dx) != radius && Math.abs(dz) != radius) {
+                        continue;
+                    }
+                    int tileX = centerTileX + dx;
+                    int tileZ = centerTileZ + dz;
+                    if (tileX < minTileX || tileX > maxTileX || tileZ < minTileZ || tileZ > maxTileZ) {
+                        continue;
+                    }
+                    remaining -= terrainTile(tileX, tileZ, fallbackY).sample(level, fallbackY, remaining);
+                }
+            }
+        }
+    }
+
+    private static TerrainTile terrainTile(int tileX, int tileZ, int fallbackY) {
+        ensureTerrainCacheNamespace(Minecraft.getInstance());
+        long key = tileKey(tileX, tileZ);
+        TerrainTile tile = TERRAIN_TILES.get(key);
+        if (tile != null) {
+            return tile;
+        }
+        tile = new TerrainTile(tileX, tileZ, fallbackY);
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft != null && !TERRAIN_TILE_DISK_MISSES.contains(key) && !loadTerrainTile(minecraft.gameDirectory.toPath(), tile)) {
+            TERRAIN_TILE_DISK_MISSES.add(key);
+        }
+        TERRAIN_TILES.put(key, tile);
+        return tile;
+    }
+
+    private static int tileCoord(int block) {
+        return Math.floorDiv(block, TERRAIN_TILE_BLOCKS);
+    }
+
+    private static long tileKey(int tileX, int tileZ) {
+        return ((long) tileX << 32) ^ (tileZ & 0xFFFFFFFFL);
+    }
+
+    private static long tileKeyForBlock(int x, int z) {
+        return tileKey(tileCoord(x), tileCoord(z));
+    }
+
+    private static long sampleKey(int x, int z) {
+        return ((long) x << 32) ^ (z & 0xFFFFFFFFL);
+    }
+
+    private static void storeTerrainSample(int x, int z, TerrainSample sample) {
+        if (!sample.complete()) {
+            return;
+        }
+        TerrainTile tile = TERRAIN_TILES.get(tileKeyForBlock(x, z));
+        if (tile != null) {
+            tile.setSample(x, z, sample);
+        }
+        terrainCacheDirty = true;
+    }
+
+    private void flushTerrainCacheIfDue() {
+        if (!terrainCacheDirty || minecraft == null || ++terrainCacheFlushTicks < TERRAIN_CACHE_FLUSH_TICKS) {
+            return;
+        }
+        ensureTerrainCacheNamespace(minecraft);
+        terrainCacheFlushTicks = 0;
+        flushDirtyTerrainTiles(minecraft.gameDirectory.toPath(), TERRAIN_CACHE_FLUSH_TILE_LIMIT);
+    }
+
+    private void rerenderNearbyTerrain() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level == null || minecraft.player == null) {
+            return;
+        }
+        int centerX = (int) Math.floor(minecraft.player.getX());
+        int centerZ = (int) Math.floor(minecraft.player.getZ());
+        int centerY = minecraft.player.blockPosition().getY();
+        int radiusTiles = Math.max(1, TERRAIN_PRELOAD_RADIUS_BLOCKS / TERRAIN_TILE_BLOCKS);
+        int centerTileX = tileCoord(centerX);
+        int centerTileZ = tileCoord(centerZ);
+        for (int tileX = centerTileX - radiusTiles; tileX <= centerTileX + radiusTiles; tileX++) {
+            for (int tileZ = centerTileZ - radiusTiles; tileZ <= centerTileZ + radiusTiles; tileZ++) {
+                terrainTile(tileX, tileZ, centerY).requestRerender();
+            }
+        }
+        sampleTerrainTiles(minecraft.level, centerX, centerZ, centerY, centerTileX - radiusTiles, centerTileX + radiusTiles, centerTileZ - radiusTiles, centerTileZ + radiusTiles, TERRAIN_SAMPLES_PER_FRAME * 2);
+        showNotice(Component.translatable("screen.openwheelracing.track_editor.rerender_started"), 0xFFB7FFB7);
+    }
+
     private int terrainColor(Level level, int x, int z, boolean forceSample) {
-        return terrainSample(level, x, z, forceSample).colorArgb();
+        return colorForId(terrainSample(level, x, z, forceSample).colorId());
     }
 
     private int surfaceY(Level level, int x, int z) {
@@ -889,105 +1079,131 @@ public class TrackEditorScreen extends Screen {
     }
 
     private TerrainSample terrainSample(Level level, int x, int z, boolean forceSample) {
-        int sampleStep = forceSample ? 2 : Math.max(2, (int) Math.ceil(blocksPerPixel() * MIN_TERRAIN_PIXEL_STEP));
+        int sampleStep = forceSample ? 2 : Math.max(2, (int) Math.ceil(blocksPerPixel()));
         int sampleX = Math.floorDiv(x, sampleStep) * sampleStep;
         int sampleZ = Math.floorDiv(z, sampleStep) * sampleStep;
-        long key = ((long) sampleX << 32) ^ (sampleZ & 0xFFFFFFFFL);
-        TerrainSample cached = TERRAIN_CACHE.get(key);
+        TerrainTile tile = terrainTile(tileCoord(sampleX), tileCoord(sampleZ), editY);
+        TerrainSample cached = tile.sampleAt(sampleX, sampleZ);
         if (cached != null) {
             return cached;
         }
         if (!forceSample && terrainSamplesThisFrame >= TERRAIN_SAMPLES_PER_FRAME) {
-            return new TerrainSample(editY, 0xFF181A1C);
+            return new TerrainSample(editY, (byte) 0, false);
         }
-        if (TERRAIN_CACHE.size() >= MAX_TERRAIN_CACHE_SIZE) {
-            TERRAIN_CACHE.clear();
-        }
-        TerrainSample sampled = sampleTerrain(level, sampleX, sampleZ);
-        TERRAIN_CACHE.put(key, sampled);
+        TerrainSample sampled = sampleTerrain(level, sampleX, sampleZ, editY);
+        storeTerrainSample(sampleX, sampleZ, sampled);
         terrainSamplesThisFrame++;
         return sampled;
     }
 
-    private TerrainSample sampleTerrain(Level level, int x, int z) {
-        BlockPos chunkCheck = new BlockPos(x, editY, z);
+    private static TerrainSample sampleTerrain(Level level, int x, int z, int fallbackY) {
+        BlockPos chunkCheck = new BlockPos(x, fallbackY, z);
         if (!level.hasChunkAt(chunkCheck)) {
-            return new TerrainSample(editY, 0xFF181A1C);
+            return new TerrainSample(fallbackY, (byte) 0, false);
         }
         int y = level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
         if (y < level.getMinY()) {
-            return new TerrainSample(editY, 0xFF101214);
+            return new TerrainSample(fallbackY, (byte) 1, true);
         }
         BlockState state = level.getBlockState(new BlockPos(x, y, z));
-        return new TerrainSample(y, colorFor(state));
+        return new TerrainSample(y, colorIdFor(state), true);
     }
 
-    private int colorFor(BlockState state) {
+    private static byte colorIdFor(BlockState state) {
         Block block = state.getBlock();
         if (block == OWRBlocks.ASPHALT_TRACK.get()) {
-            return 0xFF202020;
+            return (byte) 2;
         }
         if (block == OWRBlocks.PIT_LANE.get()) {
-            return 0xFF4A4A4A;
+            return (byte) 3;
         }
         if (block == OWRBlocks.KERB.get()) {
-            return 0xFFCC3333;
+            return (byte) 4;
         }
         if (block == OWRBlocks.BARRIER.get()) {
-            return 0xFF888888;
+            return (byte) 5;
         }
         if (block == Blocks.GRASS_BLOCK) {
-            return 0xFF4B7D3A;
+            return (byte) 6;
         }
         if (block == Blocks.OAK_LEAVES || block == Blocks.BIRCH_LEAVES || block == Blocks.SPRUCE_LEAVES || block == Blocks.JUNGLE_LEAVES || block == Blocks.ACACIA_LEAVES || block == Blocks.DARK_OAK_LEAVES || block == Blocks.MANGROVE_LEAVES || block == Blocks.CHERRY_LEAVES) {
-            return 0xFF2F6B31;
+            return (byte) 7;
         }
         if (block == Blocks.OAK_LOG || block == Blocks.BIRCH_LOG || block == Blocks.SPRUCE_LOG || block == Blocks.JUNGLE_LOG || block == Blocks.ACACIA_LOG || block == Blocks.DARK_OAK_LOG || block == Blocks.MANGROVE_LOG || block == Blocks.CHERRY_LOG) {
-            return 0xFF6F5136;
+            return (byte) 8;
         }
         if (block == Blocks.DIRT || block == Blocks.COARSE_DIRT || block == Blocks.ROOTED_DIRT || block == Blocks.PODZOL) {
-            return 0xFF74543A;
+            return (byte) 9;
         }
         if (block == Blocks.STONE || block == Blocks.COBBLESTONE || block == Blocks.ANDESITE || block == Blocks.DIORITE || block == Blocks.GRANITE) {
-            return 0xFF777777;
+            return (byte) 10;
         }
         if (block == Blocks.SMOOTH_STONE || block == Blocks.STONE_BRICKS || block == Blocks.BRICKS || block == Blocks.POLISHED_ANDESITE || block == Blocks.POLISHED_DIORITE || block == Blocks.POLISHED_GRANITE) {
-            return 0xFF8A8A8A;
+            return (byte) 11;
         }
         if (block == Blocks.SAND || block == Blocks.SANDSTONE || block == Blocks.SMOOTH_SANDSTONE) {
-            return 0xFFC8B77B;
+            return (byte) 12;
         }
         if (block == Blocks.RED_SAND || block == Blocks.RED_SANDSTONE || block == Blocks.SMOOTH_RED_SANDSTONE) {
-            return 0xFFC47745;
+            return (byte) 13;
         }
         if (block == Blocks.WATER) {
-            return 0xFF315EAF;
+            return (byte) 14;
         }
         if (block == Blocks.ICE || block == Blocks.PACKED_ICE || block == Blocks.BLUE_ICE) {
-            return 0xFF8FC6DD;
+            return (byte) 15;
         }
         if (block == Blocks.SNOW || block == Blocks.SNOW_BLOCK) {
-            return 0xFFE8F0F0;
+            return (byte) 16;
         }
         if (block == Blocks.GLASS || block == Blocks.GLASS_PANE) {
-            return 0xFF9FB8C8;
+            return (byte) 17;
         }
         if (block == Blocks.OAK_PLANKS || block == Blocks.BIRCH_PLANKS || block == Blocks.SPRUCE_PLANKS || block == Blocks.JUNGLE_PLANKS || block == Blocks.ACACIA_PLANKS || block == Blocks.DARK_OAK_PLANKS || block == Blocks.MANGROVE_PLANKS || block == Blocks.CHERRY_PLANKS) {
-            return 0xFFA8794B;
+            return (byte) 18;
         }
         if (block == Blocks.GRAVEL) {
-            return 0xFF737373;
+            return (byte) 19;
         }
         if (block == Blocks.WHITE_CONCRETE || block == Blocks.LIGHT_GRAY_CONCRETE) {
-            return 0xFFBEBEBE;
+            return (byte) 20;
         }
         if (block == Blocks.GRAY_CONCRETE || block == Blocks.BLACK_CONCRETE) {
-            return 0xFF505050;
+            return (byte) 21;
         }
         if (block == Blocks.RED_CONCRETE) {
-            return 0xFF8F2B25;
+            return (byte) 22;
         }
-        return 0xFF667066;
+        return (byte) 23;
+    }
+
+    private static int colorForId(byte colorId) {
+        return switch (Byte.toUnsignedInt(colorId)) {
+            case 1 -> 0xFF101214;
+            case 2 -> 0xFF202020;
+            case 3 -> 0xFF4A4A4A;
+            case 4 -> 0xFFCC3333;
+            case 5 -> 0xFF888888;
+            case 6 -> 0xFF4B7D3A;
+            case 7 -> 0xFF2F6B31;
+            case 8 -> 0xFF6F5136;
+            case 9 -> 0xFF74543A;
+            case 10 -> 0xFF777777;
+            case 11 -> 0xFF8A8A8A;
+            case 12 -> 0xFFC8B77B;
+            case 13 -> 0xFFC47745;
+            case 14 -> 0xFF315EAF;
+            case 15 -> 0xFF8FC6DD;
+            case 16 -> 0xFFE8F0F0;
+            case 17 -> 0xFF9FB8C8;
+            case 18 -> 0xFFA8794B;
+            case 19 -> 0xFF737373;
+            case 20 -> 0xFFBEBEBE;
+            case 21 -> 0xFF505050;
+            case 22 -> 0xFF8F2B25;
+            case 23 -> 0xFF667066;
+            default -> 0xFF181A1C;
+        };
     }
 
     private int floorToStep(int value, int step) {
@@ -1042,57 +1258,163 @@ public class TrackEditorScreen extends Screen {
     private MapBounds mapBounds() {
         int left = OUTER_MARGIN;
         int top = OUTER_MARGIN;
-        return new MapBounds(left, top, Math.max(left + 160, this.width - OUTER_MARGIN), Math.max(top + 120, this.height - OUTER_MARGIN));
+        return new MapBounds(left, top, Math.max(left + 160, this.width - OUTER_MARGIN), Math.max(top + 80, this.height - OUTER_MARGIN - CONTROL_STRIP_HEIGHT));
     }
 
-    private static final String TERRAIN_CACHE_PATH = "openwheelracing/terrain-cache.dat";
-    private static final int TERRAIN_CACHE_MAGIC = 0x4F575243; // "OWRC"
-    private static final int TERRAIN_CACHE_VERSION = 1;
-
-    private static void saveTerrainCache(Path gameDir) {
-        if (TERRAIN_CACHE.isEmpty()) {
+    public static void preloadAroundPlayer(Minecraft minecraft) {
+        if (minecraft.level == null || minecraft.player == null || minecraft.screen instanceof TrackEditorScreen) {
             return;
         }
-        Path file = gameDir.resolve(TERRAIN_CACHE_PATH);
-        try {
-            Files.createDirectories(file.getParent());
-            try (DataOutputStream out = new DataOutputStream(Files.newOutputStream(file))) {
-                out.writeInt(TERRAIN_CACHE_MAGIC);
-                out.writeInt(TERRAIN_CACHE_VERSION);
-                out.writeInt(TERRAIN_CACHE.size());
-                for (Map.Entry<Long, TerrainSample> entry : TERRAIN_CACHE.entrySet()) {
-                    out.writeLong(entry.getKey());
-                    out.writeInt(entry.getValue().surfaceY());
-                    out.writeInt(entry.getValue().colorArgb());
-                }
-            }
-        } catch (IOException ignored) {
+        ensureTerrainCacheNamespace(minecraft);
+        if (!terrainCacheLoaded) {
+            terrainCacheLoaded = true;
+            loadTerrainCache(minecraft.gameDirectory.toPath());
         }
+        int centerX = (int) Math.floor(minecraft.player.getX());
+        int centerZ = (int) Math.floor(minecraft.player.getZ());
+        int centerY = minecraft.player.blockPosition().getY();
+        if (preloadCenterX == Integer.MIN_VALUE || Math.abs(centerX - preloadCenterX) > TERRAIN_PRELOAD_RADIUS_BLOCKS / 2 || Math.abs(centerZ - preloadCenterZ) > TERRAIN_PRELOAD_RADIUS_BLOCKS / 2) {
+            preloadCenterX = centerX;
+            preloadCenterZ = centerZ;
+            preloadCenterY = centerY;
+        }
+        int radiusTiles = Math.max(1, TERRAIN_PRELOAD_RADIUS_BLOCKS / TERRAIN_TILE_BLOCKS);
+        int centerTileX = tileCoord(preloadCenterX);
+        int centerTileZ = tileCoord(preloadCenterZ);
+        sampleTerrainTiles(minecraft.level, preloadCenterX, preloadCenterZ, preloadCenterY, centerTileX - radiusTiles, centerTileX + radiusTiles, centerTileZ - radiusTiles, centerTileZ + radiusTiles, TERRAIN_PRELOAD_SAMPLES_PER_TICK);
+    }
+
+    private static final String TERRAIN_TILE_CACHE_DIR = "openwheelracing/terrain-cache";
+    private static final int TERRAIN_TILE_CACHE_MAGIC = 0x4F575254; // "OWRT"
+    private static final int TERRAIN_TILE_CACHE_VERSION = 2;
+
+    private static void ensureTerrainCacheNamespace(Minecraft minecraft) {
+        String namespace = terrainCacheNamespace(minecraft);
+        if (namespace.equals(terrainCacheNamespace)) {
+            return;
+        }
+        terrainCacheNamespace = namespace;
+        TERRAIN_TILES.clear();
+        TERRAIN_TILE_DISK_MISSES.clear();
+        terrainCacheLoaded = false;
+        terrainCacheDirty = false;
+        terrainCacheFlushTicks = 0;
+        preloadCenterX = Integer.MIN_VALUE;
+        preloadCenterZ = Integer.MIN_VALUE;
+        preloadCursor = 0;
+    }
+
+    private static String terrainCacheNamespace(Minecraft minecraft) {
+        if (minecraft == null || minecraft.level == null) {
+            return "unknown/no_level";
+        }
+        String world = "unknown_world";
+        if (minecraft.hasSingleplayerServer() && minecraft.getSingleplayerServer() != null) {
+            world = "singleplayer/" + minecraft.getSingleplayerServer().getWorldData().getLevelName();
+        } else {
+            ServerData server = minecraft.getCurrentServer();
+            if (server != null) {
+                world = "multiplayer/" + server.ip;
+            }
+        }
+        String dimension = minecraft.level.dimension().identifier().toString();
+        return sanitizeCachePath(world) + "/" + sanitizeCachePath(dimension);
+    }
+
+    private static String sanitizeCachePath(String value) {
+        String sanitized = value.replaceAll("[^a-zA-Z0-9._-]+", "_");
+        return sanitized.isEmpty() ? "unknown" : sanitized;
+    }
+
+    private static void saveTerrainCache(Path gameDir) {
+        ensureTerrainCacheNamespace(Minecraft.getInstance());
+        flushDirtyTerrainTiles(gameDir, Integer.MAX_VALUE);
     }
 
     private static void loadTerrainCache(Path gameDir) {
-        Path file = gameDir.resolve(TERRAIN_CACHE_PATH);
+        terrainCacheDirty = false;
+        terrainCacheFlushTicks = 0;
+    }
+
+    private static boolean loadTerrainTile(Path gameDir, TerrainTile tile) {
+        Path file = terrainTileFile(gameDir, tile.tileX, tile.tileZ);
         if (!Files.exists(file)) {
-            return;
+            return false;
         }
-        try (DataInputStream in = new DataInputStream(Files.newInputStream(file))) {
-            if (in.readInt() != TERRAIN_CACHE_MAGIC || in.readInt() != TERRAIN_CACHE_VERSION) {
-                return;
+        try (DataInputStream in = new DataInputStream(new GZIPInputStream(Files.newInputStream(file)))) {
+            if (in.readInt() != TERRAIN_TILE_CACHE_MAGIC || in.readInt() != TERRAIN_TILE_CACHE_VERSION) {
+                return false;
+            }
+            if (in.readInt() != tile.tileX || in.readInt() != tile.tileZ) {
+                return false;
             }
             int count = in.readInt();
-            if (count < 0 || count > MAX_TERRAIN_CACHE_SIZE * 4) {
-                return;
+            if (count < 0 || count > TERRAIN_TILE_BLOCKS * TERRAIN_TILE_BLOCKS) {
+                return false;
             }
-            TERRAIN_CACHE.clear();
             for (int i = 0; i < count; i++) {
-                long key = in.readLong();
-                int surfaceY = in.readInt();
-                int colorArgb = in.readInt();
-                TERRAIN_CACHE.put(key, new TerrainSample(surfaceY, colorArgb));
+                int localX = in.readUnsignedByte();
+                int localZ = in.readUnsignedByte();
+                TerrainSample sample = new TerrainSample(in.readShort(), in.readByte(), true);
+                tile.loadSample(localX, localZ, sample);
             }
+            return true;
         } catch (IOException ignored) {
-            TERRAIN_CACHE.clear();
+            return false;
         }
+    }
+
+    private static int flushDirtyTerrainTiles(Path gameDir, int maxTiles) {
+        int flushed = 0;
+        boolean remainingDirty = false;
+        for (TerrainTile tile : TERRAIN_TILES.values()) {
+            if (!tile.dirty) {
+                continue;
+            }
+            if (flushed >= maxTiles) {
+                remainingDirty = true;
+                continue;
+            }
+            if (saveTerrainTile(gameDir, tile)) {
+                tile.dirty = false;
+                flushed++;
+            } else {
+                remainingDirty = true;
+            }
+        }
+        terrainCacheDirty = remainingDirty;
+        if (!terrainCacheDirty) {
+            terrainCacheFlushTicks = 0;
+        }
+        return flushed;
+    }
+
+    private static boolean saveTerrainTile(Path gameDir, TerrainTile tile) {
+        int count = tile.sampleCount();
+        if (count <= 0) {
+            return true;
+        }
+        Path file = terrainTileFile(gameDir, tile.tileX, tile.tileZ);
+        Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
+        try {
+            Files.createDirectories(file.getParent());
+            try (DataOutputStream out = new DataOutputStream(new GZIPOutputStream(Files.newOutputStream(tmp)))) {
+                out.writeInt(TERRAIN_TILE_CACHE_MAGIC);
+                out.writeInt(TERRAIN_TILE_CACHE_VERSION);
+                out.writeInt(tile.tileX);
+                out.writeInt(tile.tileZ);
+                out.writeInt(count);
+                tile.writeSamples(out);
+            }
+            Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            return true;
+        } catch (IOException ignored) {
+            return false;
+        }
+    }
+
+    private static Path terrainTileFile(Path gameDir, int tileX, int tileZ) {
+        return gameDir.resolve(TERRAIN_TILE_CACHE_DIR).resolve(terrainCacheNamespace).resolve(tileX + "," + tileZ + ".dat");
     }
 
     private record PendingEditorOperation(TrackEditorOperation operation, QueueReason reason) {
@@ -1118,7 +1440,146 @@ public class TrackEditorScreen extends Screen {
     private record OverlayNotice(Component text, int color, int ticksRemaining) {
     }
 
-    private record TerrainSample(int surfaceY, int colorArgb) {
+    private record TerrainSample(int surfaceY, byte colorId, boolean complete) {
+    }
+
+    private static class TerrainTile {
+        private final int tileX;
+        private final int tileZ;
+        private final int baseX;
+        private final int baseZ;
+        private final byte[] colorId = new byte[TERRAIN_TILE_BLOCKS * TERRAIN_TILE_BLOCKS];
+        private final short[] surfaceY = new short[TERRAIN_TILE_BLOCKS * TERRAIN_TILE_BLOCKS];
+        private int nextSample;
+        private boolean dirty;
+        private boolean rerenderRequested;
+
+        private TerrainTile(int tileX, int tileZ, int fallbackY) {
+            this.tileX = tileX;
+            this.tileZ = tileZ;
+            this.baseX = tileX * TERRAIN_TILE_BLOCKS;
+            this.baseZ = tileZ * TERRAIN_TILE_BLOCKS;
+            for (int z = 0; z < TERRAIN_TILE_BLOCKS; z++) {
+                for (int x = 0; x < TERRAIN_TILE_BLOCKS; x++) {
+                    int index = index(x, z);
+                    surfaceY[index] = (short) fallbackY;
+                }
+            }
+            advanceNextSample();
+        }
+
+        private int sample(Level level, int fallbackY, int budget) {
+            int sampled = 0;
+            int checked = 0;
+            while (sampled < budget && checked < colorId.length) {
+                if (nextSample >= colorId.length) {
+                    nextSample = 0;
+                    rerenderRequested = false;
+                }
+                int index = nextSample++;
+                checked++;
+                if (colorId[index] != 0 && !rerenderRequested) {
+                    continue;
+                }
+                int localX = index % TERRAIN_TILE_BLOCKS;
+                int localZ = index / TERRAIN_TILE_BLOCKS;
+                int worldX = baseX + localX;
+                int worldZ = baseZ + localZ;
+                TerrainSample sample = sampleTerrain(level, worldX, worldZ, fallbackY);
+                if (sample.complete()) {
+                    storeTerrainSample(worldX, worldZ, sample);
+                }
+                sampled++;
+            }
+            return sampled;
+        }
+
+        private TerrainSample sampleAt(int worldX, int worldZ) {
+            int localX = worldX - baseX;
+            int localZ = worldZ - baseZ;
+            if (localX < 0 || localX >= TERRAIN_TILE_BLOCKS || localZ < 0 || localZ >= TERRAIN_TILE_BLOCKS) {
+                return null;
+            }
+            int index = index(localX, localZ);
+            return colorId[index] == 0 ? null : new TerrainSample(surfaceY[index], colorId[index], true);
+        }
+
+        private int colorAt(int localX, int localZ) {
+            int index = index(Math.max(0, Math.min(TERRAIN_TILE_BLOCKS - 1, localX)), Math.max(0, Math.min(TERRAIN_TILE_BLOCKS - 1, localZ)));
+            return colorForId(colorId[index]);
+        }
+
+        private void setSample(int worldX, int worldZ, TerrainSample sample) {
+            int localX = worldX - baseX;
+            int localZ = worldZ - baseZ;
+            if (localX < 0 || localX >= TERRAIN_TILE_BLOCKS || localZ < 0 || localZ >= TERRAIN_TILE_BLOCKS) {
+                return;
+            }
+            int index = index(localX, localZ);
+            if (surfaceY[index] == (short) sample.surfaceY() && colorId[index] == sample.colorId()) {
+                return;
+            }
+            surfaceY[index] = (short) sample.surfaceY();
+            colorId[index] = sample.colorId();
+            dirty = true;
+            if (index == nextSample) {
+                advanceNextSample();
+            }
+        }
+
+        private void loadSample(int localX, int localZ, TerrainSample sample) {
+            if (localX < 0 || localX >= TERRAIN_TILE_BLOCKS || localZ < 0 || localZ >= TERRAIN_TILE_BLOCKS) {
+                return;
+            }
+            int index = index(localX, localZ);
+            surfaceY[index] = (short) sample.surfaceY();
+            colorId[index] = sample.colorId();
+            if (index == nextSample) {
+                advanceNextSample();
+            }
+        }
+
+        private void requestRerender() {
+            rerenderRequested = true;
+            nextSample = 0;
+        }
+
+        private int sampleCount() {
+            int count = 0;
+            for (byte color : colorId) {
+                if (color != 0) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        private void writeSamples(DataOutputStream out) throws IOException {
+            for (int localZ = 0; localZ < TERRAIN_TILE_BLOCKS; localZ++) {
+                for (int localX = 0; localX < TERRAIN_TILE_BLOCKS; localX++) {
+                    int index = index(localX, localZ);
+                    if (colorId[index] == 0) {
+                        continue;
+                    }
+                    out.writeByte(localX);
+                    out.writeByte(localZ);
+                    out.writeShort(surfaceY[index]);
+                    out.writeByte(colorId[index]);
+                }
+            }
+        }
+
+        private void advanceNextSample() {
+            int checked = 0;
+            while (checked < colorId.length && colorId[nextSample] != 0) {
+                nextSample = (nextSample + 1) % colorId.length;
+                checked++;
+            }
+        }
+
+        private int index(int localX, int localZ) {
+            return localZ * TERRAIN_TILE_BLOCKS + localX;
+        }
     }
 
     private class ClearHeightSlider extends AbstractSliderButton {

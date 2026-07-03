@@ -22,6 +22,8 @@ public final class OWRClientInputHandler {
             return;
         }
 
+        TrackEditorScreen.preloadAroundPlayer(mc);
+
         while (OWRKeyMappings.TRACK_EDITOR.consumeClick()) {
             mc.setScreen(new TrackEditorScreen());
             return;
