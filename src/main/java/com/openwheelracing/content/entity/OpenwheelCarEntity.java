@@ -1073,10 +1073,6 @@ public class OpenwheelCarEntity extends Entity {
         double velocityLong = (delta.x * forward.x + delta.z * forward.z) * 20.0;
         double velocityLat = (delta.x * right.x + delta.z * right.z) * 20.0;
         double speedMetersPerSecond = Math.sqrt(velocityLong * velocityLong + velocityLat * velocityLat);
-        if (gear == REVERSE_GEAR && throttle <= 0.0 && brake > 0.0) {
-            throttle = brake;
-            brake = 0.0;
-        }
         boolean canApplyDrive = gear != NEUTRAL_GEAR && throttle > 0.0;
         if (speedMetersPerSecond < 0.35 && !canApplyDrive && brake == 0.0) {
             velocityLong = 0.0;
@@ -1560,16 +1556,22 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     private void tickImpactDamage() {
-        if (horizontalCollision && previousHorizontalSpeed > 0.28) {
+        if (horizontalCollision && previousHorizontalSpeed > 0.08) {
             Vec3 barrierNormal = nearbyBarrierNormal();
             boolean barrierImpact = barrierNormal.lengthSqr() > 0.0;
             if (!barrierImpact && isClimbLikeCollision()) {
                 return;
             }
             double approachFactor = barrierImpact ? barrierApproachFactor(barrierNormal) : 1.0;
+            float soundSeverity = (float) Math.max(0.6, previousHorizontalSpeed * (barrierImpact ? 9.0 * approachFactor : 14.0));
+            if (previousHorizontalSpeed <= 0.28) {
+                playCollisionSound(soundSeverity, true);
+                return;
+            }
+
             float severity = (float) ((previousHorizontalSpeed - 0.28) * (barrierImpact ? 14.0 * approachFactor : 40.0));
             addDamage(severity);
-            playImpactFeedback(severity);
+            playImpactFeedback(Math.max(severity, soundSeverity));
             if (barrierImpact) {
                 setDeltaMovement(bounceFromBarrier(getDeltaMovement(), barrierNormal, approachFactor));
             } else {
@@ -1620,6 +1622,7 @@ public class OpenwheelCarEntity extends Entity {
 
             lastEntityImpactById.put(target.getId(), time);
             boolean carTarget = target instanceof OpenwheelCarEntity;
+            playCollisionSound((float) Math.max(0.6, resolvedSpeed * (carTarget ? 18.0 : 12.0)), carTarget);
             float carSeverity = (float) Math.max(0.0, (resolvedSpeed - ENTITY_IMPACT_SOFT_SPEED) * (carTarget ? ENTITY_IMPACT_OTHER_CAR_DAMAGE : ENTITY_IMPACT_CAR_DAMAGE));
             if (carSeverity > 0.0f) {
                 addDamage(carSeverity);
@@ -2005,12 +2008,23 @@ public class OpenwheelCarEntity extends Entity {
 
     private void playImpactFeedback(float severity) {
         if (level() instanceof ServerLevel serverLevel) {
-            float volume = Math.min(1.8f, 0.5f + severity * 0.08f);
-            float pitch = Math.max(0.55f, 1.2f - severity * 0.04f);
-            serverLevel.playSound(null, getX(), getY(), getZ(), SoundEvents.METAL_HIT, SoundSource.BLOCKS, volume, pitch);
+            playCollisionSound(serverLevel, severity, true);
             serverLevel.sendParticles(ParticleTypes.SMOKE, getX(), getY() + 0.35, getZ(), Math.min(18, 4 + (int) severity), 0.35, 0.18, 0.35, 0.03);
             serverLevel.sendParticles(ParticleTypes.CRIT, getX(), getY() + 0.35, getZ(), Math.min(12, 2 + (int) (severity * 0.5f)), 0.25, 0.12, 0.25, 0.15);
         }
+    }
+
+    private void playCollisionSound(float severity, boolean metallic) {
+        if (level() instanceof ServerLevel serverLevel) {
+            playCollisionSound(serverLevel, severity, metallic);
+        }
+    }
+
+    private void playCollisionSound(ServerLevel serverLevel, float severity, boolean metallic) {
+        float volume = Math.min(2.0f, 0.35f + severity * 0.09f);
+        float pitchBase = metallic ? 1.05f : 1.35f;
+        float pitch = Math.max(0.55f, pitchBase - severity * 0.035f);
+        serverLevel.playSound(null, getX(), getY(), getZ(), SoundEvents.METAL_HIT, SoundSource.BLOCKS, volume, pitch);
     }
 
     private void addDamage(float amount) {
