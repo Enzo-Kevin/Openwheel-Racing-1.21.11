@@ -22,7 +22,6 @@ public final class OWRCreativeTabs {
             output.accept(OWRBlocks.CAR_ASSEMBLY_WORKSTATION_ITEM.get());
             output.accept(OWRBlocks.REFINERY_ITEM.get());
             output.accept(OWRBlocks.RACE_DIRECTOR_ITEM.get());
-            output.accept(OWRBlocks.CRUDE_OIL_DEPOSIT_ITEM.get());
             output.accept(OWRBlocks.ASPHALT_TRACK_ITEM.get());
             output.accept(OWRBlocks.ASPHALT_TRACK_SLAB_ITEM.get());
             output.accept(OWRBlocks.KERB_ITEM.get());
@@ -33,7 +32,6 @@ public final class OWRCreativeTabs {
             output.accept(OWRBlocks.START_FINISH_ITEM.get());
             output.accept(OWRBlocks.CHECKPOINT_ITEM.get());
             output.accept(OWRItems.CARBON_FIBER.get());
-            output.accept(OWRItems.CRUDE_OIL_CHUNK.get());
             output.accept(OWRItems.CRUDE_OIL_BUCKET.get());
             output.accept(OWRItems.GAS.get());
             output.accept(OWRItems.PETROL_CAN.get());

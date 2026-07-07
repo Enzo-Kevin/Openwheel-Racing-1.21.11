@@ -3,6 +3,7 @@ package com.openwheelracing.registry;
 import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.item.TyreItem;
+import net.minecraft.world.item.BucketItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
@@ -16,9 +17,8 @@ public final class OWRItems {
     public static final RegistryObject<Item> CARBON_FIBER = registerSimple("carbon_fiber");
     public static final RegistryObject<Item> RUBBER = registerSimple("rubber");
     public static final RegistryObject<Item> CRUDE_RUBBER = registerSimple("crude_rubber");
-    public static final RegistryObject<Item> CRUDE_OIL_CHUNK = registerSimple("crude_oil_chunk");
     public static final RegistryObject<Item> CRUDE_OIL_BUCKET = ITEMS.register("crude_oil_bucket",
-        () -> new Item(new Item.Properties().setId(ITEMS.key("crude_oil_bucket")).craftRemainder(Items.BUCKET).stacksTo(1))
+        () -> new BucketItem(OWRFluids.CRUDE_OIL, new Item.Properties().setId(ITEMS.key("crude_oil_bucket")).craftRemainder(Items.BUCKET).stacksTo(1))
     );
     public static final RegistryObject<Item> GAS = registerSimple("gas");
     public static final RegistryObject<Item> PETROL_CAN = registerSimple("petrol_can");

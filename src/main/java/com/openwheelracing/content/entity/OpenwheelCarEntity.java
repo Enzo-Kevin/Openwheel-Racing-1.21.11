@@ -25,6 +25,7 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -43,6 +44,7 @@ import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class OpenwheelCarEntity extends Entity {
@@ -101,6 +103,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final double ASPHALT_MU_LONGITUDINAL = 2.30;
     private static final double KINETIC_MU_RATIO = 0.94;
     private static final double LOAD_SENSITIVITY = 0.035;
+    private static final double MIN_SURFACE_MU = 0.02;
     private static final double FRONT_CORNERING_STIFFNESS = 210_000.0;
     private static final double REAR_CORNERING_STIFFNESS = 285_000.0;
     private static final double FRONT_LONGITUDINAL_STIFFNESS = 245_000.0;
@@ -137,6 +140,12 @@ public class OpenwheelCarEntity extends Entity {
     private static final double FRONT_UNDERSTEER_WARNING_THRESHOLD = 0.94;
     private static final double FRONT_UNDERSTEER_WARNING_RECOVERY = 0.84;
     private static final long FRONT_UNDERSTEER_WARNING_COOLDOWN = 20L;
+    private static final double ENTITY_IMPACT_MIN_SPEED = 0.16;
+    private static final double ENTITY_IMPACT_SOFT_SPEED = 0.30;
+    private static final double ENTITY_IMPACT_CAR_DAMAGE = 11.0;
+    private static final double ENTITY_IMPACT_LIVING_DAMAGE = 40.0;
+    private static final double ENTITY_IMPACT_OTHER_CAR_DAMAGE = 7.0;
+    private static final long ENTITY_IMPACT_COOLDOWN_TICKS = 8L;
     private static final double STEERING_OFF_GRIP_RELIEF_START = 0.92;
     private static final double STEERING_OFF_GRIP_RELIEF_FULL = 1.28;
     private static final double STEERING_OFF_GRIP_LOCK_BONUS = 0.45;
@@ -173,6 +182,7 @@ public class OpenwheelCarEntity extends Entity {
     private float inputBrake;
     private float inputSteering;
     private long lastMovementDebugAt = -20L;
+    private final java.util.HashMap<Integer, Long> lastEntityImpactById = new java.util.HashMap<>();
     private boolean wasRiddenLastTick;
     private double steeringAngle;
     private double frontSteeringOffGripRelief;
@@ -235,8 +245,8 @@ public class OpenwheelCarEntity extends Entity {
         builder.define(BEST_LAP_TICKS, 0);
         builder.define(CHECKPOINT_ARMED, false);
         builder.define(PIT_STOP_TICKS, 0);
-        builder.define(ABS_ENABLED, true);
-        builder.define(TRACTION_CONTROL_ENABLED, true);
+        builder.define(ABS_ENABLED, false);
+        builder.define(TRACTION_CONTROL_ENABLED, false);
         builder.define(LIVERY, 0);
         builder.define(TYRE_COMPOUND, PrototypeCarSetup.DEFAULT.grip());
     }
@@ -758,7 +768,8 @@ public class OpenwheelCarEntity extends Entity {
         entityData.set(CURRENT_LAP_TICKS, input.getIntOr("CurrentLapTicks", 0));
         entityData.set(BEST_LAP_TICKS, input.getIntOr("BestLapTicks", 0));
         entityData.set(CHECKPOINT_ARMED, input.getBooleanOr("CheckpointArmed", false));
-        setTractionControlEnabled(input.getBooleanOr("TractionControlEnabled", true));
+        setAbsEnabled(input.getBooleanOr("AbsEnabled", false));
+        setTractionControlEnabled(input.getBooleanOr("TractionControlEnabled", false));
         steeringAngle = input.getDoubleOr("SteeringAngle", 0.0);
         yawRate = input.getDoubleOr("YawRate", 0.0);
         lapStartedAt = input.getLongOr("LapStartedAt", -1L);
@@ -780,6 +791,7 @@ public class OpenwheelCarEntity extends Entity {
         output.putInt("CurrentLapTicks", getCurrentLapTicks());
         output.putInt("BestLapTicks", getBestLapTicks());
         output.putBoolean("CheckpointArmed", hasCheckpoint());
+        output.putBoolean("AbsEnabled", isAbsEnabled());
         output.putBoolean("TractionControlEnabled", isTractionControlEnabled());
         output.putDouble("SteeringAngle", steeringAngle);
         output.putDouble("YawRate", yawRate);
@@ -836,7 +848,8 @@ public class OpenwheelCarEntity extends Entity {
         DIRT(                       0.58,  0.952,  0.05,     1.4,     false),
         GRASS(                      0.42,  0.930,  0.08,     1.6,     false),
         GRAVEL(                     0.45,  0.940,  0.16,     2.0,     false),
-        SAND(                       0.28,  0.900,  0.28,     2.4,     false);
+        SAND(                       0.28,  0.900,  0.28,     2.4,     false),
+        WATER(                      0.02,  0.720,  0.35,     0.2,     false);
 
         final double grip;
         final double drag;
@@ -854,6 +867,9 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     private SurfaceProfile getSurfaceAt(Vec3 pos) {
+        if (isWaterAt(pos)) {
+            return SurfaceProfile.WATER;
+        }
         BlockPos basePos = BlockPos.containing(pos.x, getBoundingBox().minY - 0.05, pos.z);
         Block block = level().getBlockState(basePos).getBlock();
         if (block == OWRBlocks.ASPHALT_TRACK.get()
@@ -875,6 +891,12 @@ public class OpenwheelCarEntity extends Entity {
                 || block == Blocks.RED_SAND
                 || block == Blocks.SUSPICIOUS_SAND) return SurfaceProfile.SAND;
         return SurfaceProfile.DIRT;
+    }
+
+    private boolean isWaterAt(Vec3 pos) {
+        BlockPos waterPos = BlockPos.containing(pos.x, getBoundingBox().minY + 0.15, pos.z);
+        return level().getFluidState(waterPos).is(FluidTags.WATER)
+            || level().getFluidState(waterPos.above()).is(FluidTags.WATER);
     }
 
     private static boolean isPavedBlock(Block block) {
@@ -1051,6 +1073,10 @@ public class OpenwheelCarEntity extends Entity {
         double velocityLong = (delta.x * forward.x + delta.z * forward.z) * 20.0;
         double velocityLat = (delta.x * right.x + delta.z * right.z) * 20.0;
         double speedMetersPerSecond = Math.sqrt(velocityLong * velocityLong + velocityLat * velocityLat);
+        if (gear == REVERSE_GEAR && throttle <= 0.0 && brake > 0.0) {
+            throttle = brake;
+            brake = 0.0;
+        }
         boolean canApplyDrive = gear != NEUTRAL_GEAR && throttle > 0.0;
         if (speedMetersPerSecond < 0.35 && !canApplyDrive && brake == 0.0) {
             velocityLong = 0.0;
@@ -1059,7 +1085,7 @@ public class OpenwheelCarEntity extends Entity {
             steeringAngle = 0.0;
             resetTyreRelaxation();
         }
-        boolean launchClutch = throttle > 0.0 && gear == 1 && horizontalSpeed < LAUNCH_CLUTCH_SPEED;
+        boolean launchClutch = throttle > 0.0 && (gear == 1 || gear == REVERSE_GEAR) && horizontalSpeed < LAUNCH_CLUTCH_SPEED;
         boolean clutchReleasing = clutchReleaseTicks > 0 && gear != NEUTRAL_GEAR;
         int engineRpm = updateEngineRpm(horizontalSpeed, gear, gearTopSpeed, throttle, launchClutch, clutchReleasing);
         double power = enginePowerWatts(engineRpm) * setup.powerMultiplier() * damageFactor;
@@ -1147,10 +1173,11 @@ public class OpenwheelCarEntity extends Entity {
                 subBrakeForceRequest = Math.max(subBrakeForceRequest, 6_000.0);
             }
             double subBrakeForceEstimate = brake * Math.min(MAX_BRAKE_FORCE, ASPHALT_MU_LONGITUDINAL * surface.grip * (CAR_MASS_KG * GRAVITY + subDownforce));
+            double subBrakeDirection = Math.abs(velocityLong) > 0.1 ? Math.signum(velocityLong) : 0.0;
             double tyreWearDragFactor = 1.0 + getTyreWearPercent() * 0.0022;
             double subRollingForce = ROLLING_RESISTANCE * tyreWearDragFactor * (CAR_MASS_KG * GRAVITY + subDownforce);
             double subSinkDragForce = surface.sinkDrag * (CAR_MASS_KG * GRAVITY + subDownforce);
-            double subPreliminaryAx = (subDriveForceRequest - subBrakeForceEstimate - Math.signum(velocityLong) * (subAeroDrag + subRollingForce + subSinkDragForce)) / CAR_MASS_KG;
+            double subPreliminaryAx = (subDriveForceRequest - subBrakeDirection * subBrakeForceEstimate - Math.signum(velocityLong) * (subAeroDrag + subRollingForce + subSinkDragForce)) / CAR_MASS_KG;
             double subLateralAccelerationEstimate = (velocityLat - debugVelocityLat) / Math.max(subDt, 1.0E-6);
             double subLongitudinalLoadTransfer = CAR_MASS_KG * subPreliminaryAx * CG_HEIGHT / WHEELBASE;
             double subLateralLoadTransfer = CAR_MASS_KG * subLateralAccelerationEstimate * CG_HEIGHT / TRACK_WIDTH;
@@ -1193,7 +1220,7 @@ public class OpenwheelCarEntity extends Entity {
             double trailBrakeRelease = brake * trailBrakeSteerUse * TRAIL_BRAKE_REAR_PRESSURE_RELIEF * 0.35;
             brakeRear *= 1.0 - trailBrakeRelease;
             double driveRear = subDriveForceRequest * 0.5;
-            double brakeSign = velocityLong >= 0.0 ? 1.0 : -1.0;
+            double brakeSign = subBrakeDirection;
             double flLongRequest = -brakeSign * brakeFront;
             double frLongRequest = -brakeSign * brakeFront;
             double rlLongRequest = driveRear - brakeSign * brakeRear;
@@ -1376,6 +1403,12 @@ public class OpenwheelCarEntity extends Entity {
             yawRate *= energyScale;
             yawDelta *= energyScale;
         }
+        if (gear == REVERSE_GEAR && throttle > 0.0) {
+            double reverseTopMetersPerSecond = gearTopSpeed * 20.0;
+            double reverseGrip = Math.max(MIN_SURFACE_MU, surface.grip * setup.gripMultiplier() * Math.max(0.45, tyreFactor));
+            double reverseVelocityFloor = previousVelocityLong - GRAVITY * ASPHALT_MU_LONGITUDINAL * reverseGrip * 0.20 * throttle * PHYSICS_DT;
+            velocityLong = Math.max(-reverseTopMetersPerSecond, Math.min(velocityLong, reverseVelocityFloor));
+        }
         if (steerInput == 0.0 && Math.abs(velocityLat) < 0.08 && Math.abs(yawRate) < 0.025) {
             velocityLat = 0.0;
             yawRate = 0.0;
@@ -1442,6 +1475,7 @@ public class OpenwheelCarEntity extends Entity {
             carriedVerticalMovement = 0.0;
         }
         setDeltaMovement(new Vec3(actualMovement.x, carriedVerticalMovement, actualMovement.z));
+        handleEntityImpacts(beforeMove, actualMovement);
         scanLapMarkers(beforeMove, actualMovement);
 
         boolean shouldDebugMovement = debugMovement && (getControllingPassenger() != null || throttle != 0.0 || brake != 0.0 || steering != 0.0 || horizontalSpeed > 0.01 || actualMovement.horizontalDistance() > 0.01);
@@ -1550,6 +1584,119 @@ public class OpenwheelCarEntity extends Entity {
                 destroyIntoMaterials(serverLevel);
             }
         }
+    }
+
+    private void handleEntityImpacts(Vec3 beforeMove, Vec3 actualMovement) {
+        if (!(level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        double impactSpeed = actualMovement.horizontalDistance();
+        if (impactSpeed < ENTITY_IMPACT_MIN_SPEED) {
+            return;
+        }
+
+        AABB sweptBox = sweptBoundingBox(beforeMove).inflate(0.18, 0.08, 0.18);
+        Vec3 horizontalMovement = new Vec3(actualMovement.x, 0.0, actualMovement.z);
+        long time = level().getGameTime();
+        if (lastEntityImpactById.size() > 48) {
+            lastEntityImpactById.entrySet().removeIf(entry -> time - entry.getValue() > 200L);
+        }
+
+        for (Entity target : level().getEntities(this, sweptBox, this::canImpactEntity)) {
+            Long lastImpactAt = lastEntityImpactById.get(target.getId());
+            if (lastImpactAt != null && time - lastImpactAt < ENTITY_IMPACT_COOLDOWN_TICKS) {
+                continue;
+            }
+            if (!target.getBoundingBox().inflate(0.08).intersects(sweptBox)) {
+                continue;
+            }
+
+            Vec3 normal = entityImpactNormal(target, horizontalMovement);
+            double approachSpeed = horizontalMovement.dot(normal);
+            double resolvedSpeed = Math.max(impactSpeed * 0.45, approachSpeed);
+            if (resolvedSpeed < ENTITY_IMPACT_MIN_SPEED) {
+                continue;
+            }
+
+            lastEntityImpactById.put(target.getId(), time);
+            boolean carTarget = target instanceof OpenwheelCarEntity;
+            float carSeverity = (float) Math.max(0.0, (resolvedSpeed - ENTITY_IMPACT_SOFT_SPEED) * (carTarget ? ENTITY_IMPACT_OTHER_CAR_DAMAGE : ENTITY_IMPACT_CAR_DAMAGE));
+            if (carSeverity > 0.0f) {
+                addDamage(carSeverity);
+                playImpactFeedback(carSeverity);
+            }
+
+            if (target instanceof OpenwheelCarEntity otherCar) {
+                float otherSeverity = (float) Math.max(0.0, (resolvedSpeed - ENTITY_IMPACT_SOFT_SPEED) * ENTITY_IMPACT_OTHER_CAR_DAMAGE);
+                if (otherSeverity > 0.0f) {
+                    otherCar.addDamage(otherSeverity);
+                    otherCar.playImpactFeedback(otherSeverity);
+                }
+            } else if (target instanceof LivingEntity livingEntity) {
+                float targetDamage = (float) Math.max(1.0, (resolvedSpeed - ENTITY_IMPACT_MIN_SPEED) * ENTITY_IMPACT_LIVING_DAMAGE);
+                livingEntity.hurtServer(serverLevel, damageSources().flyIntoWall(), targetDamage);
+            }
+
+            applyEntityImpactResponse(target, normal, resolvedSpeed, carTarget);
+            if (getDamagePercent() >= 100.0f) {
+                destroyIntoMaterials(serverLevel);
+                return;
+            }
+        }
+    }
+
+    private boolean canImpactEntity(Entity entity) {
+        return entity != this
+            && entity.isAlive()
+            && !hasPassenger(entity)
+            && !(entity.getVehicle() instanceof OpenwheelCarEntity)
+            && (entity instanceof LivingEntity || entity instanceof OpenwheelCarEntity);
+    }
+
+    private AABB sweptBoundingBox(Vec3 beforeMove) {
+        AABB currentBox = getBoundingBox();
+        Vec3 offset = beforeMove.subtract(position());
+        AABB previousBox = new AABB(
+            currentBox.minX + offset.x,
+            currentBox.minY + offset.y,
+            currentBox.minZ + offset.z,
+            currentBox.maxX + offset.x,
+            currentBox.maxY + offset.y,
+            currentBox.maxZ + offset.z
+        );
+        return new AABB(
+            Math.min(previousBox.minX, currentBox.minX),
+            Math.min(previousBox.minY, currentBox.minY),
+            Math.min(previousBox.minZ, currentBox.minZ),
+            Math.max(previousBox.maxX, currentBox.maxX),
+            Math.max(previousBox.maxY, currentBox.maxY),
+            Math.max(previousBox.maxZ, currentBox.maxZ)
+        );
+    }
+
+    private Vec3 entityImpactNormal(Entity target, Vec3 horizontalMovement) {
+        Vec3 normal = target.position().subtract(position());
+        normal = new Vec3(normal.x, 0.0, normal.z);
+        if (normal.lengthSqr() < 1.0E-4) {
+            normal = horizontalMovement.lengthSqr() > 1.0E-4
+                ? horizontalMovement
+                : Vec3.directionFromRotation(0.0f, getYRot());
+        }
+        return normal.normalize();
+    }
+
+    private void applyEntityImpactResponse(Entity target, Vec3 normal, double impactSpeed, boolean carTarget) {
+        Vec3 carVelocity = getDeltaMovement();
+        Vec3 carHorizontalVelocity = new Vec3(carVelocity.x, 0.0, carVelocity.z);
+        double intoTarget = Math.max(0.0, carHorizontalVelocity.dot(normal));
+        Vec3 redirectedCarVelocity = carHorizontalVelocity
+            .subtract(normal.scale(intoTarget * (carTarget ? 1.35 : 0.85)))
+            .scale(carTarget ? 0.70 : 0.82);
+        setDeltaMovement(new Vec3(redirectedCarVelocity.x, carVelocity.y, redirectedCarVelocity.z));
+
+        double targetPush = Math.min(carTarget ? 0.45 : 0.80, impactSpeed * (carTarget ? 0.65 : 1.15));
+        Vec3 targetVelocity = target.getDeltaMovement();
+        target.setDeltaMovement(targetVelocity.add(normal.x * targetPush, carTarget ? 0.0 : 0.08, normal.z * targetPush));
     }
 
     private void tickWarnings() {
@@ -1778,7 +1925,7 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     private static double loadSensitiveMu(double baseMu, double normalLoad, double referenceLoad) {
-        return Math.max(0.35, baseMu * (1.0 - LOAD_SENSITIVITY * (normalLoad / referenceLoad - 1.0)));
+        return Math.max(MIN_SURFACE_MU, baseMu * (1.0 - LOAD_SENSITIVITY * (normalLoad / referenceLoad - 1.0)));
     }
 
     private static double pacejkaLongitudinalForce(double slipRatio, double stiffness, double peakForce) {

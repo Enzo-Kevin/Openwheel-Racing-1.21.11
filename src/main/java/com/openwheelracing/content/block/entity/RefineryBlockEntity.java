@@ -97,7 +97,7 @@ public class RefineryBlockEntity extends BlockEntity implements Container, MenuP
 
     public boolean isValidForSlot(int slot, ItemStack stack) {
         if (slot == SLOT_CRUDE) {
-            return stack.is(OWRItems.CRUDE_OIL_BUCKET.get()) || stack.is(OWRItems.CRUDE_OIL_CHUNK.get());
+            return stack.is(OWRItems.CRUDE_OIL_BUCKET.get());
         }
         if (slot == SLOT_FUEL) {
             return getBurnDuration(level, stack) > 0;
@@ -174,7 +174,7 @@ public class RefineryBlockEntity extends BlockEntity implements Container, MenuP
     }
 
     private static boolean isValidCrude(ItemStack stack) {
-        return stack.is(OWRItems.CRUDE_OIL_BUCKET.get()) || stack.is(OWRItems.CRUDE_OIL_CHUNK.get());
+        return stack.is(OWRItems.CRUDE_OIL_BUCKET.get());
     }
 
     private static boolean isRefineryProduct(ItemStack stack) {

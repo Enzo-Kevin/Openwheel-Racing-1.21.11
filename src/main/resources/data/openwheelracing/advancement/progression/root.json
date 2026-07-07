@@ -1,7 +1,7 @@
 {
   "display": {
     "icon": {
-      "id": "openwheelracing:crude_oil_chunk"
+      "id": "openwheelracing:crude_oil_bucket"
     },
     "title": {
       "translate": "advancements.openwheelracing.root.title"
@@ -20,7 +20,7 @@
       "conditions": {
         "items": [
           {
-            "items": "openwheelracing:crude_oil_chunk"
+            "items": "openwheelracing:crude_oil_bucket"
           }
         ]
       }

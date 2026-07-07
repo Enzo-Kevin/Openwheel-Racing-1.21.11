@@ -7,6 +7,7 @@ import com.openwheelracing.registry.OWRBlocks;
 import com.openwheelracing.registry.OWRCreativeTabs;
 import com.openwheelracing.registry.OWRDataComponents;
 import com.openwheelracing.registry.OWREntities;
+import com.openwheelracing.registry.OWRFluids;
 import com.openwheelracing.registry.OWRFuelHandler;
 import com.openwheelracing.registry.OWRItems;
 import com.openwheelracing.registry.OWRMenus;
@@ -30,6 +31,7 @@ public final class OpenwheelRacing {
         FMLCommonSetupEvent.getBus(modBusGroup).addListener(this::commonSetup);
         OWRDataComponents.register(modBusGroup);
         OWREntities.register(modBusGroup);
+        OWRFluids.register(modBusGroup);
         OWRItems.register(modBusGroup);
         OWRBlocks.register(modBusGroup);
         OWRBlockEntities.register(modBusGroup);

@@ -1,27 +1,20 @@
 {
-  "type": "minecraft:ore",
+  "type": "minecraft:lake",
   "config": {
-    "size": 17,
-    "discard_chance_on_air_exposure": 0.0,
-    "targets": [
-      {
-        "target": {
-          "predicate_type": "minecraft:tag_match",
-          "tag": "minecraft:stone_ore_replaceables"
-        },
-        "state": {
-          "Name": "openwheelracing:crude_oil_deposit"
-        }
-      },
-      {
-        "target": {
-          "predicate_type": "minecraft:tag_match",
-          "tag": "minecraft:deepslate_ore_replaceables"
-        },
-        "state": {
-          "Name": "openwheelracing:crude_oil_deposit"
+    "barrier": {
+      "type": "minecraft:simple_state_provider",
+      "state": {
+        "Name": "minecraft:stone"
+      }
+    },
+    "fluid": {
+      "type": "minecraft:simple_state_provider",
+      "state": {
+        "Name": "openwheelracing:crude_oil_deposit",
+        "Properties": {
+          "level": "0"
         }
       }
-    ]
+    }
   }
 }

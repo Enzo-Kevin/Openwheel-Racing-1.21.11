@@ -2,8 +2,8 @@
   "feature": "openwheelracing:crude_oil_deposit",
   "placement": [
     {
-      "type": "minecraft:count",
-      "count": 5
+      "type": "minecraft:rarity_filter",
+      "chance": 18
     },
     {
       "type": "minecraft:in_square"
