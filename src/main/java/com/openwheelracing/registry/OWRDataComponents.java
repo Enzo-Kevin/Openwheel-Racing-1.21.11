@@ -47,6 +47,13 @@ public final class OWRDataComponents {
             .build()
     );
 
+    public static final RegistryObject<DataComponentType<Integer>> TYRE_REMAINING_PERCENT = DATA_COMPONENTS.register("tyre_remaining_percent",
+        () -> DataComponentType.<Integer>builder()
+            .persistent(Codec.intRange(0, 100))
+            .networkSynchronized(net.minecraft.network.codec.ByteBufCodecs.VAR_INT)
+            .build()
+    );
+
     private OWRDataComponents() {
     }
 

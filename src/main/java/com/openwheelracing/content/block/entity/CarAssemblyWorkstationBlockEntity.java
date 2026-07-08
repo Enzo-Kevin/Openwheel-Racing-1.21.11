@@ -110,7 +110,9 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
         if (result.is(OWRItems.PROTOTYPE_CAR_SPAWN.get())) {
             PrototypeCarSetup setup = result.getOrDefault(OWRDataComponents.CAR_SETUP.get(), PrototypeCarSetup.DEFAULT);
             int compound = TyreItem.getCompound(tyreStack);
+            int remainingPercent = TyreItem.getRemainingPercent(tyreStack);
             result.set(OWRDataComponents.CAR_SETUP.get(), new PrototypeCarSetup(setup.power(), compound, setup.aero(), setup.gearing()));
+            result.set(OWRDataComponents.TYRE_WEAR.get(), 100 - remainingPercent);
             int livery = com.openwheelracing.content.item.PrototypeCarItem.getLivery(result);
             if (result.get(OWRDataComponents.CAR_LIVERY.get()) == null) {
                 result.set(OWRDataComponents.CAR_LIVERY.get(), livery);

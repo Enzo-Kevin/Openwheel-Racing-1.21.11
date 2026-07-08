@@ -79,7 +79,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final int REVERSE_GEAR = -1;
     private static final int NEUTRAL_GEAR = 0;
     private static final int MAX_GEAR = 8;
-    private static final double SPEED_TO_BLOCKS_PER_TICK = 1.0 / 72.0;
+    private static final double SPEED_TO_BLOCKS_PER_TICK = VehiclePhysics.SPEED_TO_BLOCKS_PER_TICK;
     private static final double REVERSE_TOP_SPEED = 35.0 * SPEED_TO_BLOCKS_PER_TICK;
     private static final double[] GEAR_TOP_SPEEDS = {0.0, 80.0 * SPEED_TO_BLOCKS_PER_TICK, 120.0 * SPEED_TO_BLOCKS_PER_TICK, 150.0 * SPEED_TO_BLOCKS_PER_TICK, 190.0 * SPEED_TO_BLOCKS_PER_TICK, 235.0 * SPEED_TO_BLOCKS_PER_TICK, 275.0 * SPEED_TO_BLOCKS_PER_TICK, 310.0 * SPEED_TO_BLOCKS_PER_TICK, 350.0 * SPEED_TO_BLOCKS_PER_TICK};
     private static final double CAR_MASS_KG = 805.0;
@@ -452,24 +452,21 @@ public class OpenwheelCarEntity extends Entity {
         }
 
         int newCompound = TyreItem.getCompound(heldStack);
+        int newRemainingPercent = TyreItem.getRemainingPercent(heldStack);
         int oldCompound = getTyreCompound();
-        if (newCompound == oldCompound) {
-            messageDriver(Component.literal("Tyres already C" + (newCompound + 1)));
-            player.getCooldowns().addCooldown(heldStack, 10);
-            return;
-        }
+        int oldRemainingPercent = TyreItem.normalizeRemainingPercent(100.0 - getTyreWearPercent());
 
         applyTyreCompound(newCompound);
-        setTyreWearPercent(0.0f);
+        setTyreWearPercent(100.0f - newRemainingPercent);
         player.getCooldowns().addCooldown(heldStack, 10);
         if (!player.getAbilities().instabuild) {
             heldStack.shrink(1);
         }
-        ItemStack oldTyres = TyreItem.create(oldCompound);
+        ItemStack oldTyres = TyreItem.create(oldCompound, 1, oldRemainingPercent);
         if (!player.addItem(oldTyres)) {
             player.drop(oldTyres, false);
         }
-        messageDriver(Component.literal("Tyres changed to C" + (newCompound + 1)));
+        messageDriver(Component.literal("Tyres changed to C" + (newCompound + 1) + " (" + newRemainingPercent + "%)"));
     }
 
     public void crossStartFinishLine(BlockPos pos, Direction markerFacing) {
@@ -841,10 +838,10 @@ public class OpenwheelCarEntity extends Entity {
     // ── Surface profiles ──────────────────────────────────────────────────────
     private enum SurfaceProfile {
         //                          grip   drag   sinkDrag  wearMult  lapValid
-        ASPHALT(                    1.00,  0.997,  0.00,     1.0,     true),
-        CONCRETE(                   0.92,  0.995,  0.00,     1.1,     true),
-        KERB(                       0.78,  0.991,  0.01,     1.8,     true),
-        PIT_LANE(                   0.95,  0.996,  0.00,     0.6,     true),
+        ASPHALT(                    VehiclePhysics.ASPHALT_GRIP,    VehiclePhysics.ASPHALT_DRAG,    0.00,     1.0,     true),
+        CONCRETE(                   0.92,                          0.995,                          0.00,     1.1,     true),
+        KERB(                       0.78,                          0.991,                          0.01,     1.8,     true),
+        PIT_LANE(                   VehiclePhysics.PIT_LANE_GRIP,   VehiclePhysics.PIT_LANE_DRAG,   0.00,     0.6,     true),
         DIRT(                       0.58,  0.952,  0.05,     1.4,     false),
         GRASS(                      0.42,  0.930,  0.08,     1.6,     false),
         GRAVEL(                     0.45,  0.940,  0.16,     2.0,     false),
@@ -1063,8 +1060,8 @@ public class OpenwheelCarEntity extends Entity {
         double gearTopSpeed = gearTopSpeed(gear);
         double maxSpeed = GEAR_TOP_SPEEDS[MAX_GEAR];
         if (isPitLane()) {
-            gearTopSpeed = Math.min(gearTopSpeed, 0.52);
-            maxSpeed = Math.min(maxSpeed, 0.52);
+            gearTopSpeed = Math.min(gearTopSpeed, VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK);
+            maxSpeed = Math.min(maxSpeed, VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK);
         }
 
         SurfaceProfile surface = getCurrentSurface();

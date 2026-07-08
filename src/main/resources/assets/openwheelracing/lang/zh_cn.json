@@ -55,6 +55,7 @@
   "tooltip.openwheelracing.prototype_car.damage": "损伤：%s%%",
   "tooltip.openwheelracing.prototype_car.tyres": "轮胎状态：%s%%",
   "tooltip.openwheelracing.tires.compound": "轮胎配方：C%s",
+  "tooltip.openwheelracing.tires.remaining": "剩余：%s%%",
   "message.openwheelracing.race_control.enabled": "开",
   "message.openwheelracing.race_control.disabled": "关",
   "message.openwheelracing.race_director.lap_ignored": "圈速已忽略：必须超过 %s 秒",

@@ -1,9 +1,11 @@
 package com.openwheelracing.registry;
 
 import com.openwheelracing.OpenwheelRacing;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.level.material.FlowingFluid;
 import net.minecraft.world.level.material.Fluid;
+import net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.minecraftforge.common.SoundActions;
 import net.minecraftforge.eventbus.api.bus.BusGroup;
 import net.minecraftforge.fluids.FluidType;
@@ -12,9 +14,14 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 
+import java.util.function.Consumer;
+
 public final class OWRFluids {
     public static final DeferredRegister<FluidType> FLUID_TYPES = DeferredRegister.create(ForgeRegistries.Keys.FLUID_TYPES, OpenwheelRacing.MODID);
     public static final DeferredRegister<Fluid> FLUIDS = DeferredRegister.create(ForgeRegistries.FLUIDS, OpenwheelRacing.MODID);
+
+    private static final Identifier CRUDE_OIL_TEXTURE =
+        Identifier.fromNamespaceAndPath(OpenwheelRacing.MODID, "block/crude_oil_deposit");
 
     public static final RegistryObject<FluidType> CRUDE_OIL_TYPE = FLUID_TYPES.register("crude_oil", () -> new FluidType(FluidType.Properties.create()
         .canSwim(false)
@@ -23,8 +30,19 @@ public final class OWRFluids {
         .density(3000)
         .viscosity(6000)
         .sound(SoundActions.BUCKET_FILL, SoundEvents.BUCKET_FILL_LAVA)
-        .sound(SoundActions.BUCKET_EMPTY, SoundEvents.BUCKET_EMPTY_LAVA))
-    );
+        .sound(SoundActions.BUCKET_EMPTY, SoundEvents.BUCKET_EMPTY_LAVA)) {
+        @Override
+        public void initializeClient(Consumer<IClientFluidTypeExtensions> consumer) {
+            consumer.accept(new IClientFluidTypeExtensions() {
+                @Override
+                public Identifier getStillTexture() { return CRUDE_OIL_TEXTURE; }
+                @Override
+                public Identifier getFlowingTexture() { return CRUDE_OIL_TEXTURE; }
+                @Override
+                public int getTintColor() { return 0xFF0A0A0A; }
+            });
+        }
+    });
 
     public static final RegistryObject<FlowingFluid> CRUDE_OIL = FLUIDS.register("crude_oil", () -> new ForgeFlowingFluid.Source(crudeOilProperties()));
     public static final RegistryObject<FlowingFluid> FLOWING_CRUDE_OIL = FLUIDS.register("flowing_crude_oil", () -> new ForgeFlowingFluid.Flowing(crudeOilProperties()));

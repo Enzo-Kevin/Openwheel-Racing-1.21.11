@@ -55,6 +55,7 @@
   "tooltip.openwheelracing.prototype_car.damage": "Damage: %s%%",
   "tooltip.openwheelracing.prototype_car.tyres": "Tyre Condition: %s%%",
   "tooltip.openwheelracing.tires.compound": "Tyre Compound: C%s",
+  "tooltip.openwheelracing.tires.remaining": "Remaining: %s%%",
   "message.openwheelracing.race_control.enabled": "ON",
   "message.openwheelracing.race_control.disabled": "OFF",
   "message.openwheelracing.race_director.lap_ignored": "Lap ignored: must be over %s seconds",
