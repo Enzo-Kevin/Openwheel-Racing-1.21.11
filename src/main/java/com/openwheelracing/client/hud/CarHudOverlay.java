@@ -9,7 +9,7 @@ import net.minecraft.network.chat.Component;
 
 public final class CarHudOverlay {
     private static final int PANEL_WIDTH = 142;
-    private static final int PANEL_HEIGHT = 89;
+    private static final int PANEL_HEIGHT = 100;
 
     private CarHudOverlay() {
     }
@@ -24,8 +24,9 @@ public final class CarHudOverlay {
         int x = graphics.guiWidth() - PANEL_WIDTH - 8;
         int y = graphics.guiHeight() - PANEL_HEIGHT - 8;
 
+        int outlineColor = car.isDrsActive() ? 0xFF00DD44 : 0xFFDA1A20;
         graphics.fill(x, y, x + PANEL_WIDTH, y + PANEL_HEIGHT, 0x99000000);
-        graphics.renderOutline(x, y, PANEL_WIDTH, PANEL_HEIGHT, 0xFFDA1A20);
+        graphics.renderOutline(x, y, PANEL_WIDTH, PANEL_HEIGHT, outlineColor);
         graphics.drawString(font, String.format("SPD %3.0f km/h", car.getSpeedKmh()), x + 8, y + 7, 0xFFFFFFFF, false);
         graphics.drawString(font, "GEAR " + car.getGearLabel(), x + 8, y + 18, 0xFFFFFFFF, false);
         graphics.drawString(font, "RPM  " + car.getRpm(), x + 8, y + 29, 0xFFFFFFFF, false);
@@ -33,6 +34,7 @@ public final class CarHudOverlay {
         graphics.drawString(font, String.format("DMG %3.0f%%", car.getDamagePercent()), x + 68, y + 40, car.getDamagePercent() > 70.0f ? 0xFFFF7777 : 0xFFFFFFFF, false);
         graphics.drawString(font, "ABS " + (car.isAbsEnabled() ? "ON" : "OFF"), x + 68, y + 51, car.isAbsEnabled() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
         graphics.drawString(font, "TC " + (car.isTractionControlEnabled() ? "ON" : "OFF"), x + 68, y + 62, car.isTractionControlEnabled() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
+        graphics.drawString(font, "DRS " + (car.isDrsActive() ? "OPEN" : "----"), x + 68, y + 73, car.isDrsActive() ? 0xFF00DD44 : 0xFF777777, false);
         graphics.drawString(font, "LAP  " + formatLapTime(car.getCurrentLapTicks()), x + 8, y + 51, 0xFFFFFFFF, false);
         graphics.drawString(font, "CP   " + (car.hasCheckpoint() ? "OK" : "--"), x + 8, y + 62, car.hasCheckpoint() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
         graphics.drawString(font, "BEST " + formatLapTime(car.getBestLapTicks()), x + 8, y + 73, 0xFFFFFF99, false);

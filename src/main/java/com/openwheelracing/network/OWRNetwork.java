@@ -84,6 +84,11 @@ public final class OWRNetwork {
             .decoder(ToggleTractionControlMessage::decode)
             .consumerMainThread(ToggleTractionControlMessage::handle)
             .add();
+        CHANNEL.messageBuilder(ToggleDrsMessage.class)
+            .encoder(ToggleDrsMessage::encode)
+            .decoder(ToggleDrsMessage::decode)
+            .consumerMainThread(ToggleDrsMessage::handle)
+            .add();
         CHANNEL.messageBuilder(MountCarMessage.class)
             .encoder(MountCarMessage::encode)
             .decoder(MountCarMessage::decode)
@@ -322,6 +327,26 @@ public final class OWRNetwork {
                     return;
                 }
                 car.toggleTractionControl();
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record ToggleDrsMessage() {
+        private static void encode(ToggleDrsMessage message, FriendlyByteBuf buffer) {
+        }
+
+        private static ToggleDrsMessage decode(FriendlyByteBuf buffer) {
+            return new ToggleDrsMessage();
+        }
+
+        private static void handle(ToggleDrsMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.getVehicle() instanceof OpenwheelCarEntity car)) {
+                    return;
+                }
+                car.toggleDrs();
             });
             context.setPacketHandled(true);
         }

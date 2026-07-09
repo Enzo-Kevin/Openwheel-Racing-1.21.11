@@ -4,7 +4,9 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.openwheelracing.client.screen.TrackEditorScreen;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import com.openwheelracing.network.OWRNetwork;
+import com.openwheelracing.registry.OWRSoundEvents;
 import net.minecraft.client.Minecraft;
+import net.minecraft.sounds.SoundSource;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
@@ -67,6 +69,11 @@ public final class OWRClientInputHandler {
         while (OWRKeyMappings.TOGGLE_TC.consumeClick()) {
             car.toggleTractionControl();
             OWRNetwork.CHANNEL.send(new OWRNetwork.ToggleTractionControlMessage(), PacketDistributor.SERVER.noArg());
+        }
+        while (OWRKeyMappings.TOGGLE_DRS.consumeClick()) {
+            car.toggleDrs();
+            OWRNetwork.CHANNEL.send(new OWRNetwork.ToggleDrsMessage(), PacketDistributor.SERVER.noArg());
+            mc.player.playSound(OWRSoundEvents.DRS_BEEP.get(), 0.6f, 1.0f);
         }
     }
 

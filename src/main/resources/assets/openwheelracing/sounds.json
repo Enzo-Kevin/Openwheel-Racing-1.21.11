@@ -33,5 +33,13 @@
         "pitch": 2.0
       }
     ]
+  },
+  "car.drs_beep": {
+    "sounds": [
+      {
+        "name": "minecraft:block/note_block/pling",
+        "pitch": 1.6
+      }
+    ]
   }
 }

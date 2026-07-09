@@ -63,6 +63,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final EntityDataAccessor<Boolean> TRACTION_CONTROL_ENABLED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> LIVERY = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> TYRE_COMPOUND = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Boolean> DRS_ACTIVE = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
 
     private static final int PIT_STOP_DURATION = 60; // 3 seconds
     private static final int PIT_RUBBER_COST = 2;    // rubber items consumed per stop
@@ -146,6 +147,8 @@ public class OpenwheelCarEntity extends Entity {
     private static final double ENTITY_IMPACT_LIVING_DAMAGE = 40.0;
     private static final double ENTITY_IMPACT_OTHER_CAR_DAMAGE = 7.0;
     private static final long ENTITY_IMPACT_COOLDOWN_TICKS = 8L;
+    private static final double DRS_DRAG_FACTOR = 0.78;
+    private static final double DRS_DOWNFORCE_FACTOR = 0.72;
     private static final double STEERING_OFF_GRIP_RELIEF_START = 0.92;
     private static final double STEERING_OFF_GRIP_RELIEF_FULL = 1.28;
     private static final double STEERING_OFF_GRIP_LOCK_BONUS = 0.45;
@@ -249,6 +252,7 @@ public class OpenwheelCarEntity extends Entity {
         builder.define(TRACTION_CONTROL_ENABLED, false);
         builder.define(LIVERY, 0);
         builder.define(TYRE_COMPOUND, PrototypeCarSetup.DEFAULT.grip());
+        builder.define(DRS_ACTIVE, false);
     }
 
     @Override
@@ -363,6 +367,18 @@ public class OpenwheelCarEntity extends Entity {
 
     public void toggleTractionControl() {
         setTractionControlEnabled(!isTractionControlEnabled());
+    }
+
+    public boolean isDrsActive() {
+        return entityData.get(DRS_ACTIVE);
+    }
+
+    public void setDrsActive(boolean active) {
+        entityData.set(DRS_ACTIVE, active);
+    }
+
+    public void toggleDrs() {
+        setDrsActive(!isDrsActive());
     }
 
     public float getFrontWheelSteerDegrees() {
@@ -740,6 +756,7 @@ public class OpenwheelCarEntity extends Entity {
 
     @Override
     public boolean hurtServer(ServerLevel level, net.minecraft.world.damagesource.DamageSource damageSource, float amount) {
+        if (isRemoved()) return false;
         addDamage(amount * 4.0f);
         if (getDamagePercent() >= 100.0f) {
             destroyIntoMaterials(level);
@@ -1051,6 +1068,10 @@ public class OpenwheelCarEntity extends Entity {
         Vec3 delta = getDeltaMovement();
         double horizontalSpeed = Math.sqrt(delta.x * delta.x + delta.z * delta.z);
 
+        if (brake > 0.0 && isDrsActive()) {
+            setDrsActive(false);
+        }
+
         double damageFactor    = 1.0 - getDamagePercent()   / 140.0;
         double tyreFactor      = 1.0 - getTyreWearPercent() / 180.0;
         int gear = clampGear(getGear());
@@ -1128,8 +1149,8 @@ public class OpenwheelCarEntity extends Entity {
         for (int substep = 0; substep < PHYSICS_SUBSTEPS; substep++) {
             double subSpeedSquared = velocityLong * velocityLong + velocityLat * velocityLat;
             double subSpeed = Math.sqrt(subSpeedSquared);
-            double subDownforce = 0.5 * AIR_DENSITY * DOWNFORCE_AREA * subSpeedSquared;
-            double subAeroDrag = 0.5 * AIR_DENSITY * DRAG_AREA * subSpeedSquared;
+            double subDownforce = 0.5 * AIR_DENSITY * DOWNFORCE_AREA * subSpeedSquared * (isDrsActive() ? DRS_DOWNFORCE_FACTOR : 1.0);
+            double subAeroDrag = 0.5 * AIR_DENSITY * DRAG_AREA * subSpeedSquared * (isDrsActive() ? DRS_DRAG_FACTOR : 1.0);
             double subStaticFrontLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT;
             double subStaticRearLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT);
             double subAeroFrontLoad = subDownforce * FRONT_AERO_BALANCE;
@@ -1806,8 +1827,8 @@ public class OpenwheelCarEntity extends Entity {
         spawnAtLocation(serverLevel, new ItemStack(OWRItems.ENGINE.get()));
         spawnAtLocation(serverLevel, new ItemStack(OWRItems.GEARBOX.get()));
         spawnAtLocation(serverLevel, new ItemStack(OWRItems.RUBBER.get(), Math.max(1, 4 - Math.round(getTyreWearPercent() / 25.0f))));
-        serverLevel.explode(this, getX(), getY(), getZ(), 1.8f, Level.ExplosionInteraction.NONE);
         discard();
+        serverLevel.explode(null, getX(), getY(), getZ(), 1.8f, Level.ExplosionInteraction.NONE);
     }
 
     private void updateFrontSteeringOffGripRelief(double frontSaturation, double rearSaturation) {

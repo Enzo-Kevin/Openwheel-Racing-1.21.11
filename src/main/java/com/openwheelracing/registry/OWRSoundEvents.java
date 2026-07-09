@@ -14,6 +14,7 @@ public final class OWRSoundEvents {
     public static final RegistryObject<SoundEvent> CAR_ENGINE_LOW = registerVariable("car.engine.low");
     public static final RegistryObject<SoundEvent> CAR_ENGINE_HIGH = registerVariable("car.engine.high");
     public static final RegistryObject<SoundEvent> CAR_TYRE_SQUEAL = registerVariable("car.tyre_squeal");
+    public static final RegistryObject<SoundEvent> DRS_BEEP = registerVariable("car.drs_beep");
 
     private OWRSoundEvents() {
     }
