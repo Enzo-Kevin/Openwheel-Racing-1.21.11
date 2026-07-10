@@ -73,7 +73,7 @@ public final class OWRClientInputHandler {
         while (OWRKeyMappings.TOGGLE_DRS.consumeClick()) {
             car.toggleDrs();
             OWRNetwork.CHANNEL.send(new OWRNetwork.ToggleDrsMessage(), PacketDistributor.SERVER.noArg());
-            mc.player.playSound(OWRSoundEvents.DRS_BEEP.get(), 0.6f, 1.0f);
+            mc.player.playSound(OWRSoundEvents.DRS_BEEP.get(), 1.0f, 1.0f);
         }
     }
 

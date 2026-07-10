@@ -177,6 +177,10 @@ public class OpenwheelCarEntity extends Entity {
     private long lastDamageWarningAt = -200L;
     private long lastFrontUndersteerWarningAt = -200L;
     private boolean frontUndersteerWarningActive;
+    private long lastOffTrackCheckAt = -4L;
+    // Client-side: yaw the car was at when passenger was last synced; used to detect
+    // server-authoritative yaw corrections and keep the driver view aligned.
+    private float clientLastSyncedCarYaw = Float.NaN;
     // Checkpoint positions (packed BlockPos longs) visited in the current lap, in order
     private final java.util.LinkedList<Long> visitedCheckpoints = new java.util.LinkedList<>();
     private final java.util.HashSet<Long> visitedCheckpointSet = new java.util.HashSet<>();
@@ -654,7 +658,10 @@ public class OpenwheelCarEntity extends Entity {
             wasRiddenLastTick = ridden;
             tickLapTimer();
             tickPitStop();
-            clearHollowCollisionBlocks(false);
+            Vec3 preDelta = getDeltaMovement();
+            if (preDelta.horizontalDistanceSqr() > 1.0E-4) {
+                clearHollowCollisionBlocks(false);
+            }
             tickMovement(true);
             clearHollowCollisionBlocks(true);
             tickImpactDamage();
@@ -844,9 +851,15 @@ public class OpenwheelCarEntity extends Entity {
                 invalidateLap("driver left car");
                 return;
             }
-            if (isOffTrackCheckEnabled() && !isOnTrackSurface()) {
-                invalidateLap("four wheels off track");
-                return;
+            if (isOffTrackCheckEnabled()) {
+                long time = level().getGameTime();
+                if (time - lastOffTrackCheckAt >= 4L) {
+                    lastOffTrackCheckAt = time;
+                    if (!isOnTrackSurface()) {
+                        invalidateLap("four wheels off track");
+                        return;
+                    }
+                }
             }
             entityData.set(CURRENT_LAP_TICKS, Math.max(0, (int) (level().getGameTime() - lapStartedAt)));
         }
@@ -1043,6 +1056,19 @@ public class OpenwheelCarEntity extends Entity {
     public void tickLocalClientMovement(float throttle, float brake, float steering) {
         Entity passenger = getControllingPassenger();
         if (level().isClientSide() && passenger != null) {
+            float currentCarYaw = getYRot();
+
+            // If the server corrected the car's yaw since last tick, apply the same delta
+            // to the passenger immediately so the view stays aligned with the car's nose.
+            if (!Float.isNaN(clientLastSyncedCarYaw)) {
+                float serverCorrection = currentCarYaw - clientLastSyncedCarYaw;
+                if (serverCorrection != 0.0f) {
+                    passenger.setYRot(passenger.getYRot() + serverCorrection);
+                    passenger.setYHeadRot(passenger.getYRot());
+                    passenger.setYBodyRot(passenger.getYRot());
+                }
+            }
+
             float previousYaw = getYRot();
             tickMovement(throttle, brake, steering, false);
             float yawDelta = getYRot() - previousYaw;
@@ -1050,6 +1076,8 @@ public class OpenwheelCarEntity extends Entity {
             passenger.setYRot(passenger.getYRot() + yawDelta);
             passenger.setYHeadRot(passenger.getYRot());
             passenger.setYBodyRot(passenger.getYRot());
+
+            clientLastSyncedCarYaw = getYRot();
         }
     }
 
@@ -1146,6 +1174,13 @@ public class OpenwheelCarEntity extends Entity {
         double finalFrontSaturation = 0.0;
         double finalRearSaturation = 0.0;
 
+        // Wheel surface grip is position/heading-dependent only — identical every substep.
+        // Query once here rather than 4x inside the loop.
+        double flSurfaceGrip = getSurfaceAt(position().add(right.scale(-HALF_TRACK_WIDTH)).add(forward.scale(FRONT_AXLE_DISTANCE))).grip;
+        double frSurfaceGrip = getSurfaceAt(position().add(right.scale(HALF_TRACK_WIDTH)).add(forward.scale(FRONT_AXLE_DISTANCE))).grip;
+        double rlSurfaceGrip = getSurfaceAt(position().add(right.scale(-HALF_TRACK_WIDTH)).add(forward.scale(-REAR_AXLE_DISTANCE))).grip;
+        double rrSurfaceGrip = getSurfaceAt(position().add(right.scale(HALF_TRACK_WIDTH)).add(forward.scale(-REAR_AXLE_DISTANCE))).grip;
+
         for (int substep = 0; substep < PHYSICS_SUBSTEPS; substep++) {
             double subSpeedSquared = velocityLong * velocityLong + velocityLat * velocityLat;
             double subSpeed = Math.sqrt(subSpeedSquared);
@@ -1205,10 +1240,6 @@ public class OpenwheelCarEntity extends Entity {
             double rrNormal = Math.max(75.0, subNormalRear * 0.5 + rearLateralTransfer * 0.5);
             double subReferenceFrontWheelLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT * 0.5;
             double subReferenceRearWheelLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT) * 0.5;
-            double flSurfaceGrip = getSurfaceAt(position().add(right.scale(-HALF_TRACK_WIDTH)).add(forward.scale(FRONT_AXLE_DISTANCE))).grip;
-            double frSurfaceGrip = getSurfaceAt(position().add(right.scale(HALF_TRACK_WIDTH)).add(forward.scale(FRONT_AXLE_DISTANCE))).grip;
-            double rlSurfaceGrip = getSurfaceAt(position().add(right.scale(-HALF_TRACK_WIDTH)).add(forward.scale(-REAR_AXLE_DISTANCE))).grip;
-            double rrSurfaceGrip = getSurfaceAt(position().add(right.scale(HALF_TRACK_WIDTH)).add(forward.scale(-REAR_AXLE_DISTANCE))).grip;
             double compoundGrip = setup.gripMultiplier();
             double subTyreWearGrip = Math.max(0.45, tyreFactor);
             double flSurfaceMuLat = ASPHALT_MU_LATERAL * flSurfaceGrip * compoundGrip;
@@ -1490,7 +1521,9 @@ public class OpenwheelCarEntity extends Entity {
         }
         setDeltaMovement(new Vec3(actualMovement.x, carriedVerticalMovement, actualMovement.z));
         handleEntityImpacts(beforeMove, actualMovement);
-        scanLapMarkers(beforeMove, actualMovement);
+        if (!level().isClientSide()) {
+            scanLapMarkers(beforeMove, actualMovement);
+        }
 
         boolean shouldDebugMovement = debugMovement && (getControllingPassenger() != null || throttle != 0.0 || brake != 0.0 || steering != 0.0 || horizontalSpeed > 0.01 || actualMovement.horizontalDistance() > 0.01);
         if (shouldDebugMovement && level().getGameTime() - lastMovementDebugAt >= 20L) {

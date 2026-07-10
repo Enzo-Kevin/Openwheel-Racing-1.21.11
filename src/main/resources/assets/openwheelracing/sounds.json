@@ -1,45 +1,36 @@
 {
-  "car.engine.low": {
-    "sounds": [
-      {
-        "name": "openwheelracing:car_engine_low",
-        "stream": true
-      }
-    ]
+  "car.engine.ferrari.low": {
+    "sounds": [{ "name": "openwheelracing:car_engine_ferrari_low", "stream": true }]
   },
-  "car.engine.high": {
-    "sounds": [
-      {
-        "name": "openwheelracing:car_engine_high",
-        "stream": true
-      }
-    ]
+  "car.engine.ferrari.high": {
+    "sounds": [{ "name": "openwheelracing:car_engine_ferrari_high", "stream": true }]
+  },
+  "car.engine.renault.low": {
+    "sounds": [{ "name": "openwheelracing:car_engine_renault_low", "stream": true }]
+  },
+  "car.engine.renault.high": {
+    "sounds": [{ "name": "openwheelracing:car_engine_renault_high", "stream": true }]
+  },
+  "car.engine.mercedes.low": {
+    "sounds": [{ "name": "openwheelracing:car_engine_mercedes_low", "stream": true }]
+  },
+  "car.engine.mercedes.high": {
+    "sounds": [{ "name": "openwheelracing:car_engine_mercedes_high", "stream": true }]
+  },
+  "car.engine.rbpt.low": {
+    "sounds": [{ "name": "openwheelracing:car_engine_rbpt_low", "stream": true }]
+  },
+  "car.engine.rbpt.high": {
+    "sounds": [{ "name": "openwheelracing:car_engine_rbpt_high", "stream": true }]
   },
   "car.tyre_squeal": {
     "sounds": [
-      {
-        "name": "minecraft:block/grindstone/grindstone1",
-        "stream": true,
-        "pitch": 1.8
-      },
-      {
-        "name": "minecraft:block/grindstone/grindstone2",
-        "stream": true,
-        "pitch": 1.9
-      },
-      {
-        "name": "minecraft:block/grindstone/grindstone3",
-        "stream": true,
-        "pitch": 2.0
-      }
+      { "name": "minecraft:block/grindstone/grindstone1", "stream": true, "pitch": 1.8 },
+      { "name": "minecraft:block/grindstone/grindstone2", "stream": true, "pitch": 1.9 },
+      { "name": "minecraft:block/grindstone/grindstone3", "stream": true, "pitch": 2.0 }
     ]
   },
   "car.drs_beep": {
-    "sounds": [
-      {
-        "name": "minecraft:block/note_block/pling",
-        "pitch": 1.6
-      }
-    ]
+    "sounds": [{ "name": "openwheelracing:car_drs_beep" }]
   }
 }
