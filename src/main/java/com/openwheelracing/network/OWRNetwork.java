@@ -131,6 +131,31 @@ public final class OWRNetwork {
             .add();
     }
 
+    private static float sanitizePedal(float value, boolean analogAllowed) {
+        if (!Float.isFinite(value)) {
+            return 0.0f;
+        }
+        float clamped = Math.max(0.0f, Math.min(1.0f, value));
+        return analogAllowed ? clamped : Math.round(clamped);
+    }
+
+    private static float sanitizeSteering(float value, boolean analogAllowed) {
+        if (!Float.isFinite(value)) {
+            return 0.0f;
+        }
+        float clamped = Math.max(-1.0f, Math.min(1.0f, value));
+        if (analogAllowed) {
+            return clamped;
+        }
+        if (clamped > 0.5f) {
+            return 1.0f;
+        }
+        if (clamped < -0.5f) {
+            return -1.0f;
+        }
+        return 0.0f;
+    }
+
     public record TuneCarMessage(int slot, int delta) {
         private static void encode(TuneCarMessage message, FriendlyByteBuf buffer) {
             buffer.writeInt(message.slot);
@@ -286,7 +311,12 @@ public final class OWRNetwork {
                 if (player == null || !(player.getVehicle() instanceof OpenwheelCarEntity car)) {
                     return;
                 }
-                car.applyDriveInput(message.throttle, message.brake, message.steering);
+                boolean wheelInputAllowed = OWRRaceControlState.get(player.level()).isWheelInputAllowed();
+                car.applyDriveInput(
+                    sanitizePedal(message.throttle, wheelInputAllowed),
+                    sanitizePedal(message.brake, wheelInputAllowed),
+                    sanitizeSteering(message.steering, wheelInputAllowed)
+                );
             });
             context.setPacketHandled(true);
         }

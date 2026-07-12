@@ -12,7 +12,8 @@ public class OWRRaceControlState extends SavedData {
     private static final Codec<OWRRaceControlState> CODEC = RecordCodecBuilder.create(instance -> instance.group(
         Codec.BOOL.optionalFieldOf("checkpoint_check_enabled", false).forGetter(OWRRaceControlState::isCheckpointCheckEnabled),
         Codec.BOOL.optionalFieldOf("off_track_check_enabled", true).forGetter(OWRRaceControlState::isOffTrackCheckEnabled),
-        Codec.INT.optionalFieldOf("minimum_valid_lap_ticks", OWRLapRecords.DEFAULT_MIN_VALID_LAP_TICKS).forGetter(OWRRaceControlState::getMinimumValidLapTicks)
+        Codec.INT.optionalFieldOf("minimum_valid_lap_ticks", OWRLapRecords.DEFAULT_MIN_VALID_LAP_TICKS).forGetter(OWRRaceControlState::getMinimumValidLapTicks),
+        Codec.BOOL.optionalFieldOf("wheel_input_allowed", true).forGetter(OWRRaceControlState::isWheelInputAllowed)
     ).apply(instance, OWRRaceControlState::new));
 
     private static final SavedDataType<OWRRaceControlState> TYPE = new SavedDataType<>(
@@ -25,16 +26,18 @@ public class OWRRaceControlState extends SavedData {
     private boolean checkpointCheckEnabled;
     private boolean offTrackCheckEnabled;
     private int minimumValidLapTicks;
+    private boolean wheelInputAllowed;
     private int revision;
 
     public OWRRaceControlState() {
-        this(false, true, OWRLapRecords.DEFAULT_MIN_VALID_LAP_TICKS);
+        this(false, true, OWRLapRecords.DEFAULT_MIN_VALID_LAP_TICKS, true);
     }
 
-    private OWRRaceControlState(boolean checkpointCheckEnabled, boolean offTrackCheckEnabled, int minimumValidLapTicks) {
+    private OWRRaceControlState(boolean checkpointCheckEnabled, boolean offTrackCheckEnabled, int minimumValidLapTicks, boolean wheelInputAllowed) {
         this.checkpointCheckEnabled = checkpointCheckEnabled;
         this.offTrackCheckEnabled = offTrackCheckEnabled;
         this.minimumValidLapTicks = Math.max(1, minimumValidLapTicks);
+        this.wheelInputAllowed = wheelInputAllowed;
     }
 
     public static OWRRaceControlState get(ServerLevel level) {
@@ -57,6 +60,10 @@ public class OWRRaceControlState extends SavedData {
         return minimumValidLapTicks;
     }
 
+    public boolean isWheelInputAllowed() {
+        return wheelInputAllowed;
+    }
+
     public boolean toggleCheckpointCheck() {
         checkpointCheckEnabled = !checkpointCheckEnabled;
         markChanged();
@@ -75,6 +82,14 @@ public class OWRRaceControlState extends SavedData {
             return;
         }
         minimumValidLapTicks = clamped;
+        markChanged();
+    }
+
+    public void setWheelInputAllowed(boolean allowed) {
+        if (wheelInputAllowed == allowed) {
+            return;
+        }
+        wheelInputAllowed = allowed;
         markChanged();
     }
 

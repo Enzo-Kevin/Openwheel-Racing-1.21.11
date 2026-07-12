@@ -1,6 +1,7 @@
 package com.openwheelracing;
 
 import com.mojang.logging.LogUtils;
+import com.openwheelracing.content.command.OWRCommands;
 import com.openwheelracing.network.OWRNetwork;
 import com.openwheelracing.registry.OWRBlockEntities;
 import com.openwheelracing.registry.OWRBlocks;
@@ -13,6 +14,7 @@ import com.openwheelracing.registry.OWRItems;
 import com.openwheelracing.registry.OWRMenus;
 import com.openwheelracing.registry.OWRRecipes;
 import com.openwheelracing.registry.OWRSoundEvents;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.furnace.FurnaceFuelBurnTimeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -40,6 +42,7 @@ public final class OpenwheelRacing {
         OWRSoundEvents.register(modBusGroup);
         OWRCreativeTabs.register(modBusGroup);
         FurnaceFuelBurnTimeEvent.BUS.addListener(OWRFuelHandler::onFuelBurnTime);
+        RegisterCommandsEvent.BUS.addListener(OWRCommands::register);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {

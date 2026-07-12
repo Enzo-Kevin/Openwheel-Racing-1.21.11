@@ -5,12 +5,14 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.openwheelracing.content.race.OWRRaceControlState;
 import com.openwheelracing.content.track.TrackDefinition;
 import com.openwheelracing.content.track.TrackDefinitionsData;
 import com.openwheelracing.content.track.TrackGeometry;
 import com.openwheelracing.content.track.TrackStewardingGeometryBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -27,9 +29,21 @@ public final class OWRCommands {
     private OWRCommands() {
     }
 
+    public static void register(RegisterCommandsEvent event) {
+        register(event.getDispatcher());
+    }
+
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("owr")
             .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
+            .then(Commands.literal("regulation")
+                .then(Commands.literal("wheel")
+                    .then(Commands.literal("allow")
+                        .executes(context -> setWheelInputAllowed(context, true)))
+                    .then(Commands.literal("forbid")
+                        .executes(context -> setWheelInputAllowed(context, false)))
+                    .then(Commands.literal("status")
+                        .executes(OWRCommands::showWheelInputStatus))))
             .then(Commands.literal("steward")
                 .then(Commands.literal("list")
                     .executes(OWRCommands::listTracks))
@@ -82,6 +96,19 @@ public final class OWRCommands {
                 .then(Commands.literal("ai")
                     .then(Commands.literal("generate")
                         .executes(OWRCommands::generateAiLine)))));
+    }
+
+    private static int setWheelInputAllowed(CommandContext<CommandSourceStack> context, boolean allowed) {
+        OWRRaceControlState state = raceControl(context);
+        state.setWheelInputAllowed(allowed);
+        send(context, "Wheel and joystick input is now " + (allowed ? "allowed" : "forbidden") + ".");
+        return allowed ? 1 : 0;
+    }
+
+    private static int showWheelInputStatus(CommandContext<CommandSourceStack> context) {
+        boolean allowed = raceControl(context).isWheelInputAllowed();
+        send(context, "Wheel and joystick input is " + (allowed ? "allowed" : "forbidden") + ".");
+        return allowed ? 1 : 0;
     }
 
     private static int listTracks(CommandContext<CommandSourceStack> context) {
@@ -373,6 +400,10 @@ public final class OWRCommands {
 
     private static TrackDefinitionsData trackData(CommandContext<CommandSourceStack> context) {
         return TrackDefinitionsData.get(context.getSource().getLevel());
+    }
+
+    private static OWRRaceControlState raceControl(CommandContext<CommandSourceStack> context) {
+        return OWRRaceControlState.get(context.getSource().getLevel());
     }
 
     private static void send(CommandContext<CommandSourceStack> context, String message) {

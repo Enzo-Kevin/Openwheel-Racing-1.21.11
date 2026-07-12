@@ -1,12 +1,14 @@
 package com.openwheelracing.client;
 
 import com.openwheelracing.OpenwheelRacing;
+import com.openwheelracing.client.input.WheelInputSettings;
 import com.openwheelracing.client.render.OpenwheelCarRenderer;
 import com.openwheelracing.client.screen.CarAssemblyScreen;
 import com.openwheelracing.client.screen.RaceDirectorScreen;
 import com.openwheelracing.client.screen.RefineryScreen;
 import com.openwheelracing.registry.OWREntities;
 import com.openwheelracing.registry.OWRMenus;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraftforge.api.distmarker.Dist;
@@ -22,6 +24,7 @@ public final class OpenwheelRacingClient {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
+            WheelInputSettings.load(Minecraft.getInstance());
             MenuScreens.register(OWRMenus.CAR_ASSEMBLY.get(), CarAssemblyScreen::new);
             MenuScreens.register(OWRMenus.REFINERY.get(), RefineryScreen::new);
             MenuScreens.register(OWRMenus.RACE_DIRECTOR.get(), RaceDirectorScreen::new);
