@@ -1630,7 +1630,6 @@ public class OpenwheelCarEntity extends Entity {
             setOnGround(true);
             return terrainMovement;
         }
-
         move(MoverType.SELF, requestedMovement);
         return position().subtract(beforeMove);
     }
@@ -1639,116 +1638,58 @@ public class OpenwheelCarEntity extends Entity {
         if (!onGround() || requestedMovement.horizontalDistanceSqr() < 1.0E-6) {
             return null;
         }
-
-        double currentGroundY = terrainSupportHeightAt(beforeMove, getY() - maxUpStep() - 0.15, getY() + 0.15);
-        double bodyToGroundOffset = Double.isNaN(currentGroundY) ? 0.0 : beforeMove.y - currentGroundY;
-        if (bodyToGroundOffset > 0.08 && bodyToGroundOffset <= maxUpStep() + 0.15) {
-            lastTerrainPositionCorrectionY = -bodyToGroundOffset;
-            bodyToGroundOffset = 0.0;
-        }
-        if (Double.isNaN(currentGroundY)) {
-            currentGroundY = getY();
-        }
-        Vec3 targetPosition = beforeMove.add(requestedMovement.x, 0.0, requestedMovement.z);
-        double targetGroundY = terrainSupportHeightAt(targetPosition, currentGroundY - maxUpStep() - 0.15, currentGroundY + maxUpStep() + 0.15);
-        if (Double.isNaN(targetGroundY)) {
+        double step = maxUpStep();
+        AABB currentFootprint = getBoundingBox().move(beforeMove.subtract(position()));
+        double currentFloor = footprintFloorHeight(currentFootprint, currentFootprint.minY - step - 0.15, currentFootprint.minY + 0.15);
+        if (Double.isNaN(currentFloor)) {
             return null;
         }
-
-        double groundDeltaY = targetGroundY - currentGroundY;
-        if (groundDeltaY > maxUpStep() + 1.0E-4 || groundDeltaY < -maxUpStep() - 0.15) {
+        double snapCorrection = currentFootprint.minY - currentFloor;
+        if (snapCorrection < 0.0 || snapCorrection > step + 0.15) {
             return null;
         }
-        double terrainDeltaY = groundDeltaY + lastTerrainPositionCorrectionY;
-        int steps = Math.max(1, (int) Math.ceil(requestedMovement.horizontalDistance() / 0.18));
-        double previousGroundY = currentGroundY;
-        for (int step = 1; step <= steps; step++) {
-            double t = (double) step / steps;
-            Vec3 probePosition = beforeMove.add(requestedMovement.x * t, 0.0, requestedMovement.z * t);
-            double expectedGroundY = currentGroundY + (targetGroundY - currentGroundY) * t;
-            double probeGroundY = terrainSupportHeightAt(probePosition, expectedGroundY - maxUpStep() - 0.15, expectedGroundY + maxUpStep() + 0.15);
-            if (Double.isNaN(probeGroundY)
-                    || probeGroundY - previousGroundY > maxUpStep() + 1.0E-4
-                    || probeGroundY - previousGroundY < -maxUpStep() - 0.15) {
-                return null;
-            }
-            AABB probeBox = getBoundingBox()
-                .move(beforeMove.subtract(position()))
-                .move(requestedMovement.x * t, requestedMovement.y + probeGroundY - currentGroundY + lastTerrainPositionCorrectionY * t, requestedMovement.z * t);
-            if (!level().noCollision(this, probeBox) && hasTallCollisionAt(probeBox, probeGroundY)) {
-                return null;
-            }
-            previousGroundY = probeGroundY;
+        AABB targetFootprint = currentFootprint.move(requestedMovement.x, 0.0, requestedMovement.z);
+        double targetFloor = footprintFloorHeight(targetFootprint, currentFloor - step - 0.15, currentFloor + step + 0.15);
+        if (Double.isNaN(targetFloor)) {
+            return null;
         }
-
-        Vec3 terrainMovement = new Vec3(requestedMovement.x, requestedMovement.y + terrainDeltaY, requestedMovement.z);
-        AABB targetBox = getBoundingBox().move(beforeMove.subtract(position())).move(terrainMovement);
-        return !level().noCollision(this, targetBox) && hasTallCollisionAt(targetBox, targetGroundY) ? null : terrainMovement;
-    }
-
-    private double terrainSupportHeightAt(Vec3 center, double minY, double maxY) {
-        double centerHeight = terrainHeightAt(center.x, center.z, minY, maxY);
-        if (!Double.isNaN(centerHeight)) {
-            return centerHeight;
+        double floorDelta = targetFloor - currentFloor;
+        if (floorDelta > step + 1.0E-4 || floorDelta < -step - 0.15) {
+            return null;
         }
-
-        double lowest = Double.NaN;
-        double yaw = Math.toRadians(getYRot());
-        Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
-        Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
-        for (double side : TRACK_WHEEL_SIDE_OFFSETS) {
-            for (double length : TRACK_WHEEL_LENGTH_OFFSETS) {
-                Vec3 sample = center.add(right.scale(side)).add(forward.scale(length));
-                double sampleHeight = terrainHeightAt(sample.x, sample.z, minY, maxY);
-                if (!Double.isNaN(sampleHeight)) {
-                    lowest = Double.isNaN(lowest) ? sampleHeight : Math.min(lowest, sampleHeight);
+        double dyTotal = -snapCorrection + floorDelta;
+        AABB targetBox = currentFootprint.move(requestedMovement.x, requestedMovement.y + dyTotal, requestedMovement.z);
+        if (!level().noCollision(this, targetBox)) {
+            for (net.minecraft.world.phys.shapes.VoxelShape shape : level().getBlockCollisions(this, targetBox)) {
+                if (shape.max(Direction.Axis.Y) > targetFloor + step + 0.01) {
+                    return null;
                 }
             }
         }
-        return lowest;
+        lastTerrainPositionCorrectionY = -snapCorrection;
+        return new Vec3(requestedMovement.x, requestedMovement.y + dyTotal, requestedMovement.z);
     }
 
-    private boolean hasTallCollisionAt(AABB box, double groundY) {
-        for (BlockPos pos : BlockPos.betweenClosed(
-            (int) Math.floor(box.minX),
-            (int) Math.floor(groundY + maxUpStep() + 0.01),
-            (int) Math.floor(box.minZ),
-            (int) Math.floor(box.maxX),
-            (int) Math.floor(box.maxY),
-            (int) Math.floor(box.maxZ)
-        )) {
-            BlockState state = level().getBlockState(pos);
-            if (!state.getCollisionShape(level(), pos, CollisionContext.of(this)).isEmpty()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private double terrainHeightAt(double x, double z, double minY, double maxY) {
+    private double footprintFloorHeight(AABB box, double minY, double maxY) {
         double highest = Double.NaN;
-        int minBlockY = (int) Math.floor(minY);
-        int maxBlockY = (int) Math.floor(maxY);
-        for (int y = minBlockY; y <= maxBlockY; y++) {
-            BlockPos pos = BlockPos.containing(x, y, z);
-            BlockState state = level().getBlockState(pos);
-            VoxelShape shape = state.getCollisionShape(level(), pos, CollisionContext.of(this));
-            if (shape.isEmpty()) {
-                continue;
-            }
-            double localX = x - pos.getX();
-            double localZ = z - pos.getZ();
-            AABB probe = new AABB(localX - 0.02, 0.0, localZ - 0.02, localX + 0.02, 1.0, localZ + 0.02);
-            VoxelShape columnShape = shape.toAabbs().stream()
-                .filter(box -> box.intersects(probe))
-                .map(box -> net.minecraft.world.phys.shapes.Shapes.box(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ))
-                .reduce(net.minecraft.world.phys.shapes.Shapes.empty(), net.minecraft.world.phys.shapes.Shapes::or);
-            if (columnShape.isEmpty()) {
-                continue;
-            }
-            double height = pos.getY() + columnShape.max(Direction.Axis.Y);
-            if (height >= minY - 1.0E-4 && height <= maxY + 1.0E-4) {
-                highest = Double.isNaN(highest) ? height : Math.max(highest, height);
+        int x0 = (int) Math.floor(box.minX);
+        int x1 = (int) Math.floor(box.maxX - 1.0E-6);
+        int z0 = (int) Math.floor(box.minZ);
+        int z1 = (int) Math.floor(box.maxZ - 1.0E-6);
+        int y0 = (int) Math.floor(minY);
+        int y1 = (int) Math.floor(maxY);
+        for (int y = y0; y <= y1; y++) {
+            for (int x = x0; x <= x1; x++) {
+                for (int z = z0; z <= z1; z++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    net.minecraft.world.phys.shapes.VoxelShape shape = level().getBlockState(pos)
+                        .getCollisionShape(level(), pos, CollisionContext.of(this));
+                    if (shape.isEmpty()) continue;
+                    double h = pos.getY() + shape.max(Direction.Axis.Y);
+                    if (h >= minY - 1.0E-4 && h <= maxY + 1.0E-4) {
+                        highest = Double.isNaN(highest) ? h : Math.max(highest, h);
+                    }
+                }
             }
         }
         return highest;
