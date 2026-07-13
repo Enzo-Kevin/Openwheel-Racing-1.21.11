@@ -15,6 +15,7 @@ import com.openwheelracing.registry.OWRMenus;
 import com.openwheelracing.registry.OWRRecipes;
 import com.openwheelracing.registry.OWRSoundEvents;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.furnace.FurnaceFuelBurnTimeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -43,10 +44,25 @@ public final class OpenwheelRacing {
         OWRCreativeTabs.register(modBusGroup);
         FurnaceFuelBurnTimeEvent.BUS.addListener(OWRFuelHandler::onFuelBurnTime);
         RegisterCommandsEvent.BUS.addListener(OWRCommands::register);
+        PlayerEvent.PlayerLoggedInEvent.BUS.addListener(this::onPlayerLoggedIn);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         OWRNetwork.register();
         LOGGER.info("Openwheel Racing initialized");
+    }
+
+    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer serverPlayer)) {
+            return;
+        }
+        net.minecraft.server.MinecraftServer server = serverPlayer.level().getServer();
+        if (server == null) {
+            return;
+        }
+        net.minecraft.server.level.ServerLevel overworld = server.getLevel(net.minecraft.world.level.Level.OVERWORLD);
+        if (overworld != null) {
+            OWRNetwork.broadcastRankingBoard(server, overworld);
+        }
     }
 }

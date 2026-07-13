@@ -7,8 +7,8 @@ import org.junit.jupiter.api.Test;
 
 class BrakingDistanceTest {
     @Test
-    void pitLimiterUsesEightyKmhConversion() {
-        assertEquals(80.0 / 72.0, VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK, 1.0E-12);
+    void pitLimiterUsesCorrectKmhConversion() {
+        assertEquals(VehiclePhysics.PIT_SPEED_LIMIT_KMH / 72.0, VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK, 1.0E-12);
         assertEquals(VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK, VehiclePhysics.speedKmhToBlocksPerTick(VehiclePhysics.PIT_SPEED_LIMIT_KMH), 1.0E-12);
     }
 

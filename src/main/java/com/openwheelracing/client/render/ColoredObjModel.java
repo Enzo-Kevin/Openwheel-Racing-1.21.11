@@ -23,6 +23,19 @@ public class ColoredObjModel {
         this.faces = faces;
     }
 
+    /**
+     * Pre-compute one color per face for a given livery.
+     * Call once per livery at load time; store the result and index into it during rendering
+     * instead of re-classifying each face every frame.
+     */
+    public int[] bakeColors(java.util.function.Function<Face, Integer> colorFn) {
+        int[] colors = new int[faces.size()];
+        for (int i = 0; i < faces.size(); i++) {
+            colors[i] = colorFn.apply(faces.get(i));
+        }
+        return colors;
+    }
+
     public static ColoredObjModel load(ResourceManager rm, Identifier loc) {
         List<float[]> positions = new ArrayList<>();
         List<Face> faces = new ArrayList<>();

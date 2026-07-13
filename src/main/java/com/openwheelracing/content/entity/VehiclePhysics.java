@@ -3,7 +3,7 @@ package com.openwheelracing.content.entity;
 public final class VehiclePhysics {
     public static final double KMH_PER_BLOCK_PER_TICK = 72.0;
     public static final double SPEED_TO_BLOCKS_PER_TICK = 1.0 / KMH_PER_BLOCK_PER_TICK;
-    public static final double PIT_SPEED_LIMIT_KMH = 80.0;
+    public static final double PIT_SPEED_LIMIT_KMH = 79.0;
     public static final double PIT_SPEED_LIMIT_BLOCKS_PER_TICK = PIT_SPEED_LIMIT_KMH * SPEED_TO_BLOCKS_PER_TICK;
     public static final double ASPHALT_GRIP = 1.00;
     public static final double ASPHALT_DRAG = 0.997;

@@ -9,6 +9,7 @@ import com.openwheelracing.content.menu.CarAssemblyMenu;
 import com.openwheelracing.content.menu.RaceDirectorMenu;
 import com.openwheelracing.content.race.OWRLapRecords;
 import com.openwheelracing.content.race.OWRRaceControlState;
+import com.openwheelracing.client.hud.LapRankingClient;
 import com.openwheelracing.content.track.TrackEditorMaterial;
 import com.openwheelracing.content.track.TrackEditorMode;
 import com.openwheelracing.content.track.TrackEditorOperation;
@@ -128,6 +129,11 @@ public final class OWRNetwork {
             .encoder(RaceDirectorSnapshotMessage::encode)
             .decoder(RaceDirectorSnapshotMessage::decode)
             .consumerMainThread(RaceDirectorSnapshotMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(RankingBoardMessage.class)
+            .encoder(RankingBoardMessage::encode)
+            .decoder(RankingBoardMessage::decode)
+            .consumerMainThread(RankingBoardMessage::handle)
             .add();
     }
 
@@ -498,6 +504,14 @@ public final class OWRNetwork {
         CHANNEL.send(new RaceDirectorSnapshotMessage(snapshot), net.minecraftforge.network.PacketDistributor.PLAYER.with(player));
     }
 
+    public static void broadcastRankingBoard(net.minecraft.server.MinecraftServer server, net.minecraft.server.level.ServerLevel level) {
+        List<OWRLapRecords.DriverBest> sorted = OWRLapRecords.get(level).getPlayerBestLapsSorted();
+        RankingBoardMessage msg = new RankingBoardMessage(sorted);
+        for (net.minecraft.server.level.ServerPlayer p : server.getPlayerList().getPlayers()) {
+            CHANNEL.send(msg, net.minecraftforge.network.PacketDistributor.PLAYER.with(p));
+        }
+    }
+
     public record RaceDirectorSnapshot(boolean checkpointCheckEnabled, boolean offTrackCheckEnabled, int minimumValidLapTicks, int page, int maxPage, int raceControlRevision, int lapRecordsRevision, List<RaceDirectorLapRow> laps) {
         public static RaceDirectorSnapshot empty() {
             return new RaceDirectorSnapshot(false, true, OWRLapRecords.DEFAULT_MIN_VALID_LAP_TICKS, 0, 0, 0, 0, List.of());
@@ -665,6 +679,30 @@ public final class OWRNetwork {
                     }
                 });
             });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record RankingBoardMessage(List<OWRLapRecords.DriverBest> entries) {
+        private static void encode(RankingBoardMessage message, FriendlyByteBuf buffer) {
+            buffer.writeVarInt(message.entries.size());
+            for (OWRLapRecords.DriverBest entry : message.entries) {
+                buffer.writeUtf(entry.name());
+                buffer.writeInt(entry.ticks());
+            }
+        }
+
+        private static RankingBoardMessage decode(FriendlyByteBuf buffer) {
+            int size = buffer.readVarInt();
+            java.util.ArrayList<OWRLapRecords.DriverBest> entries = new java.util.ArrayList<>(size);
+            for (int i = 0; i < size; i++) {
+                entries.add(new OWRLapRecords.DriverBest(buffer.readUtf(), buffer.readInt()));
+            }
+            return new RankingBoardMessage(entries);
+        }
+
+        private static void handle(RankingBoardMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> LapRankingClient.setRanking(message.entries));
             context.setPacketHandled(true);
         }
     }

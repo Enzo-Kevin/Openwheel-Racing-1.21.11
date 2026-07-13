@@ -110,6 +110,11 @@ public class WheelSetupScreen extends Screen {
     }
 
     @Override
+    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        // skip blur — parent pause screen already blurred; a second blur-per-frame crashes
+    }
+
+    @Override
     public void tick() {
         if (capturingAxis != null && selectedDeviceId() >= 0) {
             int axis = WheelInputManager.detectMovedAxis(selectedDeviceId(), axisBaseline, 0.25f);
@@ -135,7 +140,7 @@ public class WheelSetupScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics, mouseX, mouseY, partialTick);
+        graphics.fill(0, 0, width, height, 0x88000000);
         int x = (width - PANEL_WIDTH) / 2;
         int y = 28;
         graphics.fill(x, y, x + PANEL_WIDTH, Math.min(height - 8, y + 262), 0xDD1F2328);

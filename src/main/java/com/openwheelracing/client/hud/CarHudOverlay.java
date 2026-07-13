@@ -1,6 +1,8 @@
 package com.openwheelracing.client.hud;
 
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
+import com.openwheelracing.content.race.OWRLapRecords;
+import java.util.List;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -63,6 +65,51 @@ public final class CarHudOverlay {
             graphics.fill(barX + 1, barY + 1, barX + 1 + barWidth * pct / 100, barY + 11, 0xFFDA1A20);
             graphics.drawString(font, "PIT STOP  " + (remaining / 20 + 1) + "s", barX + 4, barY + 2, 0xFFFFFFFF, false);
         }
+
+        renderRankingBoard(graphics, font);
+    }
+
+    private static void renderRankingBoard(GuiGraphics graphics, Font font) {
+        List<OWRLapRecords.DriverBest> ranking = LapRankingClient.getRanking();
+        int rowCount = ranking.size();
+        int headerHeight = 11;
+        int rowHeight = 9;
+        int panelWidth = 148;
+        int panelHeight = headerHeight + rowHeight * Math.max(1, rowCount) + 3;
+        int px = graphics.guiWidth() - panelWidth - 8;
+        int py = 8;
+
+        graphics.fill(px, py, px + panelWidth, py + panelHeight, 0xBB000000);
+        graphics.renderOutline(px, py, panelWidth, panelHeight, 0xFF444444);
+        graphics.drawString(font, "FASTEST LAPS", px + 6, py + 2, 0xFFAAAAAA, false);
+
+        if (rowCount == 0) {
+            graphics.drawString(font, "No laps yet", px + 6, py + headerHeight + 1, 0xFF666666, false);
+            return;
+        }
+        int firstTicks = ranking.get(0).ticks();
+        for (int i = 0; i < rowCount; i++) {
+            OWRLapRecords.DriverBest entry = ranking.get(i);
+            int ry = py + headerHeight + i * rowHeight + 1;
+            int nameColor = i == 0 ? 0xFFFFDD44 : 0xFFCCCCCC;
+            String pos = (i + 1) + ".";
+            String name = entry.name().length() > 10 ? entry.name().substring(0, 10) : entry.name();
+            String time = formatLapTime(entry.ticks());
+            String gap = i == 0 ? "" : "+" + formatGap(entry.ticks() - firstTicks);
+            graphics.drawString(font, pos, px + 4, ry, 0xFF888888, false);
+            graphics.drawString(font, name, px + 16, ry, nameColor, false);
+            graphics.drawString(font, time, px + 80, ry, nameColor, false);
+            if (!gap.isEmpty()) {
+                graphics.drawString(font, gap, px + 116, ry, 0xFF888888, false);
+            }
+        }
+    }
+
+    private static String formatGap(int ticks) {
+        int cs = ticks * 5;
+        int s = cs / 100;
+        int frac = cs % 100;
+        return s + "." + String.format("%02d", frac);
     }
 
     private static void renderPhysicsDebug(GuiGraphics graphics, Font font, OpenwheelCarEntity car) {

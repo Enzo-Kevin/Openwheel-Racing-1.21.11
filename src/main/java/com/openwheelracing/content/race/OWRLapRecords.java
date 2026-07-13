@@ -73,6 +73,20 @@ public class OWRLapRecords extends SavedData {
         return playerBestLaps.getOrDefault(playerId, 0);
     }
 
+    public record DriverBest(String name, int ticks) {}
+
+    public List<DriverBest> getPlayerBestLapsSorted() {
+        Map<UUID, String> names = new HashMap<>();
+        for (LapRecord lap : laps) {
+            names.putIfAbsent(lap.driverId(), lap.driverName());
+        }
+        return playerBestLaps.entrySet().stream()
+            .filter(e -> e.getValue() > 0)
+            .map(e -> new DriverBest(names.getOrDefault(e.getKey(), "?"), e.getValue()))
+            .sorted(Comparator.comparingInt(DriverBest::ticks))
+            .toList();
+    }
+
     public LapRecord recordLap(UUID driverId, String driverName, int lapTicks, long completedGameTime, String dimensionId, long startFinishPos, int checkpointCount, CarSnapshot car) {
         LapRecord record = new LapRecord(nextLapId++, driverId, driverName, lapTicks, completedGameTime, dimensionId, startFinishPos, checkpointCount, car, false, "", "");
         laps.add(record);

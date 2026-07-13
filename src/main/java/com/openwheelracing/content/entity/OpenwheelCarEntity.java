@@ -578,6 +578,7 @@ public class OpenwheelCarEntity extends Entity {
         int bestLap = records.getBestLap(player.getUUID());
         boolean personalBest = bestLap != 0 && bestLap != previousBest && bestLap == lapTicks;
         entityData.set(BEST_LAP_TICKS, bestLap);
+        com.openwheelracing.network.OWRNetwork.broadcastRankingBoard(serverLevel.getServer(), serverLevel);
         awardCompleteLapAdvancement(serverLevel, player);
         messageDriver(Component.literal("Lap: " + formatLapTime(lapTicks)
             + " | CPs: " + visitedCheckpoints.size()
@@ -1108,9 +1109,10 @@ public class OpenwheelCarEntity extends Entity {
         }
         double gearTopSpeed = gearTopSpeed(gear);
         double maxSpeed = GEAR_TOP_SPEEDS[MAX_GEAR];
+        double pitSpeedLimit = Double.MAX_VALUE;
         if (isPitLane()) {
-            gearTopSpeed = Math.min(gearTopSpeed, VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK);
-            maxSpeed = Math.min(maxSpeed, VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK);
+            pitSpeedLimit = VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK;
+            maxSpeed = Math.min(maxSpeed, pitSpeedLimit);
         }
 
         SurfaceProfile surface = getCurrentSurface();
@@ -1193,10 +1195,14 @@ public class OpenwheelCarEntity extends Entity {
 
             double subSpeedBlocksPerTick = subSpeed / 20.0;
             double driveDirection = gear == REVERSE_GEAR ? -1.0 : gear > NEUTRAL_GEAR ? 1.0 : 0.0;
-            double subDriveForceRequest = driveDirection != 0.0 && throttle > 0.0 && Math.abs(velocityLong) / 20.0 < gearTopSpeed
+            double subDriveForceRequest = driveDirection != 0.0 && throttle > 0.0
+                    && Math.abs(velocityLong) / 20.0 < gearTopSpeed
+                    && subSpeedBlocksPerTick < pitSpeedLimit
                 ? driveDirection * power * throttle / Math.max(MIN_POWER_SPEED, Math.abs(velocityLong))
                 : 0.0;
-            if (clutchReleasing && driveDirection != 0.0 && Math.abs(velocityLong) / 20.0 < gearTopSpeed) {
+            if (clutchReleasing && driveDirection != 0.0
+                    && Math.abs(velocityLong) / 20.0 < gearTopSpeed
+                    && subSpeedBlocksPerTick < pitSpeedLimit) {
                 double releaseT = clutchReleaseTicks / (double) CLUTCH_RELEASE_TICKS;
                 double storedPower = enginePowerWatts(Math.max(engineRpm, clutchReleaseRpm)) * setup.powerMultiplier() * damageFactor;
                 double clutchForce = driveDirection * storedPower * releaseT / MIN_POWER_SPEED;
@@ -1217,7 +1223,7 @@ public class OpenwheelCarEntity extends Entity {
             }
 
             double subBrakeForceRequest = brake * MAX_BRAKE_FORCE;
-            if (isPitLane() && subSpeedBlocksPerTick >= maxSpeed) {
+            if (isPitLane() && subSpeedBlocksPerTick >= pitSpeedLimit) {
                 subDriveForceRequest = 0.0;
                 subBrakeForceRequest = Math.max(subBrakeForceRequest, 6_000.0);
             }

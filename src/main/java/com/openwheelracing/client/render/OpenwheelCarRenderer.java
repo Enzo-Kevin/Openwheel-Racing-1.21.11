@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
+import java.util.List;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
@@ -41,6 +42,8 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     private static final int METAL = rgb(155, 155, 150);
 
     private static ColoredObjModel carModel;
+    // Pre-baked color array per livery index — populated once per livery, reused every frame.
+    private static final java.util.HashMap<Integer, int[]> BAKED_COLORS = new java.util.HashMap<>();
 
     public OpenwheelCarRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -67,12 +70,16 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         super.submit(state, poseStack, nodeCollector, cameraState);
         loadModel();
 
+        int[] bakedColors = BAKED_COLORS.computeIfAbsent(state.livery, liveryIndex -> {
+            CarLivery livery = CarLivery.fromIndex(liveryIndex);
+            return carModel.bakeColors(face -> liveryColor(face, livery));
+        });
+
         poseStack.pushPose();
         poseStack.mulPose(Axis.YP.rotationDegrees(-state.yRot));
 
         int light = state.lightCoords;
-        CarLivery livery = CarLivery.fromIndex(state.livery);
-        nodeCollector.submitCustomGeometry(poseStack, RT_CAR, (pose, consumer) -> drawModel(consumer, pose, carModel, livery, light));
+        nodeCollector.submitCustomGeometry(poseStack, RT_CAR, (pose, consumer) -> drawModel(consumer, pose, carModel, bakedColors, light));
 
         poseStack.popPose();
     }
@@ -83,9 +90,11 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         }
     }
 
-    private static void drawModel(VertexConsumer consumer, PoseStack.Pose pose, ColoredObjModel model, CarLivery livery, int light) {
-        for (ColoredObjModel.Face face : model.faces) {
-            int color = liveryColor(face, livery);
+    private static void drawModel(VertexConsumer consumer, PoseStack.Pose pose, ColoredObjModel model, int[] bakedColors, int light) {
+        List<ColoredObjModel.Face> faces = model.faces;
+        for (int i = 0; i < faces.size(); i++) {
+            ColoredObjModel.Face face = faces.get(i);
+            int color = bakedColors[i];
             vertex(consumer, pose, face.x0(), face.y0(), face.z0(), face.nx(), face.ny(), face.nz(), color, light);
             vertex(consumer, pose, face.x1(), face.y1(), face.z1(), face.nx(), face.ny(), face.nz(), color, light);
             vertex(consumer, pose, face.x2(), face.y2(), face.z2(), face.nx(), face.ny(), face.nz(), color, light);
