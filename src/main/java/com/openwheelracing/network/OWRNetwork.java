@@ -137,22 +137,26 @@ public final class OWRNetwork {
             .add();
     }
 
-    private static float sanitizePedal(float value, boolean analogAllowed) {
+    private static float sanitizePedal(float value) {
         if (!Float.isFinite(value)) {
             return 0.0f;
         }
-        float clamped = Math.max(0.0f, Math.min(1.0f, value));
-        return analogAllowed ? clamped : Math.round(clamped);
+        return Math.max(0.0f, Math.min(1.0f, value));
     }
 
-    private static float sanitizeSteering(float value, boolean analogAllowed) {
+    private static float sanitizeSteering(float value) {
         if (!Float.isFinite(value)) {
             return 0.0f;
         }
-        float clamped = Math.max(-1.0f, Math.min(1.0f, value));
-        if (analogAllowed) {
-            return clamped;
-        }
+        return Math.max(-1.0f, Math.min(1.0f, value));
+    }
+
+    private static float sanitizeKeyboardPedal(float value) {
+        return sanitizePedal(value) >= 0.5f ? 1.0f : 0.0f;
+    }
+
+    private static float sanitizeKeyboardSteering(float value) {
+        float clamped = sanitizeSteering(value);
         if (clamped > 0.5f) {
             return 1.0f;
         }
@@ -300,15 +304,18 @@ public final class OWRNetwork {
         }
     }
 
-    public record DriveInputMessage(float throttle, float brake, float steering) {
+    public record DriveInputMessage(float keyboardThrottle, float keyboardBrake, float keyboardSteering, float wheelThrottle, float wheelBrake, float wheelSteering) {
         private static void encode(DriveInputMessage message, FriendlyByteBuf buffer) {
-            buffer.writeFloat(message.throttle);
-            buffer.writeFloat(message.brake);
-            buffer.writeFloat(message.steering);
+            buffer.writeFloat(message.keyboardThrottle);
+            buffer.writeFloat(message.keyboardBrake);
+            buffer.writeFloat(message.keyboardSteering);
+            buffer.writeFloat(message.wheelThrottle);
+            buffer.writeFloat(message.wheelBrake);
+            buffer.writeFloat(message.wheelSteering);
         }
 
         private static DriveInputMessage decode(FriendlyByteBuf buffer) {
-            return new DriveInputMessage(buffer.readFloat(), buffer.readFloat(), buffer.readFloat());
+            return new DriveInputMessage(buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat());
         }
 
         private static void handle(DriveInputMessage message, CustomPayloadEvent.Context context) {
@@ -317,12 +324,23 @@ public final class OWRNetwork {
                 if (player == null || !(player.getVehicle() instanceof OpenwheelCarEntity car)) {
                     return;
                 }
-                boolean wheelInputAllowed = OWRRaceControlState.get(player.level()).isWheelInputAllowed();
-                car.applyDriveInput(
-                    sanitizePedal(message.throttle, wheelInputAllowed),
-                    sanitizePedal(message.brake, wheelInputAllowed),
-                    sanitizeSteering(message.steering, wheelInputAllowed)
-                );
+                float keyboardThrottle = sanitizeKeyboardPedal(message.keyboardThrottle);
+                float keyboardBrake = sanitizeKeyboardPedal(message.keyboardBrake);
+                float keyboardSteering = sanitizeKeyboardSteering(message.keyboardSteering);
+                float throttle = keyboardThrottle;
+                float brake = keyboardBrake;
+                float steering = keyboardSteering;
+                if (OWRRaceControlState.get(player.level()).isWheelInputAllowed()) {
+                    float wheelThrottle = sanitizePedal(message.wheelThrottle);
+                    float wheelBrake = sanitizePedal(message.wheelBrake);
+                    float wheelSteering = sanitizeSteering(message.wheelSteering);
+                    throttle = Math.max(keyboardThrottle, wheelThrottle);
+                    brake = Math.max(keyboardBrake, wheelBrake);
+                    if (Math.abs(wheelSteering) > 0.0f) {
+                        steering = wheelSteering;
+                    }
+                }
+                car.applyDriveInput(throttle, brake, steering);
             });
             context.setPacketHandled(true);
         }

@@ -37,7 +37,9 @@ public final class CarHudOverlay {
         graphics.drawString(font, "ABS " + (car.isAbsEnabled() ? "ON" : "OFF"), x + 68, y + 51, car.isAbsEnabled() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
         graphics.drawString(font, "TC " + (car.isTractionControlEnabled() ? "ON" : "OFF"), x + 68, y + 62, car.isTractionControlEnabled() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
         graphics.drawString(font, "DRS " + (car.isDrsActive() ? "OPEN" : "----"), x + 68, y + 73, car.isDrsActive() ? 0xFF00DD44 : 0xFF777777, false);
-        graphics.drawString(font, "LAP  " + formatLapTime(car.getCurrentLapTicks()), x + 8, y + 51, 0xFFFFFFFF, false);
+        int displayedLapTicks = car.getCompletedLapLingerTicks() > 0 ? car.getCompletedLapTicks() : car.getCurrentLapTicks();
+        int lapColor = car.getCompletedLapLingerTicks() > 0 ? completedLapColor(car.getCompletedLapResult()) : 0xFFFFFFFF;
+        graphics.drawString(font, "LAP  " + formatLapTime(displayedLapTicks), x + 8, y + 51, lapColor, false);
         graphics.drawString(font, "CP   " + (car.hasCheckpoint() ? "OK" : "--"), x + 8, y + 62, car.hasCheckpoint() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
         graphics.drawString(font, "BEST " + formatLapTime(car.getBestLapTicks()), x + 8, y + 73, 0xFFFFFF99, false);
 
@@ -131,6 +133,15 @@ public final class CarHudOverlay {
 
     private static void debugLine(GuiGraphics graphics, Font font, int x, int y, int color, String text) {
         graphics.drawString(font, text, x, y, color, true);
+    }
+
+    private static int completedLapColor(int result) {
+        return switch (result) {
+            case OpenwheelCarEntity.LAP_RESULT_OVERALL_BEST -> 0xFFFF55FF;
+            case OpenwheelCarEntity.LAP_RESULT_PERSONAL_BEST -> 0xFF55FF55;
+            case OpenwheelCarEntity.LAP_RESULT_SLOWER -> 0xFFFFDD66;
+            default -> 0xFFFFFFFF;
+        };
     }
 
     private static int demandColor(double demand) {

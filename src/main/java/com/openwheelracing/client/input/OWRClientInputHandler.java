@@ -43,17 +43,18 @@ public final class OWRClientInputHandler {
         }
 
         OpenwheelCarEntity car = (OpenwheelCarEntity) mc.player.getVehicle();
-        float throttle = isDown(OWRKeyMappings.THROTTLE)    ? 1.0f : 0.0f;
-        float brake    = isDown(OWRKeyMappings.BRAKE)        ? 1.0f : 0.0f;
-        float steering = (isDown(OWRKeyMappings.STEER_RIGHT) ? 1.0f : 0.0f)
-                       - (isDown(OWRKeyMappings.STEER_LEFT)  ? 1.0f : 0.0f);
-        throttle = Math.max(throttle, wheel.throttle());
-        brake = Math.max(brake, wheel.brake());
+        float keyboardThrottle = isDown(OWRKeyMappings.THROTTLE)    ? 1.0f : 0.0f;
+        float keyboardBrake    = isDown(OWRKeyMappings.BRAKE)        ? 1.0f : 0.0f;
+        float keyboardSteering = (isDown(OWRKeyMappings.STEER_RIGHT) ? 1.0f : 0.0f)
+                              - (isDown(OWRKeyMappings.STEER_LEFT)  ? 1.0f : 0.0f);
+        float throttle = Math.max(keyboardThrottle, wheel.throttle());
+        float brake = Math.max(keyboardBrake, wheel.brake());
+        float steering = keyboardSteering;
         if (Math.abs(wheel.steering()) > 0.0f) {
             steering = wheel.steering();
         }
         car.tickLocalClientMovement(throttle, brake, steering);
-        OWRNetwork.CHANNEL.send(new OWRNetwork.DriveInputMessage(throttle, brake, steering), PacketDistributor.SERVER.noArg());
+        OWRNetwork.CHANNEL.send(new OWRNetwork.DriveInputMessage(keyboardThrottle, keyboardBrake, keyboardSteering, wheel.throttle(), wheel.brake(), wheel.steering()), PacketDistributor.SERVER.noArg());
 
         boolean shiftUpDown = isDown(OWRKeyMappings.SHIFT_UP) || wheel.pressed(WheelInputSettings.ButtonRole.SHIFT_UP);
         boolean shiftDownDown = isDown(OWRKeyMappings.SHIFT_DOWN) || wheel.pressed(WheelInputSettings.ButtonRole.SHIFT_DOWN);

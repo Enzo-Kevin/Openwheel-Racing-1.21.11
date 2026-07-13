@@ -10,6 +10,7 @@ import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.item.TyreItem;
 import com.openwheelracing.content.race.OWRLapRecords;
 import com.openwheelracing.content.race.OWRRaceControlState;
+import com.openwheelracing.network.OWRNetwork;
 import com.openwheelracing.registry.OWRBlocks;
 import com.openwheelracing.registry.OWRItems;
 
@@ -57,6 +58,9 @@ public class OpenwheelCarEntity extends Entity {
     private static final EntityDataAccessor<Float> TYRE_SLIP = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> CURRENT_LAP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> BEST_LAP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> COMPLETED_LAP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> COMPLETED_LAP_LINGER_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> COMPLETED_LAP_RESULT = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> CHECKPOINT_ARMED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> PIT_STOP_TICKS = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> ABS_ENABLED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
@@ -67,6 +71,11 @@ public class OpenwheelCarEntity extends Entity {
 
     private static final int PIT_STOP_DURATION = 60; // 3 seconds
     private static final int PIT_RUBBER_COST = 2;    // rubber items consumed per stop
+    private static final int COMPLETED_LAP_LINGER_DURATION = 100;
+    public static final int LAP_RESULT_NONE = 0;
+    public static final int LAP_RESULT_SLOWER = 1;
+    public static final int LAP_RESULT_PERSONAL_BEST = 2;
+    public static final int LAP_RESULT_OVERALL_BEST = 3;
 
     // Seat offset: eye height = car Y + (-0.62) + player eye height (1.62) ≈ 1.0 above ground
     private static final Vec3 SEAT_OFFSET = new Vec3(0.0, -0.76, 0.05);
@@ -250,6 +259,9 @@ public class OpenwheelCarEntity extends Entity {
         builder.define(TYRE_SLIP, 0.0f);
         builder.define(CURRENT_LAP_TICKS, 0);
         builder.define(BEST_LAP_TICKS, 0);
+        builder.define(COMPLETED_LAP_TICKS, 0);
+        builder.define(COMPLETED_LAP_LINGER_TICKS, 0);
+        builder.define(COMPLETED_LAP_RESULT, LAP_RESULT_NONE);
         builder.define(CHECKPOINT_ARMED, false);
         builder.define(PIT_STOP_TICKS, 0);
         builder.define(ABS_ENABLED, false);
@@ -421,6 +433,18 @@ public class OpenwheelCarEntity extends Entity {
         return entityData.get(BEST_LAP_TICKS);
     }
 
+    public int getCompletedLapTicks() {
+        return entityData.get(COMPLETED_LAP_TICKS);
+    }
+
+    public int getCompletedLapLingerTicks() {
+        return entityData.get(COMPLETED_LAP_LINGER_TICKS);
+    }
+
+    public int getCompletedLapResult() {
+        return entityData.get(COMPLETED_LAP_RESULT);
+    }
+
     public boolean hasCheckpoint() {
         return entityData.get(CHECKPOINT_ARMED);
     }
@@ -557,6 +581,10 @@ public class OpenwheelCarEntity extends Entity {
         entityData.set(CURRENT_LAP_TICKS, lapTicks);
         OWRLapRecords records = OWRLapRecords.get(serverLevel);
         int previousBest = records.getBestLap(player.getUUID());
+        int previousOverallBest = records.getPlayerBestLapsSorted().stream()
+            .mapToInt(OWRLapRecords.DriverBest::ticks)
+            .findFirst()
+            .orElse(0);
         records.recordLap(
             player.getUUID(),
             player.getScoreboardName(),
@@ -577,8 +605,14 @@ public class OpenwheelCarEntity extends Entity {
         );
         int bestLap = records.getBestLap(player.getUUID());
         boolean personalBest = bestLap != 0 && bestLap != previousBest && bestLap == lapTicks;
+        int lapResult = previousOverallBest == 0 || lapTicks < previousOverallBest
+            ? LAP_RESULT_OVERALL_BEST
+            : personalBest ? LAP_RESULT_PERSONAL_BEST : LAP_RESULT_SLOWER;
         entityData.set(BEST_LAP_TICKS, bestLap);
-        com.openwheelracing.network.OWRNetwork.broadcastRankingBoard(serverLevel.getServer(), serverLevel);
+        entityData.set(COMPLETED_LAP_TICKS, lapTicks);
+        entityData.set(COMPLETED_LAP_LINGER_TICKS, COMPLETED_LAP_LINGER_DURATION);
+        entityData.set(COMPLETED_LAP_RESULT, lapResult);
+        OWRNetwork.broadcastRankingBoard(serverLevel.getServer(), serverLevel);
         awardCompleteLapAdvancement(serverLevel, player);
         messageDriver(Component.literal("Lap: " + formatLapTime(lapTicks)
             + " | CPs: " + visitedCheckpoints.size()
@@ -658,6 +692,7 @@ public class OpenwheelCarEntity extends Entity {
             }
             wasRiddenLastTick = ridden;
             tickLapTimer();
+            tickCompletedLapLinger();
             tickPitStop();
             Vec3 preDelta = getDeltaMovement();
             if (preDelta.horizontalDistanceSqr() > 1.0E-4) {
@@ -823,6 +858,17 @@ public class OpenwheelCarEntity extends Entity {
     private boolean isOnPitStopMark() {
         BlockPos basePos = BlockPos.containing(getX(), getBoundingBox().minY - 0.05, getZ());
         return level().getBlockState(basePos).is(OWRBlocks.PIT_STOP_MARK.get());
+    }
+
+    private void tickCompletedLapLinger() {
+        int ticks = entityData.get(COMPLETED_LAP_LINGER_TICKS);
+        if (ticks <= 0) {
+            if (entityData.get(COMPLETED_LAP_RESULT) != LAP_RESULT_NONE) {
+                entityData.set(COMPLETED_LAP_RESULT, LAP_RESULT_NONE);
+            }
+            return;
+        }
+        entityData.set(COMPLETED_LAP_LINGER_TICKS, ticks - 1);
     }
 
     private void tickPitStop() {
@@ -1504,8 +1550,7 @@ public class OpenwheelCarEntity extends Entity {
 
         setDeltaMovement(delta);
         Vec3 beforeMove = position();
-        move(MoverType.SELF, delta);
-        Vec3 actualMovement = position().subtract(beforeMove);
+        Vec3 actualMovement = moveWithPreemptiveClimb(delta);
         double groundSnapDelta = snapToNearbyGround(delta, actualMovement);
         if (groundSnapDelta < 0.0) {
             actualMovement = actualMovement.add(0.0, groundSnapDelta, 0.0);
@@ -1522,7 +1567,7 @@ public class OpenwheelCarEntity extends Entity {
             actualMovement = new Vec3(actualMovement.x * speedScale, actualMovement.y, actualMovement.z * speedScale);
         }
         double carriedVerticalMovement = actualMovement.y;
-        if (elevationDelta > 1.0E-4 && onGround()) {
+        if (elevationDelta > 1.0E-4 && (onGround() || actualMovement.y <= maxUpStep() + 0.05)) {
             carriedVerticalMovement = 0.0;
         }
         setDeltaMovement(new Vec3(actualMovement.x, carriedVerticalMovement, actualMovement.z));
@@ -1565,6 +1610,53 @@ public class OpenwheelCarEntity extends Entity {
         entityData.set(RPM, rpm);
         entityData.set(TYRE_SLIP, (float) Math.max(0.0, Math.min(1.0, tyreSlip)));
         previousHorizontalSpeed = horizontalSpeed;
+    }
+
+    private Vec3 moveWithPreemptiveClimb(Vec3 requestedMovement) {
+        Vec3 beforeMove = position();
+        Vec3 climbMovement = preemptiveClimbMovement(beforeMove, requestedMovement);
+        if (climbMovement != null) {
+            move(MoverType.SELF, climbMovement);
+            Vec3 climbActualMovement = position().subtract(beforeMove);
+            if (climbActualMovement.horizontalDistanceSqr() >= requestedMovement.horizontalDistanceSqr() * 0.96) {
+                horizontalCollision = false;
+                return climbActualMovement;
+            }
+            setPos(beforeMove.x, beforeMove.y, beforeMove.z);
+        }
+
+        move(MoverType.SELF, requestedMovement);
+        return position().subtract(beforeMove);
+    }
+
+    private Vec3 preemptiveClimbMovement(Vec3 beforeMove, Vec3 requestedMovement) {
+        if (!onGround() || requestedMovement.horizontalDistanceSqr() < 1.0E-6) {
+            return null;
+        }
+
+        double stepHeight = findPreemptiveStepHeight(beforeMove, requestedMovement);
+        if (stepHeight <= 0.0) {
+            return null;
+        }
+        return new Vec3(requestedMovement.x, requestedMovement.y + stepHeight, requestedMovement.z);
+    }
+
+    private double findPreemptiveStepHeight(Vec3 beforeMove, Vec3 requestedMovement) {
+        double maxStep = maxUpStep();
+        double[] stepHeights = {0.25, 0.5, 0.75, 1.0, maxStep};
+        AABB originalBox = getBoundingBox().move(beforeMove.subtract(position()));
+        if (level().noCollision(this, originalBox.move(requestedMovement.x, requestedMovement.y, requestedMovement.z))) {
+            return 0.0;
+        }
+        for (double stepHeight : stepHeights) {
+            double clampedStepHeight = Math.min(maxStep, stepHeight);
+            AABB raisedBox = originalBox.move(0.0, clampedStepHeight, 0.0);
+            if (level().noCollision(this, raisedBox)
+                    && level().noCollision(this, raisedBox.move(requestedMovement.x, requestedMovement.y, requestedMovement.z))) {
+                return clampedStepHeight;
+            }
+        }
+        return 0.0;
     }
 
     private void clearHollowCollisionBlocks(boolean onlyAfterCollision) {
