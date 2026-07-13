@@ -47,6 +47,8 @@ import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class OpenwheelCarEntity extends Entity {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -179,6 +181,7 @@ public class OpenwheelCarEntity extends Entity {
     private double previousHorizontalSpeed;
     private double lastClimbDelta;
     private double lastGroundSnapDelta;
+    private double lastTerrainPositionCorrectionY;
     private long lapStartedAt = -1L;
     private long lastStartFinishMarker;
     private long lastStartFinishTriggerAt = -20L;
@@ -1503,8 +1506,12 @@ public class OpenwheelCarEntity extends Entity {
         if (gear == REVERSE_GEAR && throttle > 0.0) {
             double reverseTopMetersPerSecond = gearTopSpeed * 20.0;
             double reverseGrip = Math.max(MIN_SURFACE_MU, surface.grip * setup.gripMultiplier() * Math.max(0.45, tyreFactor));
-            double reverseVelocityFloor = previousVelocityLong - GRAVITY * ASPHALT_MU_LONGITUDINAL * reverseGrip * 0.20 * throttle * PHYSICS_DT;
+            double reverseAcceleration = GRAVITY * ASPHALT_MU_LONGITUDINAL * reverseGrip * 0.28 * throttle * PHYSICS_DT;
+            double reverseVelocityFloor = previousVelocityLong - reverseAcceleration;
             velocityLong = Math.max(-reverseTopMetersPerSecond, Math.min(velocityLong, reverseVelocityFloor));
+            if (brake == 0.0 && velocityLong > -reverseTopMetersPerSecond) {
+                velocityLong = Math.min(velocityLong, previousVelocityLong - reverseAcceleration * 0.45);
+            }
         }
         if (steerInput == 0.0 && Math.abs(velocityLat) < 0.08 && Math.abs(yawRate) < 0.025) {
             velocityLat = 0.0;
@@ -1550,12 +1557,13 @@ public class OpenwheelCarEntity extends Entity {
 
         setDeltaMovement(delta);
         Vec3 beforeMove = position();
+        lastTerrainPositionCorrectionY = 0.0;
         Vec3 actualMovement = moveWithPreemptiveClimb(delta);
         double groundSnapDelta = snapToNearbyGround(delta, actualMovement);
         if (groundSnapDelta < 0.0) {
             actualMovement = actualMovement.add(0.0, groundSnapDelta, 0.0);
         }
-        double elevationDelta = actualMovement.y - delta.y;
+        double elevationDelta = actualMovement.y - delta.y - lastTerrainPositionCorrectionY;
         lastClimbDelta = actualMovement.y;
         lastGroundSnapDelta = groundSnapDelta;
         double actualHorizontalSpeed = actualMovement.horizontalDistance() * 20.0;
@@ -1567,7 +1575,7 @@ public class OpenwheelCarEntity extends Entity {
             actualMovement = new Vec3(actualMovement.x * speedScale, actualMovement.y, actualMovement.z * speedScale);
         }
         double carriedVerticalMovement = actualMovement.y;
-        if (elevationDelta > 1.0E-4 && (onGround() || actualMovement.y <= maxUpStep() + 0.05)) {
+        if (onGround() && Math.abs(actualMovement.y) <= maxUpStep() + 0.15) {
             carriedVerticalMovement = 0.0;
         }
         setDeltaMovement(new Vec3(actualMovement.x, carriedVerticalMovement, actualMovement.z));
@@ -1614,49 +1622,136 @@ public class OpenwheelCarEntity extends Entity {
 
     private Vec3 moveWithPreemptiveClimb(Vec3 requestedMovement) {
         Vec3 beforeMove = position();
-        Vec3 climbMovement = preemptiveClimbMovement(beforeMove, requestedMovement);
-        if (climbMovement != null) {
-            move(MoverType.SELF, climbMovement);
-            Vec3 climbActualMovement = position().subtract(beforeMove);
-            if (climbActualMovement.horizontalDistanceSqr() >= requestedMovement.horizontalDistanceSqr() * 0.96) {
-                horizontalCollision = false;
-                return climbActualMovement;
-            }
-            setPos(beforeMove.x, beforeMove.y, beforeMove.z);
+        Vec3 terrainMovement = terrainFollowingMovement(beforeMove, requestedMovement);
+        if (terrainMovement != null) {
+            setPos(beforeMove.x + terrainMovement.x, beforeMove.y + terrainMovement.y, beforeMove.z + terrainMovement.z);
+            horizontalCollision = false;
+            verticalCollision = false;
+            setOnGround(true);
+            return terrainMovement;
         }
 
         move(MoverType.SELF, requestedMovement);
         return position().subtract(beforeMove);
     }
 
-    private Vec3 preemptiveClimbMovement(Vec3 beforeMove, Vec3 requestedMovement) {
+    private Vec3 terrainFollowingMovement(Vec3 beforeMove, Vec3 requestedMovement) {
         if (!onGround() || requestedMovement.horizontalDistanceSqr() < 1.0E-6) {
             return null;
         }
 
-        double stepHeight = findPreemptiveStepHeight(beforeMove, requestedMovement);
-        if (stepHeight <= 0.0) {
+        double currentGroundY = terrainSupportHeightAt(beforeMove, getY() - maxUpStep() - 0.15, getY() + 0.15);
+        double bodyToGroundOffset = Double.isNaN(currentGroundY) ? 0.0 : beforeMove.y - currentGroundY;
+        if (bodyToGroundOffset > 0.08 && bodyToGroundOffset <= maxUpStep() + 0.15) {
+            lastTerrainPositionCorrectionY = -bodyToGroundOffset;
+            bodyToGroundOffset = 0.0;
+        }
+        if (Double.isNaN(currentGroundY)) {
+            currentGroundY = getY();
+        }
+        Vec3 targetPosition = beforeMove.add(requestedMovement.x, 0.0, requestedMovement.z);
+        double targetGroundY = terrainSupportHeightAt(targetPosition, currentGroundY - maxUpStep() - 0.15, currentGroundY + maxUpStep() + 0.15);
+        if (Double.isNaN(targetGroundY)) {
             return null;
         }
-        return new Vec3(requestedMovement.x, requestedMovement.y + stepHeight, requestedMovement.z);
+
+        double groundDeltaY = targetGroundY - currentGroundY;
+        if (groundDeltaY > maxUpStep() + 1.0E-4 || groundDeltaY < -maxUpStep() - 0.15) {
+            return null;
+        }
+        double terrainDeltaY = groundDeltaY + lastTerrainPositionCorrectionY;
+        int steps = Math.max(1, (int) Math.ceil(requestedMovement.horizontalDistance() / 0.18));
+        double previousGroundY = currentGroundY;
+        for (int step = 1; step <= steps; step++) {
+            double t = (double) step / steps;
+            Vec3 probePosition = beforeMove.add(requestedMovement.x * t, 0.0, requestedMovement.z * t);
+            double expectedGroundY = currentGroundY + (targetGroundY - currentGroundY) * t;
+            double probeGroundY = terrainSupportHeightAt(probePosition, expectedGroundY - maxUpStep() - 0.15, expectedGroundY + maxUpStep() + 0.15);
+            if (Double.isNaN(probeGroundY)
+                    || probeGroundY - previousGroundY > maxUpStep() + 1.0E-4
+                    || probeGroundY - previousGroundY < -maxUpStep() - 0.15) {
+                return null;
+            }
+            AABB probeBox = getBoundingBox()
+                .move(beforeMove.subtract(position()))
+                .move(requestedMovement.x * t, requestedMovement.y + probeGroundY - currentGroundY + lastTerrainPositionCorrectionY * t, requestedMovement.z * t);
+            if (!level().noCollision(this, probeBox) && hasTallCollisionAt(probeBox, probeGroundY)) {
+                return null;
+            }
+            previousGroundY = probeGroundY;
+        }
+
+        Vec3 terrainMovement = new Vec3(requestedMovement.x, requestedMovement.y + terrainDeltaY, requestedMovement.z);
+        AABB targetBox = getBoundingBox().move(beforeMove.subtract(position())).move(terrainMovement);
+        return !level().noCollision(this, targetBox) && hasTallCollisionAt(targetBox, targetGroundY) ? null : terrainMovement;
     }
 
-    private double findPreemptiveStepHeight(Vec3 beforeMove, Vec3 requestedMovement) {
-        double maxStep = maxUpStep();
-        double[] stepHeights = {0.25, 0.5, 0.75, 1.0, maxStep};
-        AABB originalBox = getBoundingBox().move(beforeMove.subtract(position()));
-        if (level().noCollision(this, originalBox.move(requestedMovement.x, requestedMovement.y, requestedMovement.z))) {
-            return 0.0;
+    private double terrainSupportHeightAt(Vec3 center, double minY, double maxY) {
+        double centerHeight = terrainHeightAt(center.x, center.z, minY, maxY);
+        if (!Double.isNaN(centerHeight)) {
+            return centerHeight;
         }
-        for (double stepHeight : stepHeights) {
-            double clampedStepHeight = Math.min(maxStep, stepHeight);
-            AABB raisedBox = originalBox.move(0.0, clampedStepHeight, 0.0);
-            if (level().noCollision(this, raisedBox)
-                    && level().noCollision(this, raisedBox.move(requestedMovement.x, requestedMovement.y, requestedMovement.z))) {
-                return clampedStepHeight;
+
+        double lowest = Double.NaN;
+        double yaw = Math.toRadians(getYRot());
+        Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
+        Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
+        for (double side : TRACK_WHEEL_SIDE_OFFSETS) {
+            for (double length : TRACK_WHEEL_LENGTH_OFFSETS) {
+                Vec3 sample = center.add(right.scale(side)).add(forward.scale(length));
+                double sampleHeight = terrainHeightAt(sample.x, sample.z, minY, maxY);
+                if (!Double.isNaN(sampleHeight)) {
+                    lowest = Double.isNaN(lowest) ? sampleHeight : Math.min(lowest, sampleHeight);
+                }
             }
         }
-        return 0.0;
+        return lowest;
+    }
+
+    private boolean hasTallCollisionAt(AABB box, double groundY) {
+        for (BlockPos pos : BlockPos.betweenClosed(
+            (int) Math.floor(box.minX),
+            (int) Math.floor(groundY + maxUpStep() + 0.01),
+            (int) Math.floor(box.minZ),
+            (int) Math.floor(box.maxX),
+            (int) Math.floor(box.maxY),
+            (int) Math.floor(box.maxZ)
+        )) {
+            BlockState state = level().getBlockState(pos);
+            if (!state.getCollisionShape(level(), pos, CollisionContext.of(this)).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private double terrainHeightAt(double x, double z, double minY, double maxY) {
+        double highest = Double.NaN;
+        int minBlockY = (int) Math.floor(minY);
+        int maxBlockY = (int) Math.floor(maxY);
+        for (int y = minBlockY; y <= maxBlockY; y++) {
+            BlockPos pos = BlockPos.containing(x, y, z);
+            BlockState state = level().getBlockState(pos);
+            VoxelShape shape = state.getCollisionShape(level(), pos, CollisionContext.of(this));
+            if (shape.isEmpty()) {
+                continue;
+            }
+            double localX = x - pos.getX();
+            double localZ = z - pos.getZ();
+            AABB probe = new AABB(localX - 0.02, 0.0, localZ - 0.02, localX + 0.02, 1.0, localZ + 0.02);
+            VoxelShape columnShape = shape.toAabbs().stream()
+                .filter(box -> box.intersects(probe))
+                .map(box -> net.minecraft.world.phys.shapes.Shapes.box(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ))
+                .reduce(net.minecraft.world.phys.shapes.Shapes.empty(), net.minecraft.world.phys.shapes.Shapes::or);
+            if (columnShape.isEmpty()) {
+                continue;
+            }
+            double height = pos.getY() + columnShape.max(Direction.Axis.Y);
+            if (height >= minY - 1.0E-4 && height <= maxY + 1.0E-4) {
+                highest = Double.isNaN(highest) ? height : Math.max(highest, height);
+            }
+        }
+        return highest;
     }
 
     private void clearHollowCollisionBlocks(boolean onlyAfterCollision) {

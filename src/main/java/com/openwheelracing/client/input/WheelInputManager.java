@@ -56,16 +56,16 @@ public final class WheelInputManager {
             return Output.NEUTRAL;
         }
 
-        float steering = transformSteering(axis(axes, settings.steering.axis), settings.steering);
+        float steering = settings.steering.axis >= 0 ? transformSteering(axis(axes, settings.steering.axis), settings.steering) : 0.0f;
         float throttle;
         float brake;
-        if (settings.combinedPedals) {
+        if (settings.combinedPedals && settings.combinedPedal.axis >= 0) {
             float combined = transformSteering(axis(axes, settings.combinedPedal.axis), settings.combinedPedal);
             throttle = Math.max(0.0f, combined);
             brake = Math.max(0.0f, -combined);
         } else {
-            throttle = transformPedal(axis(axes, settings.throttle.axis), settings.throttle);
-            brake = transformPedal(axis(axes, settings.brake.axis), settings.brake);
+            throttle = settings.throttle.axis >= 0 ? transformPedal(axis(axes, settings.throttle.axis), settings.throttle) : 0.0f;
+            brake = settings.brake.axis >= 0 ? transformPedal(axis(axes, settings.brake.axis), settings.brake) : 0.0f;
         }
 
         EnumMap<WheelInputSettings.ButtonRole, Boolean> pressed = new EnumMap<>(WheelInputSettings.ButtonRole.class);

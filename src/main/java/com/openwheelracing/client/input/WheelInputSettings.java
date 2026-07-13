@@ -14,16 +14,18 @@ import net.minecraft.client.Minecraft;
 public class WheelInputSettings {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String CONFIG_FILE = "openwheelracing-wheel.json";
+    private static final int CURRENT_VERSION = 2;
     private static WheelInputSettings instance = defaults();
 
+    public int version = CURRENT_VERSION;
     public boolean enabled;
     public int selectedJoystickId = -1;
     public String selectedJoystickName = "";
     public boolean combinedPedals;
-    public AxisBinding steering = new AxisBinding(0, false, -1.0f, 1.0f, 0.0f, 0.08f, 1.0f, 1.0f);
-    public AxisBinding throttle = new AxisBinding(1, true, -1.0f, 1.0f, 1.0f, 0.03f, 1.0f, 1.0f);
-    public AxisBinding brake = new AxisBinding(2, true, -1.0f, 1.0f, 1.0f, 0.03f, 1.0f, 1.0f);
-    public AxisBinding combinedPedal = new AxisBinding(1, false, -1.0f, 1.0f, 0.0f, 0.03f, 1.0f, 1.0f);
+    public AxisBinding steering = new AxisBinding(-1, false, -1.0f, 1.0f, 0.0f, 0.08f, 1.0f, 1.0f);
+    public AxisBinding throttle = new AxisBinding(-1, true, -1.0f, 1.0f, 1.0f, 0.03f, 1.0f, 1.0f);
+    public AxisBinding brake = new AxisBinding(-1, true, -1.0f, 1.0f, 1.0f, 0.03f, 1.0f, 1.0f);
+    public AxisBinding combinedPedal = new AxisBinding(-1, false, -1.0f, 1.0f, 0.0f, 0.03f, 1.0f, 1.0f);
     public Map<ButtonRole, Integer> buttons = new EnumMap<>(ButtonRole.class);
 
     public static WheelInputSettings get() {
@@ -42,6 +44,9 @@ public class WheelInputSettings {
         }
         try {
             WheelInputSettings loaded = GSON.fromJson(Files.readString(path, StandardCharsets.UTF_8), WheelInputSettings.class);
+            if (loaded != null && loaded.version < CURRENT_VERSION) {
+                loaded.clearAxisBindings();
+            }
             instance = loaded == null ? defaults() : loaded.sanitized();
         } catch (IOException | JsonSyntaxException ignored) {
             instance = defaults();
@@ -96,6 +101,7 @@ public class WheelInputSettings {
     }
 
     public WheelInputSettings sanitized() {
+        version = CURRENT_VERSION;
         if (selectedJoystickName == null) {
             selectedJoystickName = "";
         }
@@ -130,8 +136,16 @@ public class WheelInputSettings {
 
     public static WheelInputSettings defaults() {
         WheelInputSettings settings = new WheelInputSettings();
+        settings.version = CURRENT_VERSION;
         settings.buttons = new EnumMap<>(ButtonRole.class);
         return settings;
+    }
+
+    private void clearAxisBindings() {
+        steering.axis = -1;
+        throttle.axis = -1;
+        brake.axis = -1;
+        combinedPedal.axis = -1;
     }
 
     private static Path configPath(Minecraft minecraft) {
@@ -184,8 +198,8 @@ public class WheelInputSettings {
         }
 
         public AxisBinding sanitized(boolean pedal) {
-            if (axis < 0) {
-                axis = 0;
+            if (axis < -1) {
+                axis = -1;
             }
             if (!Float.isFinite(min)) {
                 min = -1.0f;
