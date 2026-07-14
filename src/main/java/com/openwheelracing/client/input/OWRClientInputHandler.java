@@ -13,6 +13,7 @@ import net.minecraftforge.network.PacketDistributor;
 public final class OWRClientInputHandler {
     private static boolean shiftUpWasDown;
     private static boolean shiftDownWasDown;
+    private static boolean sentIdleDriveInput;
 
     private OWRClientInputHandler() {
     }
@@ -54,7 +55,7 @@ public final class OWRClientInputHandler {
             steering = wheel.steering();
         }
         car.tickLocalClientMovement(throttle, brake, steering);
-        OWRNetwork.CHANNEL.send(new OWRNetwork.DriveInputMessage(keyboardThrottle, keyboardBrake, keyboardSteering, wheel.throttle(), wheel.brake(), wheel.steering()), PacketDistributor.SERVER.noArg());
+        sendDriveInputIfNeeded(keyboardThrottle, keyboardBrake, keyboardSteering, wheel.throttle(), wheel.brake(), wheel.steering());
 
         boolean shiftUpDown = isDown(OWRKeyMappings.SHIFT_UP) || wheel.pressed(WheelInputSettings.ButtonRole.SHIFT_UP);
         boolean shiftDownDown = isDown(OWRKeyMappings.SHIFT_DOWN) || wheel.pressed(WheelInputSettings.ButtonRole.SHIFT_DOWN);
@@ -100,6 +101,15 @@ public final class OWRClientInputHandler {
             OWRNetwork.CHANNEL.send(new OWRNetwork.ToggleDrsMessage(), PacketDistributor.SERVER.noArg());
             mc.player.playSound(OWRSoundEvents.DRS_BEEP.get(), 1.0f, 1.0f);
         }
+    }
+
+    private static void sendDriveInputIfNeeded(float keyboardThrottle, float keyboardBrake, float keyboardSteering, float wheelThrottle, float wheelBrake, float wheelSteering) {
+        boolean idle = keyboardThrottle == 0.0f && keyboardBrake == 0.0f && keyboardSteering == 0.0f && wheelThrottle == 0.0f && wheelBrake == 0.0f && wheelSteering == 0.0f;
+        if (idle && sentIdleDriveInput) {
+            return;
+        }
+        sentIdleDriveInput = idle;
+        OWRNetwork.CHANNEL.send(new OWRNetwork.DriveInputMessage(keyboardThrottle, keyboardBrake, keyboardSteering, wheelThrottle, wheelBrake, wheelSteering), PacketDistributor.SERVER.noArg());
     }
 
     /** Poll the raw GLFW key state regardless of Minecraft conflict context. */

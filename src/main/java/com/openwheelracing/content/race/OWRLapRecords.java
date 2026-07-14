@@ -73,6 +73,14 @@ public class OWRLapRecords extends SavedData {
         return playerBestLaps.getOrDefault(playerId, 0);
     }
 
+    public int getOverallBestLapTicks() {
+        int best = Integer.MAX_VALUE;
+        for (int ticks : playerBestLaps.values()) {
+            if (ticks > 0 && ticks < best) best = ticks;
+        }
+        return best == Integer.MAX_VALUE ? 0 : best;
+    }
+
     public record DriverBest(String name, int ticks) {}
 
     public List<DriverBest> getPlayerBestLapsSorted() {

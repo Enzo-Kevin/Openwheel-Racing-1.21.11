@@ -15,7 +15,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
 public final class CarSoundManager {
-    private static final int MAX_ACTIVE_CAR_SOUNDS = 3;
+    private static final int MAX_ACTIVE_CAR_SOUNDS = 5;
     private static final Map<Integer, CarSoundSet> SOUNDS = new HashMap<>();
 
     private CarSoundManager() {
@@ -48,10 +48,16 @@ public final class CarSoundManager {
             return Double.compare(da, db);
         });
 
-        // Only the closest MAX_ACTIVE_CAR_SOUNDS cars get live audio.
+        // Allowed cars: player's car first, then nearest others.
         Set<Integer> allowed = new HashSet<>();
-        for (int i = 0; i < Math.min(MAX_ACTIVE_CAR_SOUNDS, nearby.size()); i++) {
-            allowed.add(nearby.get(i).getId());
+        if (player.getVehicle() instanceof OpenwheelCarEntity car) {
+            allowed.add(car.getId());
+        }
+        for (OpenwheelCarEntity car : nearby) {
+            if (allowed.size() >= MAX_ACTIVE_CAR_SOUNDS) {
+                break;
+            }
+            allowed.add(car.getId());
         }
 
         // Activate/update allowed cars; stop anything outside the allowed set.
@@ -65,11 +71,12 @@ public final class CarSoundManager {
 
         SOUNDS.entrySet().removeIf(entry -> {
             CarSoundSet soundSet = entry.getValue();
-            if (!active.contains(entry.getKey()) || soundSet.isStopped()) {
+            if (!active.contains(entry.getKey()) || soundSet.isEntityGone()) {
                 soundSet.stop(soundManager);
                 return true;
             }
             soundSet.updateListener(listenerPosition);
+            soundSet.repairEngines(soundManager);
             return false;
         });
     }

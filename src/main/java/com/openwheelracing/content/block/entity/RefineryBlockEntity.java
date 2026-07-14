@@ -69,26 +69,34 @@ public class RefineryBlockEntity extends BlockEntity implements Container, MenuP
     }
 
     public static void serverTick(Level level, BlockPos pos, BlockState state, RefineryBlockEntity refinery) {
+        boolean changed = false;
+
         if (refinery.burnTime > 0) {
             refinery.burnTime--;
+            changed = true;
         }
 
         if (refinery.canRefine()) {
             if (refinery.burnTime <= 0) {
-                refinery.consumeFuel(level);
+                changed |= refinery.consumeFuel(level);
             }
 
             if (refinery.burnTime > 0) {
                 refinery.progress++;
+                changed = true;
                 if (refinery.progress >= MAX_PROGRESS) {
                     refinery.refine(level);
                     refinery.progress = 0;
                 }
             }
-        } else {
+        } else if (refinery.progress != 0) {
             refinery.progress = 0;
+            changed = true;
         }
-        refinery.setChanged();
+
+        if (changed) {
+            refinery.setChanged();
+        }
     }
 
     public ContainerData getData() {
@@ -109,11 +117,11 @@ public class RefineryBlockEntity extends BlockEntity implements Container, MenuP
         return isValidCrude(getItem(SLOT_CRUDE)) && hasAnyOutputSpace();
     }
 
-    private void consumeFuel(Level level) {
+    private boolean consumeFuel(Level level) {
         ItemStack fuel = getItem(SLOT_FUEL);
         int duration = getBurnDuration(level, fuel);
         if (duration <= 0) {
-            return;
+            return false;
         }
 
         burnTime = duration;
@@ -123,6 +131,7 @@ public class RefineryBlockEntity extends BlockEntity implements Container, MenuP
         if (fuel.isEmpty() && !remainder.isEmpty()) {
             setItem(SLOT_FUEL, remainder);
         }
+        return true;
     }
 
     private void refine(Level level) {

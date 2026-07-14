@@ -143,6 +143,8 @@ public class OpenwheelCarEntity extends Entity {
     private static final double ENGINE_BRAKE_RPM_DROP_PER_SECOND = 7_000.0;
     private static final double CLUTCH_RELEASE_TRACTION_LIMIT = 0.95;
     private static final double STEERING_DEADZONE = 0.08;
+    private static final double[] ENGINE_RPM_POINTS = {900.0, 2500.0, 4000.0, 4700.0, 6500.0, 8200.0, 10500.0, 11800.0, 12600.0, 13000.0};
+    private static final double[] ENGINE_POWER_POINTS = {0.03, 0.10, 0.22, 0.34, 0.56, 0.75, 0.95, 1.00, 0.78, 0.42};
     private static final double LOW_SPEED_STEER_ANGLE = Math.toRadians(34.0);
     private static final double HIGH_SPEED_STEER_ANGLE = Math.toRadians(2.45);
     private static final double STEERING_HIGH_SPEED_CURVE_POWER = 0.72;
@@ -234,16 +236,14 @@ public class OpenwheelCarEntity extends Entity {
         this.inputSteering = steering;
         if (!level().isClientSide() && level().getGameTime() - lastMovementDebugAt >= 20L) {
             lastMovementDebugAt = level().getGameTime();
-            LOGGER.info("OWR car input id={} pos=({}, {}, {}) passenger={} throttle={} brake={} steering={} delta={}",
+            LOGGER.info("OWR car input id={} pos={} passenger={} input=({}, {}, {}) delta={}",
                 getId(),
-                String.format("%.3f", getX()),
-                String.format("%.3f", getY()),
-                String.format("%.3f", getZ()),
+                blockPosition(),
                 getControllingPassenger() == null ? "none" : getControllingPassenger().getScoreboardName(),
                 throttle,
                 brake,
                 steering,
-                formatVec(getDeltaMovement()));
+                getDeltaMovement());
         }
     }
 
@@ -584,10 +584,7 @@ public class OpenwheelCarEntity extends Entity {
         entityData.set(CURRENT_LAP_TICKS, lapTicks);
         OWRLapRecords records = OWRLapRecords.get(serverLevel);
         int previousBest = records.getBestLap(player.getUUID());
-        int previousOverallBest = records.getPlayerBestLapsSorted().stream()
-            .mapToInt(OWRLapRecords.DriverBest::ticks)
-            .findFirst()
-            .orElse(0);
+        int previousOverallBest = records.getOverallBestLapTicks();
         records.recordLap(
             player.getUUID(),
             player.getScoreboardName(),
@@ -682,13 +679,11 @@ public class OpenwheelCarEntity extends Entity {
         if (!level().isClientSide()) {
             boolean ridden = getControllingPassenger() != null;
             if (wasRiddenLastTick && !ridden) {
-                LOGGER.info("OWR car dismounted id={} pos=({}, {}, {}) delta={} speedKmh={} horizontalCollision={} verticalCollision={} onGround={}",
+                LOGGER.info("OWR car dismounted id={} pos={} delta={} speedKmh={} collision=({}, {}) onGround={}",
                     getId(),
-                    String.format("%.3f", getX()),
-                    String.format("%.3f", getY()),
-                    String.format("%.3f", getZ()),
-                    formatVec(getDeltaMovement()),
-                    String.format("%.2f", getSpeedKmh()),
+                    blockPosition(),
+                    getDeltaMovement(),
+                    getSpeedKmh(),
                     horizontalCollision,
                     verticalCollision,
                     onGround());
@@ -774,16 +769,14 @@ public class OpenwheelCarEntity extends Entity {
             double riderY = getY() + seat.y;
             double riderZ = getZ() + seat.z;
             if (!level().isClientSide() && level().getGameTime() - lastMovementDebugAt >= 20L) {
-                LOGGER.info("OWR car rider id={} carPos=({}, {}, {}) riderPos=({}, {}, {}) seat={} carDelta={}",
+                LOGGER.info("OWR car rider id={} carPos={} rider=({}, {}, {}) seat={} delta={}",
                     getId(),
-                    String.format("%.3f", getX()),
-                    String.format("%.3f", getY()),
-                    String.format("%.3f", getZ()),
-                    String.format("%.3f", riderX),
-                    String.format("%.3f", riderY),
-                    String.format("%.3f", riderZ),
-                    formatVec(seat),
-                    formatVec(getDeltaMovement()));
+                    blockPosition(),
+                    riderX,
+                    riderY,
+                    riderZ,
+                    seat,
+                    getDeltaMovement());
             }
             callback.accept(passenger, riderX, riderY, riderZ);
         }
@@ -1029,10 +1022,6 @@ public class OpenwheelCarEntity extends Entity {
         return getSurfaceAt(position());
     }
 
-    private boolean isPitLane() {
-        return getCurrentSurface() == SurfaceProfile.PIT_LANE;
-    }
-
     private boolean isOnTrackSurface() {
         double yaw = Math.toRadians(getYRot());
         Vec3 forward = new Vec3(-Math.sin(yaw), 0.0, Math.cos(yaw));
@@ -1157,14 +1146,9 @@ public class OpenwheelCarEntity extends Entity {
             entityData.set(GEAR, gear);
         }
         double gearTopSpeed = gearTopSpeed(gear);
-        double maxSpeed = GEAR_TOP_SPEEDS[MAX_GEAR];
-        double pitSpeedLimit = Double.MAX_VALUE;
-        if (isPitLane()) {
-            pitSpeedLimit = VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK;
-            maxSpeed = Math.min(maxSpeed, pitSpeedLimit);
-        }
-
         SurfaceProfile surface = getCurrentSurface();
+        double pitSpeedLimit = surface == SurfaceProfile.PIT_LANE ? VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK : Double.MAX_VALUE;
+
         Vec3 forward = Vec3.directionFromRotation(0.0f, getYRot());
         Vec3 right = new Vec3(forward.z, 0.0, -forward.x);
         double velocityLong = (delta.x * forward.x + delta.z * forward.z) * 20.0;
@@ -1272,7 +1256,7 @@ public class OpenwheelCarEntity extends Entity {
             }
 
             double subBrakeForceRequest = brake * MAX_BRAKE_FORCE;
-            if (isPitLane() && subSpeedBlocksPerTick >= pitSpeedLimit) {
+            if (surface == SurfaceProfile.PIT_LANE && subSpeedBlocksPerTick >= pitSpeedLimit) {
                 subDriveForceRequest = 0.0;
                 subBrakeForceRequest = Math.max(subBrakeForceRequest, 6_000.0);
             }
@@ -1587,23 +1571,23 @@ public class OpenwheelCarEntity extends Entity {
         boolean shouldDebugMovement = debugMovement && (getControllingPassenger() != null || throttle != 0.0 || brake != 0.0 || steering != 0.0 || horizontalSpeed > 0.01 || actualMovement.horizontalDistance() > 0.01);
         if (shouldDebugMovement && level().getGameTime() - lastMovementDebugAt >= 20L) {
             lastMovementDebugAt = level().getGameTime();
-            LOGGER.info("OWR car move id={} passenger={} posBefore={} posAfter={} requested={} actual={} input=({}, {}, {}) gear={} surface={} collisions(h={}, v={}) onGround={} speedBefore={} speedAfter={}",
+            LOGGER.info("OWR car move id={} passenger={} posBefore={} posAfter={} requested={} actual={} input=({}, {}, {}) gear={} surface={} collision=({}, {}) onGround={} speedBefore={} speedAfter={}",
                 getId(),
                 getControllingPassenger() == null ? "none" : getControllingPassenger().getScoreboardName(),
-                formatVec(beforeMove),
-                formatVec(position()),
-                formatVec(delta),
-                formatVec(actualMovement),
-                String.format("%.2f", throttle),
-                String.format("%.2f", brake),
-                String.format("%.2f", steering),
+                beforeMove,
+                position(),
+                delta,
+                actualMovement,
+                throttle,
+                brake,
+                steering,
                 gear,
                 surface,
                 horizontalCollision,
                 verticalCollision,
                 onGround(),
-                String.format("%.4f", horizontalSpeed),
-                String.format("%.4f", actualMovement.horizontalDistance()));
+                horizontalSpeed,
+                actualMovement.horizontalDistance());
         }
 
         double newSpeed = Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z);
@@ -1920,15 +1904,13 @@ public class OpenwheelCarEntity extends Entity {
         syncPlayerBestLap(player);
         double speed = Math.sqrt(getDeltaMovement().x * getDeltaMovement().x + getDeltaMovement().z * getDeltaMovement().z);
         if (!level().isClientSide()) {
-            LOGGER.info("OWR car mounted id={} player={} pos=({}, {}, {}) delta={} gear={} speed={} bbox={}",
+            LOGGER.info("OWR car mounted id={} player={} pos={} delta={} gear={} speed={} bbox={}",
                 getId(),
                 player.getScoreboardName(),
-                String.format("%.3f", getX()),
-                String.format("%.3f", getY()),
-                String.format("%.3f", getZ()),
-                formatVec(getDeltaMovement()),
+                blockPosition(),
+                getDeltaMovement(),
                 getGear(),
-                String.format("%.4f", speed),
+                speed,
                 getBoundingBox());
         }
     }
@@ -1939,7 +1921,7 @@ public class OpenwheelCarEntity extends Entity {
                 getId(),
                 direction,
                 getGear(),
-                String.format("%.1f", getSpeedKmh()),
+                getSpeedKmh(),
                 getRpm(),
                 getControllingPassenger() == null ? "none" : getControllingPassenger().getScoreboardName());
         }
@@ -2090,19 +2072,17 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     private static double enginePowerWatts(int rpm) {
-        double[] rpmPoints = {900.0, 2500.0, 4000.0, 4700.0, 6500.0, 8200.0, 10500.0, 11800.0, 12600.0, 13000.0};
-        double[] powerPoints = {0.03, 0.10, 0.22, 0.34, 0.56, 0.75, 0.95, 1.00, 0.78, 0.42};
-        if (rpm <= rpmPoints[0]) {
-            return PEAK_POWER_WATTS * powerPoints[0];
+        if (rpm <= ENGINE_RPM_POINTS[0]) {
+            return PEAK_POWER_WATTS * ENGINE_POWER_POINTS[0];
         }
-        for (int i = 1; i < rpmPoints.length; i++) {
-            if (rpm <= rpmPoints[i]) {
-                double t = (rpm - rpmPoints[i - 1]) / (rpmPoints[i] - rpmPoints[i - 1]);
-                double power = powerPoints[i - 1] + (powerPoints[i] - powerPoints[i - 1]) * t;
+        for (int i = 1; i < ENGINE_RPM_POINTS.length; i++) {
+            if (rpm <= ENGINE_RPM_POINTS[i]) {
+                double t = (rpm - ENGINE_RPM_POINTS[i - 1]) / (ENGINE_RPM_POINTS[i] - ENGINE_RPM_POINTS[i - 1]);
+                double power = ENGINE_POWER_POINTS[i - 1] + (ENGINE_POWER_POINTS[i] - ENGINE_POWER_POINTS[i - 1]) * t;
                 return PEAK_POWER_WATTS * power;
             }
         }
-        return PEAK_POWER_WATTS * powerPoints[powerPoints.length - 1];
+        return PEAK_POWER_WATTS * ENGINE_POWER_POINTS[ENGINE_POWER_POINTS.length - 1];
     }
 
     private void resetTyreRelaxation() {
