@@ -17,7 +17,7 @@ For each value, define range, effect, UI label, and downside.
 | Value | Range | Positive Effect | Tradeoff | Notes |
 | --- | --- | --- | --- | --- |
 | Power Mode | Mode 0-3 | Higher the mode, higher output | Higher the mode, higher fuel consumption | Discrete max power output power, peak 750kW physics |
-| Tyre Setup | C1-C5 | Softer higher grip | Softer faster wear | Not tunable, once made a tyre cannot be changed into other types |
+| Tyre Setup | C1-C5 | Higher compound number gives higher grip | Higher compound number wears faster | Not tunable, once made a tyre cannot be changed into other types |
 | Aero | Preset 0-4 | Higher the mode, higher downforce | Higher the mode, higher drag | Will turn into separate front wing and rear wing later |
 | Gearing | Preset 0-2 | Higher the mode, higher top speed | Higher the mode, higher ratio gives slower acceleration | Probably will turn into continuous ratio tuning later |
 

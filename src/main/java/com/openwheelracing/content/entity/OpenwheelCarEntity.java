@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 
 import com.mojang.logging.LogUtils;
 import com.openwheelracing.content.car.CarLivery;
+import com.openwheelracing.content.car.CarLiveryColors;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.item.TyreItem;
@@ -68,6 +69,9 @@ public class OpenwheelCarEntity extends Entity {
     private static final EntityDataAccessor<Boolean> ABS_ENABLED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> TRACTION_CONTROL_ENABLED = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Integer> LIVERY = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> LIVERY_BODY = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> LIVERY_ACCENT_1 = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> LIVERY_ACCENT_2 = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> TYRE_COMPOUND = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Boolean> DRS_ACTIVE = SynchedEntityData.defineId(OpenwheelCarEntity.class, EntityDataSerializers.BOOLEAN);
 
@@ -94,6 +98,8 @@ public class OpenwheelCarEntity extends Entity {
     private static final double SPEED_TO_BLOCKS_PER_TICK = VehiclePhysics.SPEED_TO_BLOCKS_PER_TICK;
     private static final double REVERSE_TOP_SPEED = 35.0 * SPEED_TO_BLOCKS_PER_TICK;
     private static final double[] GEAR_TOP_SPEEDS = {0.0, 80.0 * SPEED_TO_BLOCKS_PER_TICK, 120.0 * SPEED_TO_BLOCKS_PER_TICK, 150.0 * SPEED_TO_BLOCKS_PER_TICK, 190.0 * SPEED_TO_BLOCKS_PER_TICK, 235.0 * SPEED_TO_BLOCKS_PER_TICK, 275.0 * SPEED_TO_BLOCKS_PER_TICK, 310.0 * SPEED_TO_BLOCKS_PER_TICK, 350.0 * SPEED_TO_BLOCKS_PER_TICK};
+    private static final double MAX_REASONABLE_SPEED_BLOCKS_PER_TICK = 420.0 * SPEED_TO_BLOCKS_PER_TICK;
+    private static final double MAX_REASONABLE_MOVEMENT_BLOCKS_PER_TICK = MAX_REASONABLE_SPEED_BLOCKS_PER_TICK + 0.35;
     private static final double CAR_MASS_KG = 805.0;
     private static final double GRAVITY = 9.81;
     private static final double PHYSICS_DT = 1.0 / 20.0;
@@ -175,6 +181,7 @@ public class OpenwheelCarEntity extends Entity {
     private static final double SLIP_ANGLE_DEADBAND = Math.toRadians(0.15);
     private static final double FRONT_TYRE_RELAXATION_LENGTH = 0.42;
     private static final double REAR_TYRE_RELAXATION_LENGTH = 0.45;
+    private static final double STATIC_TYRE_SPEED_THRESHOLD = 1.5;
     private static final double[] TRACK_WHEEL_SIDE_OFFSETS = {-1.34, 1.34};
     private static final double[] TRACK_WHEEL_LENGTH_OFFSETS = {-2.95, 1.55};
     private static final double[] TRACK_PATCH_SIDE_OFFSETS = {-0.18, 0.0, 0.18};
@@ -202,7 +209,7 @@ public class OpenwheelCarEntity extends Entity {
     private float inputThrottle;
     private float inputBrake;
     private float inputSteering;
-    private long lastMovementDebugAt = -20L;
+    private long lastMovementWarningAt = -200L;
     private final java.util.HashMap<Integer, Long> lastEntityImpactById = new java.util.HashMap<>();
     private boolean wasRiddenLastTick;
     private double steeringAngle;
@@ -218,33 +225,32 @@ public class OpenwheelCarEntity extends Entity {
     private double debugVelocityLat;
     private double debugDriveForce;
     private double debugDragForce;
-    private double debugFrontLatForce;
-    private double debugRearLatForce;
-    private double debugFrontLongForce;
-    private double debugRearLongForce;
-    private double debugFrontLoad;
-    private double debugRearLoad;
-    private double debugFrontDemand;
-    private double debugRearDemand;
-    private double debugFrontSlipAngle;
-    private double debugRearSlipAngle;
+    private double debugFlLatForce;
+    private double debugFrLatForce;
+    private double debugRlLatForce;
+    private double debugRrLatForce;
+    private double debugFlLongForce;
+    private double debugFrLongForce;
+    private double debugRlLongForce;
+    private double debugRrLongForce;
+    private double debugFlLoad;
+    private double debugFrLoad;
+    private double debugRlLoad;
+    private double debugRrLoad;
+    private double debugFlDemand;
+    private double debugFrDemand;
+    private double debugRlDemand;
+    private double debugRrDemand;
+    private double debugFlSlipAngle;
+    private double debugFrSlipAngle;
+    private double debugRlSlipAngle;
+    private double debugRrSlipAngle;
     private double debugDownforce;
 
     public void applyDriveInput(float throttle, float brake, float steering) {
         this.inputThrottle = throttle;
         this.inputBrake = brake;
         this.inputSteering = steering;
-        if (!level().isClientSide() && level().getGameTime() - lastMovementDebugAt >= 20L) {
-            lastMovementDebugAt = level().getGameTime();
-            LOGGER.info("OWR car input id={} pos={} passenger={} input=({}, {}, {}) delta={}",
-                getId(),
-                blockPosition(),
-                getControllingPassenger() == null ? "none" : getControllingPassenger().getScoreboardName(),
-                throttle,
-                brake,
-                steering,
-                getDeltaMovement());
-        }
     }
 
     public OpenwheelCarEntity(EntityType<? extends OpenwheelCarEntity> entityType, Level level) {
@@ -270,6 +276,9 @@ public class OpenwheelCarEntity extends Entity {
         builder.define(ABS_ENABLED, false);
         builder.define(TRACTION_CONTROL_ENABLED, false);
         builder.define(LIVERY, 0);
+        builder.define(LIVERY_BODY, CarLiveryColors.DEFAULT.body());
+        builder.define(LIVERY_ACCENT_1, CarLiveryColors.DEFAULT.accent1());
+        builder.define(LIVERY_ACCENT_2, CarLiveryColors.DEFAULT.accent2());
         builder.define(TYRE_COMPOUND, PrototypeCarSetup.DEFAULT.grip());
         builder.define(DRS_ACTIVE, false);
     }
@@ -305,11 +314,23 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     public void setLivery(int livery) {
-        entityData.set(LIVERY, Math.max(0, Math.min(CarLivery.count() - 1, livery)));
+        int clamped = Math.max(0, Math.min(CarLivery.count() - 1, livery));
+        entityData.set(LIVERY, clamped);
+        setLiveryColors(CarLiveryColors.fromPreset(CarLivery.fromIndex(clamped)));
     }
 
     public int getLivery() {
         return entityData.get(LIVERY);
+    }
+
+    public void setLiveryColors(CarLiveryColors colors) {
+        entityData.set(LIVERY_BODY, colors.body());
+        entityData.set(LIVERY_ACCENT_1, colors.accent1());
+        entityData.set(LIVERY_ACCENT_2, colors.accent2());
+    }
+
+    public CarLiveryColors getLiveryColors() {
+        return new CarLiveryColors(entityData.get(LIVERY_BODY), entityData.get(LIVERY_ACCENT_1), entityData.get(LIVERY_ACCENT_2));
     }
 
     public int getGear() {
@@ -334,14 +355,14 @@ public class OpenwheelCarEntity extends Entity {
         return Integer.toString(gear);
     }
 
-    private static double gearTopSpeed(int gear) {
+    private static double gearTopSpeed(int gear, PrototypeCarSetup setup) {
         if (gear == REVERSE_GEAR) {
-            return REVERSE_TOP_SPEED;
+            return REVERSE_TOP_SPEED * setup.topSpeedCoefficient();
         }
         if (gear == NEUTRAL_GEAR) {
             return 0.0;
         }
-        return GEAR_TOP_SPEEDS[gear];
+        return GEAR_TOP_SPEEDS[gear] * setup.topSpeedCoefficient();
     }
 
     public int getRpm() {
@@ -409,16 +430,26 @@ public class OpenwheelCarEntity extends Entity {
     public double getDebugYawRate() { return yawRate; }
     public double getDebugDriveForce() { return debugDriveForce; }
     public double getDebugDragForce() { return debugDragForce; }
-    public double getDebugFrontLatForce() { return debugFrontLatForce; }
-    public double getDebugRearLatForce() { return debugRearLatForce; }
-    public double getDebugFrontLongForce() { return debugFrontLongForce; }
-    public double getDebugRearLongForce() { return debugRearLongForce; }
-    public double getDebugFrontLoad() { return debugFrontLoad; }
-    public double getDebugRearLoad() { return debugRearLoad; }
-    public double getDebugFrontDemand() { return debugFrontDemand; }
-    public double getDebugRearDemand() { return debugRearDemand; }
-    public double getDebugFrontSlipAngleDegrees() { return Math.toDegrees(debugFrontSlipAngle); }
-    public double getDebugRearSlipAngleDegrees() { return Math.toDegrees(debugRearSlipAngle); }
+    public double getDebugFlLatForce() { return debugFlLatForce; }
+    public double getDebugFrLatForce() { return debugFrLatForce; }
+    public double getDebugRlLatForce() { return debugRlLatForce; }
+    public double getDebugRrLatForce() { return debugRrLatForce; }
+    public double getDebugFlLongForce() { return debugFlLongForce; }
+    public double getDebugFrLongForce() { return debugFrLongForce; }
+    public double getDebugRlLongForce() { return debugRlLongForce; }
+    public double getDebugRrLongForce() { return debugRrLongForce; }
+    public double getDebugFlLoad() { return debugFlLoad; }
+    public double getDebugFrLoad() { return debugFrLoad; }
+    public double getDebugRlLoad() { return debugRlLoad; }
+    public double getDebugRrLoad() { return debugRrLoad; }
+    public double getDebugFlDemand() { return debugFlDemand; }
+    public double getDebugFrDemand() { return debugFrDemand; }
+    public double getDebugRlDemand() { return debugRlDemand; }
+    public double getDebugRrDemand() { return debugRrDemand; }
+    public double getDebugFlSlipAngleDegrees() { return Math.toDegrees(debugFlSlipAngle); }
+    public double getDebugFrSlipAngleDegrees() { return Math.toDegrees(debugFrSlipAngle); }
+    public double getDebugRlSlipAngleDegrees() { return Math.toDegrees(debugRlSlipAngle); }
+    public double getDebugRrSlipAngleDegrees() { return Math.toDegrees(debugRrSlipAngle); }
     public double getDebugDownforce() { return debugDownforce; }
 
     public Vec3 getWheelSoundPosition(double sideOffset, double lengthOffset) {
@@ -678,15 +709,8 @@ public class OpenwheelCarEntity extends Entity {
 
         if (!level().isClientSide()) {
             boolean ridden = getControllingPassenger() != null;
-            if (wasRiddenLastTick && !ridden) {
-                LOGGER.info("OWR car dismounted id={} pos={} delta={} speedKmh={} collision=({}, {}) onGround={}",
-                    getId(),
-                    blockPosition(),
-                    getDeltaMovement(),
-                    getSpeedKmh(),
-                    horizontalCollision,
-                    verticalCollision,
-                    onGround());
+            if (wasRiddenLastTick && !ridden && getDeltaMovement().horizontalDistance() > MAX_REASONABLE_MOVEMENT_BLOCKS_PER_TICK) {
+                logMovementWarning("dismount with excessive velocity", position(), getDeltaMovement(), getDeltaMovement(), 0.0, 0.0, 0.0, getCurrentSurface());
             }
             wasRiddenLastTick = ridden;
             tickLapTimer();
@@ -728,6 +752,7 @@ public class OpenwheelCarEntity extends Entity {
         // Sneak + empty hand on empty car → pick up as item
         if (getPassengers().isEmpty() && player.isShiftKeyDown() && heldStack.isEmpty()) {
             ItemStack item = PrototypeCarItem.create(setup, getDamagePercent(), getTyreWearPercent(), getLivery());
+            PrototypeCarItem.setLiveryColors(item, getLiveryColors());
             if (!player.addItem(item)) {
                 player.drop(item, false);
             }
@@ -768,16 +793,6 @@ public class OpenwheelCarEntity extends Entity {
             double riderX = getX() + seat.x;
             double riderY = getY() + seat.y;
             double riderZ = getZ() + seat.z;
-            if (!level().isClientSide() && level().getGameTime() - lastMovementDebugAt >= 20L) {
-                LOGGER.info("OWR car rider id={} carPos={} rider=({}, {}, {}) seat={} delta={}",
-                    getId(),
-                    blockPosition(),
-                    riderX,
-                    riderY,
-                    riderZ,
-                    seat,
-                    getDeltaMovement());
-            }
             callback.accept(passenger, riderX, riderY, riderZ);
         }
     }
@@ -818,6 +833,11 @@ public class OpenwheelCarEntity extends Entity {
         entityData.set(DAMAGE, (float) input.getDoubleOr("Damage", 0.0));
         entityData.set(TYRE_WEAR, (float) input.getDoubleOr("TyreWear", 0.0));
         setLivery(input.getIntOr("Livery", 0));
+        setLiveryColors(new CarLiveryColors(
+            input.getIntOr("LiveryBody", getLiveryColors().body()),
+            input.getIntOr("LiveryAccent1", getLiveryColors().accent1()),
+            input.getIntOr("LiveryAccent2", getLiveryColors().accent2())
+        ));
         entityData.set(CURRENT_LAP_TICKS, input.getIntOr("CurrentLapTicks", 0));
         entityData.set(BEST_LAP_TICKS, input.getIntOr("BestLapTicks", 0));
         entityData.set(CHECKPOINT_ARMED, input.getBooleanOr("CheckpointArmed", false));
@@ -841,6 +861,10 @@ public class OpenwheelCarEntity extends Entity {
         output.putDouble("Damage", getDamagePercent());
         output.putDouble("TyreWear", getTyreWearPercent());
         output.putInt("Livery", getLivery());
+        CarLiveryColors liveryColors = getLiveryColors();
+        output.putInt("LiveryBody", liveryColors.body());
+        output.putInt("LiveryAccent1", liveryColors.accent1());
+        output.putInt("LiveryAccent2", liveryColors.accent2());
         output.putInt("CurrentLapTicks", getCurrentLapTicks());
         output.putInt("BestLapTicks", getBestLapTicks());
         output.putBoolean("CheckpointArmed", hasCheckpoint());
@@ -1145,7 +1169,7 @@ public class OpenwheelCarEntity extends Entity {
         if (gear != getGear()) {
             entityData.set(GEAR, gear);
         }
-        double gearTopSpeed = gearTopSpeed(gear);
+        double gearTopSpeed = gearTopSpeed(gear, setup);
         SurfaceProfile surface = getCurrentSurface();
         double pitSpeedLimit = surface == SurfaceProfile.PIT_LANE ? VehiclePhysics.PIT_SPEED_LIMIT_BLOCKS_PER_TICK : Double.MAX_VALUE;
 
@@ -1165,7 +1189,7 @@ public class OpenwheelCarEntity extends Entity {
         boolean launchClutch = throttle > 0.0 && (gear == 1 || gear == REVERSE_GEAR) && horizontalSpeed < LAUNCH_CLUTCH_SPEED;
         boolean clutchReleasing = clutchReleaseTicks > 0 && gear != NEUTRAL_GEAR;
         int engineRpm = updateEngineRpm(horizontalSpeed, gear, gearTopSpeed, throttle, launchClutch, clutchReleasing);
-        double power = enginePowerWatts(engineRpm) * setup.powerMultiplier() * damageFactor;
+        double power = enginePowerWatts(engineRpm) * setup.powerMultiplier() * setup.accelerationMultiplier() * damageFactor;
         double tyreSlip = 0.0;
 
         double steerInput = Math.abs(steering) > STEERING_DEADZONE ? steering : 0.0;
@@ -1188,26 +1212,40 @@ public class OpenwheelCarEntity extends Entity {
             double release = Math.min(0.18, brake * STEERING_TRAIL_BRAKE_RELEASE * Math.min(1.0, speedMetersPerSecond / 35.0));
             steeringAngle *= 1.0 - release;
         }
+        boolean steeringReleased = steerInput == 0.0 && Math.abs(steeringAngle) < SLIP_ANGLE_DEADBAND;
 
         double previousKineticEnergy = 0.5 * CAR_MASS_KG * (velocityLong * velocityLong + velocityLat * velocityLat) + 0.5 * YAW_INERTIA * yawRate * yawRate;
         double previousVelocityLong = velocityLong;
         double yawDelta = 0.0;
         double driveWorkJoules = 0.0;
         double subDt = PHYSICS_DT / PHYSICS_SUBSTEPS;
-        double finalFrontLatForce = 0.0;
-        double finalRearLatForce = 0.0;
-        double finalFrontLongForce = 0.0;
-        double finalRearLongForce = 0.0;
-        double finalFrontLoad = 0.0;
-        double finalRearLoad = 0.0;
-        double finalFrontDemand = 0.0;
-        double finalRearDemand = 0.0;
-        double finalFrontSlipAngle = 0.0;
-        double finalRearSlipAngle = 0.0;
+        double finalFlLatForce = 0.0;
+        double finalFrLatForce = 0.0;
+        double finalRlLatForce = 0.0;
+        double finalRrLatForce = 0.0;
+        double finalFlLongForce = 0.0;
+        double finalFrLongForce = 0.0;
+        double finalRlLongForce = 0.0;
+        double finalRrLongForce = 0.0;
+        double finalFlLoad = 0.0;
+        double finalFrLoad = 0.0;
+        double finalRlLoad = 0.0;
+        double finalRrLoad = 0.0;
+        double finalFlDemand = 0.0;
+        double finalFrDemand = 0.0;
+        double finalRlDemand = 0.0;
+        double finalRrDemand = 0.0;
+        double finalFlSlipAngle = 0.0;
+        double finalFrSlipAngle = 0.0;
+        double finalRlSlipAngle = 0.0;
+        double finalRrSlipAngle = 0.0;
         double finalDownforce = 0.0;
         double finalDragForce = 0.0;
         double finalFrontSaturation = 0.0;
         double finalRearSaturation = 0.0;
+        double cdACoefficient = setup.cdACoefficient();
+        double clACoefficient = setup.clACoefficient();
+        double tyreMuCoefficient = setup.tyreMuCoefficient();
 
         // Wheel surface grip is position/heading-dependent only — identical every substep.
         // Query once here rather than 4x inside the loop.
@@ -1219,8 +1257,8 @@ public class OpenwheelCarEntity extends Entity {
         for (int substep = 0; substep < PHYSICS_SUBSTEPS; substep++) {
             double subSpeedSquared = velocityLong * velocityLong + velocityLat * velocityLat;
             double subSpeed = Math.sqrt(subSpeedSquared);
-            double subDownforce = 0.5 * AIR_DENSITY * DOWNFORCE_AREA * subSpeedSquared * (isDrsActive() ? DRS_DOWNFORCE_FACTOR : 1.0);
-            double subAeroDrag = 0.5 * AIR_DENSITY * DRAG_AREA * subSpeedSquared * (isDrsActive() ? DRS_DRAG_FACTOR : 1.0);
+            double subDownforce = 0.5 * AIR_DENSITY * DOWNFORCE_AREA * clACoefficient * subSpeedSquared * (isDrsActive() ? DRS_DOWNFORCE_FACTOR : 1.0);
+            double subAeroDrag = 0.5 * AIR_DENSITY * DRAG_AREA * cdACoefficient * subSpeedSquared * (isDrsActive() ? DRS_DRAG_FACTOR : 1.0);
             double subStaticFrontLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT;
             double subStaticRearLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT);
             double subAeroFrontLoad = subDownforce * FRONT_AERO_BALANCE;
@@ -1237,7 +1275,7 @@ public class OpenwheelCarEntity extends Entity {
                     && Math.abs(velocityLong) / 20.0 < gearTopSpeed
                     && subSpeedBlocksPerTick < pitSpeedLimit) {
                 double releaseT = clutchReleaseTicks / (double) CLUTCH_RELEASE_TICKS;
-                double storedPower = enginePowerWatts(Math.max(engineRpm, clutchReleaseRpm)) * setup.powerMultiplier() * damageFactor;
+                double storedPower = enginePowerWatts(Math.max(engineRpm, clutchReleaseRpm)) * setup.powerMultiplier() * setup.accelerationMultiplier() * damageFactor;
                 double clutchForce = driveDirection * storedPower * releaseT / MIN_POWER_SPEED;
                 subDriveForceRequest = driveDirection > 0.0
                     ? Math.max(subDriveForceRequest, clutchForce)
@@ -1279,16 +1317,15 @@ public class OpenwheelCarEntity extends Entity {
             double rrNormal = Math.max(75.0, subNormalRear * 0.5 + rearLateralTransfer * 0.5);
             double subReferenceFrontWheelLoad = CAR_MASS_KG * GRAVITY * FRONT_STATIC_WEIGHT * 0.5;
             double subReferenceRearWheelLoad = CAR_MASS_KG * GRAVITY * (1.0 - FRONT_STATIC_WEIGHT) * 0.5;
-            double compoundGrip = setup.gripMultiplier();
             double subTyreWearGrip = Math.max(0.45, tyreFactor);
-            double flSurfaceMuLat = ASPHALT_MU_LATERAL * flSurfaceGrip * compoundGrip;
-            double frSurfaceMuLat = ASPHALT_MU_LATERAL * frSurfaceGrip * compoundGrip;
-            double rlSurfaceMuLat = ASPHALT_MU_LATERAL * rlSurfaceGrip * compoundGrip;
-            double rrSurfaceMuLat = ASPHALT_MU_LATERAL * rrSurfaceGrip * compoundGrip;
-            double flSurfaceMuLong = ASPHALT_MU_LONGITUDINAL * flSurfaceGrip * compoundGrip;
-            double frSurfaceMuLong = ASPHALT_MU_LONGITUDINAL * frSurfaceGrip * compoundGrip;
-            double rlSurfaceMuLong = ASPHALT_MU_LONGITUDINAL * rlSurfaceGrip * compoundGrip;
-            double rrSurfaceMuLong = ASPHALT_MU_LONGITUDINAL * rrSurfaceGrip * compoundGrip;
+            double flSurfaceMuLat = ASPHALT_MU_LATERAL * flSurfaceGrip * tyreMuCoefficient;
+            double frSurfaceMuLat = ASPHALT_MU_LATERAL * frSurfaceGrip * tyreMuCoefficient;
+            double rlSurfaceMuLat = ASPHALT_MU_LATERAL * rlSurfaceGrip * tyreMuCoefficient;
+            double rrSurfaceMuLat = ASPHALT_MU_LATERAL * rrSurfaceGrip * tyreMuCoefficient;
+            double flSurfaceMuLong = ASPHALT_MU_LONGITUDINAL * flSurfaceGrip * tyreMuCoefficient;
+            double frSurfaceMuLong = ASPHALT_MU_LONGITUDINAL * frSurfaceGrip * tyreMuCoefficient;
+            double rlSurfaceMuLong = ASPHALT_MU_LONGITUDINAL * rlSurfaceGrip * tyreMuCoefficient;
+            double rrSurfaceMuLong = ASPHALT_MU_LONGITUDINAL * rrSurfaceGrip * tyreMuCoefficient;
             double flMuLat = loadSensitiveMu(flSurfaceMuLat * subTyreWearGrip, flNormal, subReferenceFrontWheelLoad);
             double frMuLat = loadSensitiveMu(frSurfaceMuLat * subTyreWearGrip, frNormal, subReferenceFrontWheelLoad);
             double rlMuLat = loadSensitiveMu(rlSurfaceMuLat * subTyreWearGrip, rlNormal, subReferenceRearWheelLoad);
@@ -1309,58 +1346,22 @@ public class OpenwheelCarEntity extends Entity {
             double frLongRequest = -brakeSign * brakeFront;
             double rlLongRequest = driveRear - brakeSign * brakeRear;
             double rrLongRequest = driveRear - brakeSign * brakeRear;
-            double slipSpeed = Math.max(6.0, Math.abs(velocityLong));
             double rollingForceRamp = Math.max(0.0, Math.min(1.0, (subSpeed - 1.5) / 8.5));
             double rollingForceScale = rollingForceRamp * rollingForceRamp * (3.0 - 2.0 * rollingForceRamp);
-            double flEffectiveSteer = steeringAngle - FRONT_TOE_OUT;
-            double frEffectiveSteer = steeringAngle + FRONT_TOE_OUT;
-            double rlEffectiveSteer = REAR_TOE_IN;
-            double rrEffectiveSteer = -REAR_TOE_IN;
-            double flPatchLatSlip = velocityLat + yawRate * FRONT_AXLE_DISTANCE - yawRate * HALF_TRACK_WIDTH - velocityLong * flEffectiveSteer;
-            double frPatchLatSlip = velocityLat + yawRate * FRONT_AXLE_DISTANCE + yawRate * HALF_TRACK_WIDTH - velocityLong * frEffectiveSteer;
-            double rlPatchLatSlip = velocityLat - yawRate * REAR_AXLE_DISTANCE - yawRate * HALF_TRACK_WIDTH - velocityLong * rlEffectiveSteer;
-            double rrPatchLatSlip = velocityLat - yawRate * REAR_AXLE_DISTANCE + yawRate * HALF_TRACK_WIDTH - velocityLong * rrEffectiveSteer;
-            double flSlipAngle = Math.abs(flPatchLatSlip) < 0.04 && Math.abs(yawRate) < 0.01 && Math.abs(steeringAngle) < SLIP_ANGLE_DEADBAND ? 0.0 : Math.atan2(flPatchLatSlip, slipSpeed);
-            double frSlipAngle = Math.abs(frPatchLatSlip) < 0.04 && Math.abs(yawRate) < 0.01 && Math.abs(steeringAngle) < SLIP_ANGLE_DEADBAND ? 0.0 : Math.atan2(frPatchLatSlip, slipSpeed);
-            double rlSlipAngle = Math.abs(rlPatchLatSlip) < 0.04 && Math.abs(yawRate) < 0.01 ? 0.0 : Math.atan2(rlPatchLatSlip, slipSpeed);
-            double rrSlipAngle = Math.abs(rrPatchLatSlip) < 0.04 && Math.abs(yawRate) < 0.01 ? 0.0 : Math.atan2(rrPatchLatSlip, slipSpeed);
-            double compoundStiffness = 0.90 + (compoundGrip - 0.86) * 0.55;
-            double flStiffnessScale = compoundStiffness * subTyreWearGrip * Math.sqrt(flSurfaceGrip);
-            double frStiffnessScale = compoundStiffness * subTyreWearGrip * Math.sqrt(frSurfaceGrip);
-            double rlStiffnessScale = compoundStiffness * subTyreWearGrip * Math.sqrt(rlSurfaceGrip);
-            double rrStiffnessScale = compoundStiffness * subTyreWearGrip * Math.sqrt(rrSurfaceGrip);
-            double flLatTarget = pacejkaLateralForce(flSlipAngle, FRONT_CORNERING_STIFFNESS * 0.5 * rollingForceScale * flStiffnessScale, flMuLat * flNormal);
-            double frLatTarget = pacejkaLateralForce(frSlipAngle, FRONT_CORNERING_STIFFNESS * 0.5 * rollingForceScale * frStiffnessScale, frMuLat * frNormal);
-            double rlLatTarget = pacejkaLateralForce(rlSlipAngle, REAR_CORNERING_STIFFNESS * 0.5 * rollingForceScale * rlStiffnessScale, rlMuLat * rlNormal);
-            double rrLatTarget = pacejkaLateralForce(rrSlipAngle, REAR_CORNERING_STIFFNESS * 0.5 * rollingForceScale * rrStiffnessScale, rrMuLat * rrNormal);
-            double frontRelaxation = tyreRelaxationGain(subSpeed, FRONT_TYRE_RELAXATION_LENGTH, subDt);
-            double rearRelaxation = tyreRelaxationGain(subSpeed, REAR_TYRE_RELAXATION_LENGTH, subDt);
-            relaxedFlLatForce += (flLatTarget - relaxedFlLatForce) * frontRelaxation;
-            relaxedFrLatForce += (frLatTarget - relaxedFrLatForce) * frontRelaxation;
-            relaxedRlLatForce += (rlLatTarget - relaxedRlLatForce) * rearRelaxation;
-            relaxedRrLatForce += (rrLatTarget - relaxedRrLatForce) * rearRelaxation;
-            if (Math.abs(flLatTarget) < 1.0) {
-                relaxedFlLatForce = 0.0;
-            }
-            if (Math.abs(frLatTarget) < 1.0) {
-                relaxedFrLatForce = 0.0;
-            }
-            if (Math.abs(rlLatTarget) < 1.0) {
-                relaxedRlLatForce = 0.0;
-            }
-            if (Math.abs(rrLatTarget) < 1.0) {
-                relaxedRrLatForce = 0.0;
-            }
-            double flLatRequest = relaxedFlLatForce;
-            double frLatRequest = relaxedFrLatForce;
-            double rlLatRequest = relaxedRlLatForce;
-            double rrLatRequest = relaxedRrLatForce;
-
+            double compoundStiffness = 0.90 + (tyreMuCoefficient - 0.86) * 0.55;
+            double flLongLimit = flMuLong * flNormal;
+            double frLongLimit = frMuLong * frNormal;
+            double rlLongLimit = rlMuLong * rlNormal;
+            double rrLongLimit = rrMuLong * rrNormal;
+            double flLatLimit = flMuLat * flNormal;
+            double frLatLimit = frMuLat * frNormal;
+            double rlLatLimit = rlMuLat * rlNormal;
+            double rrLatLimit = rrMuLat * rrNormal;
             if (isAbsEnabled() && brake > 0.0) {
-                flLongRequest = absLimitedBrakeForce(flLongRequest, flLatRequest, flMuLong * flNormal, flMuLat * flNormal);
-                frLongRequest = absLimitedBrakeForce(frLongRequest, frLatRequest, frMuLong * frNormal, frMuLat * frNormal);
-                double rlBrakeLimited = absLimitedBrakeForce(rlLongRequest - driveRear, rlLatRequest, rlMuLong * rlNormal, rlMuLat * rlNormal);
-                double rrBrakeLimited = absLimitedBrakeForce(rrLongRequest - driveRear, rrLatRequest, rrMuLong * rrNormal, rrMuLat * rrNormal);
+                flLongRequest = absLimitedBrakeForce(flLongRequest, relaxedFlLatForce, flLongLimit, flLatLimit);
+                frLongRequest = absLimitedBrakeForce(frLongRequest, relaxedFrLatForce, frLongLimit, frLatLimit);
+                double rlBrakeLimited = absLimitedBrakeForce(rlLongRequest - driveRear, relaxedRlLatForce, rlLongLimit, rlLatLimit);
+                double rrBrakeLimited = absLimitedBrakeForce(rrLongRequest - driveRear, relaxedRrLatForce, rrLongLimit, rrLatLimit);
                 rlLongRequest = driveRear + rlBrakeLimited;
                 rrLongRequest = driveRear + rrBrakeLimited;
             }
@@ -1376,40 +1377,51 @@ public class OpenwheelCarEntity extends Entity {
                 }
             }
             if (isTractionControlEnabled()) {
-                double rearLatUse = Math.max(Math.abs(rlLatRequest) / Math.max(1.0, rlMuLat * rlNormal), Math.abs(rrLatRequest) / Math.max(1.0, rrMuLat * rrNormal));
+                double rearLatUse = Math.max(Math.abs(relaxedRlLatForce) / Math.max(1.0, rlLatLimit), Math.abs(relaxedRrLatForce) / Math.max(1.0, rrLatLimit));
                 double rearTractionControlTarget = rearLatUse < 0.08 ? TRACTION_CONTROL_SLIP_TARGET : Math.sqrt(Math.max(0.0, square(TRACTION_CONTROL_SLIP_TARGET) - square(rearLatUse)));
-                rlLongRequest = clamp(rlLongRequest, -rlMuLong * rlNormal * rearTractionControlTarget, rlMuLong * rlNormal * rearTractionControlTarget);
-                rrLongRequest = clamp(rrLongRequest, -rrMuLong * rrNormal * rearTractionControlTarget, rrMuLong * rrNormal * rearTractionControlTarget);
+                rlLongRequest = clamp(rlLongRequest, -rlLongLimit * rearTractionControlTarget, rlLongLimit * rearTractionControlTarget);
+                rrLongRequest = clamp(rrLongRequest, -rrLongLimit * rearTractionControlTarget, rrLongLimit * rearTractionControlTarget);
             }
-
-            double flLongLimit = flMuLong * flNormal;
-            double frLongLimit = frMuLong * frNormal;
-            double rlLongLimit = rlMuLong * rlNormal;
-            double rrLongLimit = rrMuLong * rrNormal;
-            double flLatLimit = flMuLat * flNormal;
-            double frLatLimit = frMuLat * frNormal;
-            double rlLatLimit = rlMuLat * rlNormal;
-            double rrLatLimit = rrMuLat * rrNormal;
-            double flPatchLongSlip = longitudinalSlipRatio(flLongRequest, FRONT_LONGITUDINAL_STIFFNESS * 0.5 * flStiffnessScale, flLongLimit);
-            double frPatchLongSlip = longitudinalSlipRatio(frLongRequest, FRONT_LONGITUDINAL_STIFFNESS * 0.5 * frStiffnessScale, frLongLimit);
-            double rlPatchLongSlip = longitudinalSlipRatio(rlLongRequest, REAR_LONGITUDINAL_STIFFNESS * 0.5 * rlStiffnessScale, rlLongLimit);
-            double rrPatchLongSlip = longitudinalSlipRatio(rrLongRequest, REAR_LONGITUDINAL_STIFFNESS * 0.5 * rrStiffnessScale, rrLongLimit);
-            double flLongPure = pacejkaLongitudinalForce(flPatchLongSlip, FRONT_LONGITUDINAL_STIFFNESS * 0.5 * flStiffnessScale, flLongLimit);
-            double frLongPure = pacejkaLongitudinalForce(frPatchLongSlip, FRONT_LONGITUDINAL_STIFFNESS * 0.5 * frStiffnessScale, frLongLimit);
-            double rlLongPure = pacejkaLongitudinalForce(rlPatchLongSlip, REAR_LONGITUDINAL_STIFFNESS * 0.5 * rlStiffnessScale, rlLongLimit);
-            double rrLongPure = pacejkaLongitudinalForce(rrPatchLongSlip, REAR_LONGITUDINAL_STIFFNESS * 0.5 * rrStiffnessScale, rrLongLimit);
-            TyreForces flForces = applyCombinedSlip(flLongPure, flLatRequest, flLongLimit, flLatLimit);
-            TyreForces frForces = applyCombinedSlip(frLongPure, frLatRequest, frLongLimit, frLatLimit);
-            TyreForces rlForces = applyCombinedSlip(rlLongPure, rlLatRequest, rlLongLimit, rlLatLimit);
-            TyreForces rrForces = applyCombinedSlip(rrLongPure, rrLatRequest, rrLongLimit, rrLatLimit);
-            double flLongForce = flForces.longitudinal();
-            double frLongForce = frForces.longitudinal();
-            double rlLongForce = rlForces.longitudinal();
-            double rrLongForce = rrForces.longitudinal();
-            double flLatForce = flForces.lateral();
-            double frLatForce = frForces.lateral();
-            double rlLatForce = rlForces.lateral();
-            double rrLatForce = rrForces.lateral();
+            WheelForces flForces = calculateWheelForces(
+                -HALF_TRACK_WIDTH, FRONT_AXLE_DISTANCE, steeringAngle - FRONT_TOE_OUT,
+                velocityLong, velocityLat, yawRate,
+                flLongRequest, flMuLong, flMuLat, flNormal,
+                FRONT_LONGITUDINAL_STIFFNESS * 0.5 * compoundStiffness * subTyreWearGrip * Math.sqrt(flSurfaceGrip),
+                FRONT_CORNERING_STIFFNESS * 0.5 * rollingForceScale * compoundStiffness * subTyreWearGrip * Math.sqrt(flSurfaceGrip),
+                flLongLimit, flLatLimit, FRONT_TYRE_RELAXATION_LENGTH, subDt, subSpeed, steeringReleased, relaxedFlLatForce);
+            WheelForces frForces = calculateWheelForces(
+                HALF_TRACK_WIDTH, FRONT_AXLE_DISTANCE, steeringAngle + FRONT_TOE_OUT,
+                velocityLong, velocityLat, yawRate,
+                frLongRequest, frMuLong, frMuLat, frNormal,
+                FRONT_LONGITUDINAL_STIFFNESS * 0.5 * compoundStiffness * subTyreWearGrip * Math.sqrt(frSurfaceGrip),
+                FRONT_CORNERING_STIFFNESS * 0.5 * rollingForceScale * compoundStiffness * subTyreWearGrip * Math.sqrt(frSurfaceGrip),
+                frLongLimit, frLatLimit, FRONT_TYRE_RELAXATION_LENGTH, subDt, subSpeed, steeringReleased, relaxedFrLatForce);
+            WheelForces rlForces = calculateWheelForces(
+                -HALF_TRACK_WIDTH, -REAR_AXLE_DISTANCE, REAR_TOE_IN,
+                velocityLong, velocityLat, yawRate,
+                rlLongRequest, rlMuLong, rlMuLat, rlNormal,
+                REAR_LONGITUDINAL_STIFFNESS * 0.5 * compoundStiffness * subTyreWearGrip * Math.sqrt(rlSurfaceGrip),
+                REAR_CORNERING_STIFFNESS * 0.5 * rollingForceScale * compoundStiffness * subTyreWearGrip * Math.sqrt(rlSurfaceGrip),
+                rlLongLimit, rlLatLimit, REAR_TYRE_RELAXATION_LENGTH, subDt, subSpeed, steeringReleased, relaxedRlLatForce);
+            WheelForces rrForces = calculateWheelForces(
+                HALF_TRACK_WIDTH, -REAR_AXLE_DISTANCE, -REAR_TOE_IN,
+                velocityLong, velocityLat, yawRate,
+                rrLongRequest, rrMuLong, rrMuLat, rrNormal,
+                REAR_LONGITUDINAL_STIFFNESS * 0.5 * compoundStiffness * subTyreWearGrip * Math.sqrt(rrSurfaceGrip),
+                REAR_CORNERING_STIFFNESS * 0.5 * rollingForceScale * compoundStiffness * subTyreWearGrip * Math.sqrt(rrSurfaceGrip),
+                rrLongLimit, rrLatLimit, REAR_TYRE_RELAXATION_LENGTH, subDt, subSpeed, steeringReleased, relaxedRrLatForce);
+            relaxedFlLatForce = flForces.relaxedLateralForce();
+            relaxedFrLatForce = frForces.relaxedLateralForce();
+            relaxedRlLatForce = rlForces.relaxedLateralForce();
+            relaxedRrLatForce = rrForces.relaxedLateralForce();
+            double flLongForce = flForces.bodyLongitudinalForce();
+            double frLongForce = frForces.bodyLongitudinalForce();
+            double rlLongForce = rlForces.bodyLongitudinalForce();
+            double rrLongForce = rrForces.bodyLongitudinalForce();
+            double flLatForce = flForces.bodyLateralForce();
+            double frLatForce = frForces.bodyLateralForce();
+            double rlLatForce = rlForces.bodyLateralForce();
+            double rrLatForce = rrForces.bodyLateralForce();
             double flDemand = flForces.demand();
             double frDemand = frForces.demand();
             double rlDemand = rlForces.demand();
@@ -1422,8 +1434,7 @@ public class OpenwheelCarEntity extends Entity {
             double dragForce = -Math.signum(velocityLong) * (subAeroDrag + subRollingForce + subSinkDragForce);
             double longitudinalForce = rearLongForce + frontLongForce + dragForce;
             double lateralForce = frontLatForce + rearLatForce;
-            double yawMoment = FRONT_AXLE_DISTANCE * frontLatForce - REAR_AXLE_DISTANCE * rearLatForce
-                + HALF_TRACK_WIDTH * (frLongForce + rrLongForce - flLongForce - rlLongForce);
+            double yawMoment = flForces.yawMoment() + frForces.yawMoment() + rlForces.yawMoment() + rrForces.yawMoment();
             double yawAcceleration = yawMoment / YAW_INERTIA;
             double subVelocityLongBefore = velocityLong;
             double forceAccelerationLong = longitudinalForce / CAR_MASS_KG;
@@ -1462,16 +1473,26 @@ public class OpenwheelCarEntity extends Entity {
             yawDelta += yawRate * subDt;
             driveWorkJoules += Math.max(0.0, (rearLongForce + frontLongForce) * velocityLong) * subDt;
 
-            finalFrontLatForce = frontLatForce;
-            finalRearLatForce = rearLatForce;
-            finalFrontLongForce = frontLongForce;
-            finalRearLongForce = rearLongForce;
-            finalFrontLoad = subNormalFront;
-            finalRearLoad = subNormalRear;
-            finalFrontDemand = Math.max(flDemand, frDemand);
-            finalRearDemand = Math.max(rlDemand, rrDemand);
-            finalFrontSlipAngle = Math.abs(flSlipAngle) >= Math.abs(frSlipAngle) ? flSlipAngle : frSlipAngle;
-            finalRearSlipAngle = Math.abs(rlSlipAngle) >= Math.abs(rrSlipAngle) ? rlSlipAngle : rrSlipAngle;
+            finalFlLatForce = flLatForce;
+            finalFrLatForce = frLatForce;
+            finalRlLatForce = rlLatForce;
+            finalRrLatForce = rrLatForce;
+            finalFlLongForce = flLongForce;
+            finalFrLongForce = frLongForce;
+            finalRlLongForce = rlLongForce;
+            finalRrLongForce = rrLongForce;
+            finalFlLoad = flNormal;
+            finalFrLoad = frNormal;
+            finalRlLoad = rlNormal;
+            finalRrLoad = rrNormal;
+            finalFlDemand = flDemand;
+            finalFrDemand = frDemand;
+            finalRlDemand = rlDemand;
+            finalRrDemand = rrDemand;
+            finalFlSlipAngle = flForces.slipAngle();
+            finalFrSlipAngle = frForces.slipAngle();
+            finalRlSlipAngle = rlForces.slipAngle();
+            finalRrSlipAngle = rrForces.slipAngle();
             finalDownforce = subDownforce;
             finalDragForce = dragForce;
             finalFrontSaturation = Math.max(flDemand, frDemand);
@@ -1489,7 +1510,7 @@ public class OpenwheelCarEntity extends Entity {
         }
         if (gear == REVERSE_GEAR && throttle > 0.0) {
             double reverseTopMetersPerSecond = gearTopSpeed * 20.0;
-            double reverseGrip = Math.max(MIN_SURFACE_MU, surface.grip * setup.gripMultiplier() * Math.max(0.45, tyreFactor));
+            double reverseGrip = Math.max(MIN_SURFACE_MU, surface.grip * tyreMuCoefficient * Math.max(0.45, tyreFactor));
             double reverseAcceleration = GRAVITY * ASPHALT_MU_LONGITUDINAL * reverseGrip * 0.28 * throttle * PHYSICS_DT;
             double reverseVelocityFloor = previousVelocityLong - reverseAcceleration;
             velocityLong = Math.max(-reverseTopMetersPerSecond, Math.min(velocityLong, reverseVelocityFloor));
@@ -1506,24 +1527,36 @@ public class OpenwheelCarEntity extends Entity {
         debugVelocityLat = velocityLat;
         debugDriveForce = driveWorkJoules > 0.0 ? driveWorkJoules / PHYSICS_DT : 0.0;
         debugDragForce = finalDragForce;
-        debugFrontLatForce = finalFrontLatForce;
-        debugRearLatForce = finalRearLatForce;
-        debugFrontLongForce = finalFrontLongForce;
-        debugRearLongForce = finalRearLongForce;
-        debugFrontLoad = finalFrontLoad;
-        debugRearLoad = finalRearLoad;
-        debugFrontDemand = finalFrontDemand;
-        debugRearDemand = finalRearDemand;
-        debugFrontSlipAngle = finalFrontSlipAngle;
-        debugRearSlipAngle = finalRearSlipAngle;
+        debugFlLatForce = finalFlLatForce;
+        debugFrLatForce = finalFrLatForce;
+        debugRlLatForce = finalRlLatForce;
+        debugRrLatForce = finalRrLatForce;
+        debugFlLongForce = finalFlLongForce;
+        debugFrLongForce = finalFrLongForce;
+        debugRlLongForce = finalRlLongForce;
+        debugRrLongForce = finalRrLongForce;
+        debugFlLoad = finalFlLoad;
+        debugFrLoad = finalFrLoad;
+        debugRlLoad = finalRlLoad;
+        debugRrLoad = finalRrLoad;
+        debugFlDemand = finalFlDemand;
+        debugFrDemand = finalFrDemand;
+        debugRlDemand = finalRlDemand;
+        debugRrDemand = finalRrDemand;
+        debugFlSlipAngle = finalFlSlipAngle;
+        debugFrSlipAngle = finalFrSlipAngle;
+        debugRlSlipAngle = finalRlSlipAngle;
+        debugRrSlipAngle = finalRrSlipAngle;
         debugDownforce = finalDownforce;
         setYRot(getYRot() + (float) Math.toDegrees(yawDelta));
         updateFrontSteeringOffGripRelief(finalFrontSaturation, finalRearSaturation);
         tickFrontUndersteerWarning(finalFrontSaturation, finalRearSaturation, speedMetersPerSecond);
 
+        double frontSlipAngle = Math.abs(finalFlSlipAngle) >= Math.abs(finalFrSlipAngle) ? finalFlSlipAngle : finalFrSlipAngle;
+        double rearSlipAngle = Math.abs(finalRlSlipAngle) >= Math.abs(finalRrSlipAngle) ? finalRlSlipAngle : finalRrSlipAngle;
         double frontExcess = Math.max(0.0, finalFrontSaturation - 1.0);
         double rearExcess = Math.max(0.0, finalRearSaturation - 1.0);
-        double slipMetric = Math.abs(finalFrontSlipAngle) * 0.7 + Math.abs(finalRearSlipAngle) * 0.9 + frontExcess + rearExcess;
+        double slipMetric = Math.abs(frontSlipAngle) * 0.7 + Math.abs(rearSlipAngle) * 0.9 + frontExcess + rearExcess;
         double steeringWear = Math.abs(steeringAngle) / Math.max(Math.toRadians(1.0), LOW_SPEED_STEER_ANGLE);
         tyreSlip = Math.max(tyreSlip, Math.min(1.0, slipMetric * Math.min(1.0, speedMetersPerSecond / 18.0)));
         if (speedMetersPerSecond > 1.0) {
@@ -1538,6 +1571,11 @@ public class OpenwheelCarEntity extends Entity {
             newY,
             (forward.z * velocityLong + right.z * velocityLat) / 20.0
         );
+        Vec3 unclampedDelta = delta;
+        delta = clampHorizontalMovement(delta, MAX_REASONABLE_MOVEMENT_BLOCKS_PER_TICK);
+        if (delta != unclampedDelta) {
+            logMovementWarning("physics output clamped", position(), unclampedDelta, delta, throttle, brake, steering, surface);
+        }
 
         setDeltaMovement(delta);
         Vec3 beforeMove = position();
@@ -1562,33 +1600,21 @@ public class OpenwheelCarEntity extends Entity {
         if (onGround() && Math.abs(actualMovement.y) <= maxUpStep() + 0.15) {
             carriedVerticalMovement = 0.0;
         }
+        Vec3 unclampedActualMovement = actualMovement;
+        actualMovement = clampHorizontalMovement(actualMovement, MAX_REASONABLE_MOVEMENT_BLOCKS_PER_TICK);
+        if (actualMovement != unclampedActualMovement) {
+            logMovementWarning("actual movement clamped", beforeMove, unclampedActualMovement, actualMovement, throttle, brake, steering, surface);
+        }
+        double requestedActualDelta = Math.abs(unclampedActualMovement.horizontalDistance() - delta.horizontalDistance());
+        if (requestedActualDelta > 1.0 && unclampedActualMovement.horizontalDistance() > MAX_REASONABLE_MOVEMENT_BLOCKS_PER_TICK) {
+            logMovementWarning("movement/collision discrepancy", beforeMove, delta, unclampedActualMovement, throttle, brake, steering, surface);
+        }
         setDeltaMovement(new Vec3(actualMovement.x, carriedVerticalMovement, actualMovement.z));
         handleEntityImpacts(beforeMove, actualMovement);
         if (!level().isClientSide()) {
             scanLapMarkers(beforeMove, actualMovement);
         }
 
-        boolean shouldDebugMovement = debugMovement && (getControllingPassenger() != null || throttle != 0.0 || brake != 0.0 || steering != 0.0 || horizontalSpeed > 0.01 || actualMovement.horizontalDistance() > 0.01);
-        if (shouldDebugMovement && level().getGameTime() - lastMovementDebugAt >= 20L) {
-            lastMovementDebugAt = level().getGameTime();
-            LOGGER.info("OWR car move id={} passenger={} posBefore={} posAfter={} requested={} actual={} input=({}, {}, {}) gear={} surface={} collision=({}, {}) onGround={} speedBefore={} speedAfter={}",
-                getId(),
-                getControllingPassenger() == null ? "none" : getControllingPassenger().getScoreboardName(),
-                beforeMove,
-                position(),
-                delta,
-                actualMovement,
-                throttle,
-                brake,
-                steering,
-                gear,
-                surface,
-                horizontalCollision,
-                verticalCollision,
-                onGround(),
-                horizontalSpeed,
-                actualMovement.horizontalDistance());
-        }
 
         double newSpeed = Math.sqrt(actualMovement.x * actualMovement.x + actualMovement.z * actualMovement.z);
         int rpm = engineRpm;
@@ -1602,6 +1628,47 @@ public class OpenwheelCarEntity extends Entity {
         entityData.set(RPM, rpm);
         entityData.set(TYRE_SLIP, (float) Math.max(0.0, Math.min(1.0, tyreSlip)));
         previousHorizontalSpeed = horizontalSpeed;
+    }
+
+    private void logMovementWarning(String reason, Vec3 before, Vec3 requested, Vec3 actual, double throttle, double brake, double steering, SurfaceProfile surface) {
+        if (level().isClientSide()) {
+            return;
+        }
+        long time = level().getGameTime();
+        if (time - lastMovementWarningAt < 20L) {
+            return;
+        }
+        lastMovementWarningAt = time;
+        LOGGER.warn("OWR car movement warning reason={} id={} passenger={} pos={} before={} requested={} actual={} input=({}, {}, {}) gear={} surface={} collision=({}, {}) onGround={} speedKmh={} delta={}",
+            reason,
+            getId(),
+            getControllingPassenger() == null ? "none" : getControllingPassenger().getScoreboardName(),
+            blockPosition(),
+            before,
+            requested,
+            actual,
+            throttle,
+            brake,
+            steering,
+            getGear(),
+            surface,
+            horizontalCollision,
+            verticalCollision,
+            onGround(),
+            getSpeedKmh(),
+            getDeltaMovement());
+    }
+
+    private Vec3 clampHorizontalMovement(Vec3 movement, double maxHorizontalDistance) {
+        double horizontalDistance = movement.horizontalDistance();
+        if (Double.isFinite(horizontalDistance) && horizontalDistance <= maxHorizontalDistance) {
+            return movement;
+        }
+        if (!Double.isFinite(horizontalDistance) || horizontalDistance <= 1.0E-6) {
+            return new Vec3(0.0, movement.y, 0.0);
+        }
+        double scale = maxHorizontalDistance / horizontalDistance;
+        return new Vec3(movement.x * scale, movement.y, movement.z * scale);
     }
 
     private Vec3 moveWithPreemptiveClimb(Vec3 requestedMovement) {
@@ -1644,7 +1711,7 @@ public class OpenwheelCarEntity extends Entity {
         double dyTotal = -snapCorrection + floorDelta;
         AABB targetBox = currentFootprint.move(requestedMovement.x, requestedMovement.y + dyTotal, requestedMovement.z);
         if (!level().noCollision(this, targetBox)) {
-            for (net.minecraft.world.phys.shapes.VoxelShape shape : level().getBlockCollisions(this, targetBox)) {
+            for (VoxelShape shape : level().getBlockCollisions(this, targetBox)) {
                 if (shape.max(Direction.Axis.Y) > targetFloor + step + 0.01) {
                     return null;
                 }
@@ -1666,8 +1733,7 @@ public class OpenwheelCarEntity extends Entity {
             for (int x = x0; x <= x1; x++) {
                 for (int z = z0; z <= z1; z++) {
                     BlockPos pos = new BlockPos(x, y, z);
-                    net.minecraft.world.phys.shapes.VoxelShape shape = level().getBlockState(pos)
-                        .getCollisionShape(level(), pos, CollisionContext.of(this));
+                    VoxelShape shape = level().getBlockState(pos).getCollisionShape(level(), pos, CollisionContext.of(this));
                     if (shape.isEmpty()) continue;
                     double h = pos.getY() + shape.max(Direction.Axis.Y);
                     if (h >= minY - 1.0E-4 && h <= maxY + 1.0E-4) {
@@ -2123,6 +2189,51 @@ public class OpenwheelCarEntity extends Entity {
         return clamp(requestedForce / stiffness, -1.8, 1.8);
     }
 
+    private static WheelForces calculateWheelForces(
+            double localX, double localZ, double steerAngle,
+            double velocityLong, double velocityLat, double yawRate,
+            double longitudinalRequest, double muLong, double muLat, double normalLoad,
+            double longitudinalStiffness, double lateralStiffness,
+            double longitudinalLimit, double lateralLimit,
+            double relaxationLength, double dt, double carSpeed,
+            boolean steeringReleased, double previousRelaxedLateralForce) {
+        double patchLatVelocity = velocityLat + yawRate * localZ;
+        double patchLongVelocity = velocityLong - yawRate * localX;
+        double cos = Math.cos(steerAngle);
+        double sin = Math.sin(steerAngle);
+        double wheelLongVelocity = patchLongVelocity * cos + patchLatVelocity * sin;
+        double wheelLatVelocity = -patchLongVelocity * sin + patchLatVelocity * cos;
+        double slipAngle = Math.abs(wheelLatVelocity) < 0.04 && Math.abs(yawRate) < 0.01 && Math.abs(steerAngle) < SLIP_ANGLE_DEADBAND
+            ? 0.0
+            : Math.atan2(wheelLatVelocity, Math.max(6.0, Math.abs(wheelLongVelocity)));
+        double longitudinalSlip = longitudinalSlipRatio(longitudinalRequest, longitudinalStiffness, longitudinalLimit);
+        double longitudinalForce = pacejkaLongitudinalForce(longitudinalSlip, longitudinalStiffness, longitudinalLimit);
+        double lateralTarget = lateralTyreForceTarget(slipAngle, wheelLatVelocity, lateralStiffness, lateralLimit, muLat * normalLoad, carSpeed);
+        double relaxationGain = carSpeed < STATIC_TYRE_SPEED_THRESHOLD ? 1.0 : tyreRelaxationGain(Math.abs(wheelLongVelocity), relaxationLength, dt);
+        double relaxedLateralForce = previousRelaxedLateralForce + (lateralTarget - previousRelaxedLateralForce) * relaxationGain;
+        if (steeringReleased && carSpeed >= STATIC_TYRE_SPEED_THRESHOLD) {
+            relaxedLateralForce += (lateralTarget - relaxedLateralForce) * relaxationGain;
+        }
+        if (Math.abs(lateralTarget) < 1.0) {
+            relaxedLateralForce = 0.0;
+        }
+        TyreForces combined = applyCombinedSlip(longitudinalForce, relaxedLateralForce, longitudinalLimit, lateralLimit);
+        double bodyLongitudinalForce = combined.longitudinal() * cos - combined.lateral() * sin;
+        double bodyLateralForce = combined.longitudinal() * sin + combined.lateral() * cos;
+        double yawMoment = localZ * bodyLateralForce - localX * bodyLongitudinalForce;
+        return new WheelForces(bodyLongitudinalForce, bodyLateralForce, combined.demand(), slipAngle, relaxedLateralForce, yawMoment);
+    }
+
+    private static double lateralTyreForceTarget(double slipAngle, double wheelLatVelocity, double stiffness, double lateralLimit, double staticLimit, double carSpeed) {
+        double dynamicForce = pacejkaLateralForce(slipAngle, stiffness, lateralLimit);
+        if (carSpeed >= STATIC_TYRE_SPEED_THRESHOLD) {
+            return dynamicForce;
+        }
+        double staticForce = clamp(-wheelLatVelocity * stiffness, -staticLimit, staticLimit);
+        double blend = smoothstep(carSpeed / STATIC_TYRE_SPEED_THRESHOLD);
+        return staticForce + (dynamicForce - staticForce) * blend;
+    }
+
     private static TyreForces applyCombinedSlip(double longitudinalForce, double lateralForce, double longitudinalLimit, double lateralLimit) {
         double demand = combinedSlipDemand(longitudinalForce, lateralForce, longitudinalLimit, lateralLimit);
         if (demand <= 1.0) {
@@ -2133,6 +2244,7 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     private record TyreForces(double longitudinal, double lateral, double demand) {}
+    private record WheelForces(double bodyLongitudinalForce, double bodyLateralForce, double demand, double slipAngle, double relaxedLateralForce, double yawMoment) {}
 
     private static double tyreRelaxationGain(double speedMetersPerSecond, double relaxationLength, double dt) {
         double timeConstant = relaxationLength / Math.max(1.0, speedMetersPerSecond);
@@ -2153,6 +2265,11 @@ public class OpenwheelCarEntity extends Entity {
 
     private static double square(double value) {
         return value * value;
+    }
+
+    private static double smoothstep(double value) {
+        double t = clamp(value, 0.0, 1.0);
+        return t * t * (3.0 - 2.0 * t);
     }
 
     private static double clamp(double value, double min, double max) {

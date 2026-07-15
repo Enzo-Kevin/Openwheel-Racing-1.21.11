@@ -1,5 +1,6 @@
 package com.openwheelracing.client.hud;
 
+import com.openwheelracing.client.input.WheelInputSettings;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import com.openwheelracing.content.race.OWRLapRecords;
 import java.util.List;
@@ -23,52 +24,61 @@ public final class CarHudOverlay {
         }
 
         Font font = minecraft.font;
+        WheelInputSettings settings = WheelInputSettings.get();
         int x = graphics.guiWidth() - PANEL_WIDTH - 8;
         int y = graphics.guiHeight() - PANEL_HEIGHT - 8;
 
-        int outlineColor = car.isDrsActive() ? 0xFF00DD44 : 0xFFDA1A20;
-        graphics.fill(x, y, x + PANEL_WIDTH, y + PANEL_HEIGHT, 0x99000000);
-        graphics.renderOutline(x, y, PANEL_WIDTH, PANEL_HEIGHT, outlineColor);
-        graphics.drawString(font, String.format("SPD %3.0f km/h", car.getSpeedKmh()), x + 8, y + 7, 0xFFFFFFFF, false);
-        graphics.drawString(font, "GEAR " + car.getGearLabel(), x + 8, y + 18, 0xFFFFFFFF, false);
-        graphics.drawString(font, "RPM  " + car.getRpm(), x + 8, y + 29, 0xFFFFFFFF, false);
-        graphics.drawString(font, String.format("TYRE %3.0f%%", Math.max(0.0f, 100.0f - car.getTyreWearPercent())), x + 8, y + 40, car.getTyreWearPercent() > 70.0f ? 0xFFFFDD66 : 0xFFB7FFB7, false);
-        graphics.drawString(font, String.format("DMG %3.0f%%", car.getDamagePercent()), x + 68, y + 40, car.getDamagePercent() > 70.0f ? 0xFFFF7777 : 0xFFFFFFFF, false);
-        graphics.drawString(font, "ABS " + (car.isAbsEnabled() ? "ON" : "OFF"), x + 68, y + 51, car.isAbsEnabled() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
-        graphics.drawString(font, "TC " + (car.isTractionControlEnabled() ? "ON" : "OFF"), x + 68, y + 62, car.isTractionControlEnabled() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
-        graphics.drawString(font, "DRS " + (car.isDrsActive() ? "OPEN" : "----"), x + 68, y + 73, car.isDrsActive() ? 0xFF00DD44 : 0xFF777777, false);
-        int displayedLapTicks = car.getCompletedLapLingerTicks() > 0 ? car.getCompletedLapTicks() : car.getCurrentLapTicks();
-        int lapColor = car.getCompletedLapLingerTicks() > 0 ? completedLapColor(car.getCompletedLapResult()) : 0xFFFFFFFF;
-        graphics.drawString(font, "LAP  " + formatLapTime(displayedLapTicks), x + 8, y + 51, lapColor, false);
-        graphics.drawString(font, "CP   " + (car.hasCheckpoint() ? "OK" : "--"), x + 8, y + 62, car.hasCheckpoint() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
-        graphics.drawString(font, "BEST " + formatLapTime(car.getBestLapTicks()), x + 8, y + 73, 0xFFFFFF99, false);
+        if (settings.showDrivingHud) {
+            int outlineColor = car.isDrsActive() ? 0xFF00DD44 : 0xFFDA1A20;
+            graphics.fill(x, y, x + PANEL_WIDTH, y + PANEL_HEIGHT, 0x99000000);
+            graphics.renderOutline(x, y, PANEL_WIDTH, PANEL_HEIGHT, outlineColor);
+            graphics.drawString(font, String.format("SPD %3.0f km/h", car.getSpeedKmh()), x + 8, y + 7, 0xFFFFFFFF, false);
+            graphics.drawString(font, "GEAR " + car.getGearLabel(), x + 8, y + 18, 0xFFFFFFFF, false);
+            graphics.drawString(font, "RPM  " + car.getRpm(), x + 8, y + 29, 0xFFFFFFFF, false);
+            graphics.drawString(font, String.format("TYRE %3.0f%%", Math.max(0.0f, 100.0f - car.getTyreWearPercent())), x + 8, y + 40, car.getTyreWearPercent() > 70.0f ? 0xFFFFDD66 : 0xFFB7FFB7, false);
+            graphics.drawString(font, String.format("DMG %3.0f%%", car.getDamagePercent()), x + 68, y + 40, car.getDamagePercent() > 70.0f ? 0xFFFF7777 : 0xFFFFFFFF, false);
+            graphics.drawString(font, "ABS " + (car.isAbsEnabled() ? "ON" : "OFF"), x + 68, y + 51, car.isAbsEnabled() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
+            graphics.drawString(font, "TC " + (car.isTractionControlEnabled() ? "ON" : "OFF"), x + 68, y + 62, car.isTractionControlEnabled() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
+            graphics.drawString(font, "DRS " + (car.isDrsActive() ? "OPEN" : "----"), x + 68, y + 73, car.isDrsActive() ? 0xFF00DD44 : 0xFF777777, false);
+            int displayedLapTicks = car.getCompletedLapLingerTicks() > 0 ? car.getCompletedLapTicks() : car.getCurrentLapTicks();
+            int lapColor = car.getCompletedLapLingerTicks() > 0 ? completedLapColor(car.getCompletedLapResult()) : 0xFFFFFFFF;
+            graphics.drawString(font, "LAP  " + formatLapTime(displayedLapTicks), x + 8, y + 51, lapColor, false);
+            graphics.drawString(font, "CP   " + (car.hasCheckpoint() ? "OK" : "--"), x + 8, y + 62, car.hasCheckpoint() ? 0xFFB7FFB7 : 0xFFFFDD66, false);
+            graphics.drawString(font, "BEST " + formatLapTime(car.getBestLapTicks()), x + 8, y + 73, 0xFFFFFF99, false);
 
-        int setupX = 8;
-        int setupY = graphics.guiHeight() - 89;
-        graphics.fill(setupX, setupY, setupX + 172, setupY + 81, 0x99000000);
-        graphics.renderOutline(setupX, setupY, 172, 81, 0xFF555555);
-        graphics.drawString(font, "PWR " + car.getSetup().power(), setupX + 7, setupY + 7, 0xFFFF9999, false);
-        graphics.drawString(font, "TYRE C" + (car.getTyreCompound() + 1), setupX + 7, setupY + 18, 0xFFB7FFB7, false);
-        graphics.drawString(font, "AERO " + car.getSetup().aero(), setupX + 7, setupY + 29, 0xFF99DDFF, false);
-        graphics.drawString(font, "GEAR " + car.getSetup().gearing(), setupX + 52, setupY + 29, 0xFFFFDD88, false);
-        graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.drive"), setupX + 7, setupY + 43, 0xFFDDDDDD, false);
-        graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.shift"), setupX + 7, setupY + 54, 0xFFDDDDDD, false);
-        graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.exit"), setupX + 7, setupY + 65, 0xFFDDDDDD, false);
-
-        renderPhysicsDebug(graphics, font, car);
-
-        if (car.isInPitStop()) {
-            int remaining = car.getPitStopTicks();
-            int pct = 100 - (remaining * 100 / 60);
-            int barWidth = 116;
-            int barX = x - 54;
-            int barY = y - 20;
-            graphics.fill(barX, barY, barX + barWidth, barY + 12, 0x99000000);
-            graphics.fill(barX + 1, barY + 1, barX + 1 + barWidth * pct / 100, barY + 11, 0xFFDA1A20);
-            graphics.drawString(font, "PIT STOP  " + (remaining / 20 + 1) + "s", barX + 4, barY + 2, 0xFFFFFFFF, false);
+            if (car.isInPitStop()) {
+                int remaining = car.getPitStopTicks();
+                int pct = 100 - (remaining * 100 / 60);
+                int barWidth = 116;
+                int barX = x - 54;
+                int barY = y - 20;
+                graphics.fill(barX, barY, barX + barWidth, barY + 12, 0x99000000);
+                graphics.fill(barX + 1, barY + 1, barX + 1 + barWidth * pct / 100, barY + 11, 0xFFDA1A20);
+                graphics.drawString(font, "PIT STOP  " + (remaining / 20 + 1) + "s", barX + 4, barY + 2, 0xFFFFFFFF, false);
+            }
         }
 
-        renderRankingBoard(graphics, font);
+        if (settings.showSetupHud) {
+            int setupX = 8;
+            int setupY = graphics.guiHeight() - 89;
+            graphics.fill(setupX, setupY, setupX + 172, setupY + 81, 0x99000000);
+            graphics.renderOutline(setupX, setupY, 172, 81, 0xFF555555);
+            graphics.drawString(font, "PWR " + car.getSetup().power(), setupX + 7, setupY + 7, 0xFFFF9999, false);
+            graphics.drawString(font, "TYRE C" + (car.getTyreCompound() + 1), setupX + 7, setupY + 18, 0xFFB7FFB7, false);
+            graphics.drawString(font, "AERO " + car.getSetup().aero(), setupX + 7, setupY + 29, 0xFF99DDFF, false);
+            graphics.drawString(font, "GEAR " + car.getSetup().gearing(), setupX + 52, setupY + 29, 0xFFFFDD88, false);
+            graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.drive"), setupX + 7, setupY + 43, 0xFFDDDDDD, false);
+            graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.shift"), setupX + 7, setupY + 54, 0xFFDDDDDD, false);
+            graphics.drawString(font, Component.translatable("hud.openwheelracing.controls.exit"), setupX + 7, setupY + 65, 0xFFDDDDDD, false);
+        }
+
+        if (settings.showPhysicsDebugHud) {
+            renderPhysicsDebug(graphics, font, car);
+        }
+
+        if (settings.showRankingHud) {
+            renderRankingBoard(graphics, font);
+        }
     }
 
     private static void renderRankingBoard(GuiGraphics graphics, Font font) {
@@ -124,11 +134,16 @@ public final class CarHudOverlay {
         debugLine(graphics, font, x, row, 0xFFFFFFFF, String.format("vL %.2f vY %.2f yaw %.3f", car.getDebugVelocityLong(), car.getDebugVelocityLat(), car.getDebugYawRate())); row += lineHeight;
         debugLine(graphics, font, x, row, 0xFFFFFFFF, String.format("steer %.1f slip %.2f", car.getFrontWheelSteerDegrees(), car.getTyreSlipIntensity())); row += lineHeight;
         debugLine(graphics, font, x, row, 0xFFFFDD88, String.format("drv %.0f drag %.0f df %.0f", car.getDebugDriveForce(), car.getDebugDragForce(), car.getDebugDownforce())); row += lineHeight;
-        debugLine(graphics, font, x, row, 0xFFB7FFB7, String.format("Fx F %.0f R %.0f", car.getDebugFrontLongForce(), car.getDebugRearLongForce())); row += lineHeight;
-        debugLine(graphics, font, x, row, 0xFFB7FFB7, String.format("Fy F %.0f R %.0f", car.getDebugFrontLatForce(), car.getDebugRearLatForce())); row += lineHeight;
-        debugLine(graphics, font, x, row, 0xFFDDDDDD, String.format("Fz F %.0f R %.0f", car.getDebugFrontLoad(), car.getDebugRearLoad())); row += lineHeight;
-        debugLine(graphics, font, x, row, demandColor(car.getDebugFrontDemand()), String.format("dem F %.2f R %.2f", car.getDebugFrontDemand(), car.getDebugRearDemand())); row += lineHeight;
-        debugLine(graphics, font, x, row, 0xFFFFAAAA, String.format("aSlip F %.1f R %.1f", car.getDebugFrontSlipAngleDegrees(), car.getDebugRearSlipAngleDegrees()));
+        debugLine(graphics, font, x, row, 0xFFB7FFB7, String.format("Fx  FL %5.0f FR %5.0f", car.getDebugFlLongForce(), car.getDebugFrLongForce())); row += lineHeight;
+        debugLine(graphics, font, x, row, 0xFFB7FFB7, String.format("    RL %5.0f RR %5.0f", car.getDebugRlLongForce(), car.getDebugRrLongForce())); row += lineHeight;
+        debugLine(graphics, font, x, row, 0xFFB7FFB7, String.format("Fy  FL %5.0f FR %5.0f", car.getDebugFlLatForce(), car.getDebugFrLatForce())); row += lineHeight;
+        debugLine(graphics, font, x, row, 0xFFB7FFB7, String.format("    RL %5.0f RR %5.0f", car.getDebugRlLatForce(), car.getDebugRrLatForce())); row += lineHeight;
+        debugLine(graphics, font, x, row, 0xFFDDDDDD, String.format("Fz  FL %5.0f FR %5.0f", car.getDebugFlLoad(), car.getDebugFrLoad())); row += lineHeight;
+        debugLine(graphics, font, x, row, 0xFFDDDDDD, String.format("    RL %5.0f RR %5.0f", car.getDebugRlLoad(), car.getDebugRrLoad())); row += lineHeight;
+        debugLine(graphics, font, x, row, demandColor(maxDemand(car)), String.format("dem FL %.2f FR %.2f", car.getDebugFlDemand(), car.getDebugFrDemand())); row += lineHeight;
+        debugLine(graphics, font, x, row, demandColor(maxDemand(car)), String.format("    RL %.2f RR %.2f", car.getDebugRlDemand(), car.getDebugRrDemand())); row += lineHeight;
+        debugLine(graphics, font, x, row, 0xFFFFAAAA, String.format("slp FL %.1f FR %.1f", car.getDebugFlSlipAngleDegrees(), car.getDebugFrSlipAngleDegrees())); row += lineHeight;
+        debugLine(graphics, font, x, row, 0xFFFFAAAA, String.format("    RL %.1f RR %.1f", car.getDebugRlSlipAngleDegrees(), car.getDebugRrSlipAngleDegrees()));
     }
 
     private static void debugLine(GuiGraphics graphics, Font font, int x, int y, int color, String text) {
@@ -152,6 +167,13 @@ public final class CarHudOverlay {
             return 0xFFFFDD66;
         }
         return 0xFFB7FFB7;
+    }
+
+    private static double maxDemand(OpenwheelCarEntity car) {
+        return Math.max(
+            Math.max(car.getDebugFlDemand(), car.getDebugFrDemand()),
+            Math.max(car.getDebugRlDemand(), car.getDebugRrDemand())
+        );
     }
 
     private static String formatLapTime(int ticks) {

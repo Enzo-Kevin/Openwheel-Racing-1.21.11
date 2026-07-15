@@ -1,10 +1,13 @@
 package com.openwheelracing.content.block.entity;
 
+import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.item.TyreItem;
 import com.openwheelracing.content.menu.CarAssemblyMenu;
 import com.openwheelracing.registry.OWRDataComponents;
 import com.openwheelracing.content.recipe.CarAssemblyRecipe;
 import com.openwheelracing.registry.OWRBlockEntities;
+import com.openwheelracing.content.car.CarLivery;
+import com.openwheelracing.content.car.CarLiveryColors;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.registry.OWRItems;
 import com.openwheelracing.registry.OWRRecipes;
@@ -87,7 +90,10 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
     }
 
     public boolean isValidForSlot(int slot, ItemStack stack) {
-        return slot != SLOT_OUTPUT && stack.is(requiredItemForSlot(slot));
+        if (slot == SLOT_OUTPUT) {
+            return stack.is(OWRItems.PROTOTYPE_CAR_SPAWN.get()) && stack.getCount() == 1;
+        }
+        return stack.is(requiredItemForSlot(slot));
     }
 
     private boolean canAssemble(CarAssemblyRecipe recipe) {
@@ -97,7 +103,7 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
 
         ItemStack output = getItem(SLOT_OUTPUT);
         ItemStack result = recipe.result();
-        return output.isEmpty() || ItemStack.isSameItemSameComponents(output, result) && output.getCount() + result.getCount() <= output.getMaxStackSize();
+        return output.isEmpty();
     }
 
     private void assembleCar(CarAssemblyRecipe recipe) {
@@ -113,11 +119,14 @@ public class CarAssemblyWorkstationBlockEntity extends BlockEntity implements Co
             int remainingPercent = TyreItem.getRemainingPercent(tyreStack);
             result.set(OWRDataComponents.CAR_SETUP.get(), new PrototypeCarSetup(setup.power(), compound, setup.aero(), setup.gearing()));
             result.set(OWRDataComponents.TYRE_WEAR.get(), 100 - remainingPercent);
-            int livery = com.openwheelracing.content.item.PrototypeCarItem.getLivery(result);
+            int livery = PrototypeCarItem.getLivery(result);
+            CarLiveryColors colors = PrototypeCarItem.getLiveryColors(result);
             if (result.get(OWRDataComponents.CAR_LIVERY.get()) == null) {
                 result.set(OWRDataComponents.CAR_LIVERY.get(), livery);
+                colors = CarLiveryColors.fromPreset(CarLivery.fromIndex(livery));
             }
-            com.openwheelracing.content.item.PrototypeCarItem.applyLiveryItemDisplay(result, livery);
+            result.set(OWRDataComponents.CAR_LIVERY_COLORS.get(), colors);
+            PrototypeCarItem.applyLiveryItemDisplay(result, colors);
         }
 
         ItemStack output = getItem(SLOT_OUTPUT);

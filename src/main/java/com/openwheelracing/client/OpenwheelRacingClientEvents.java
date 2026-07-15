@@ -4,7 +4,7 @@ import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.client.hud.CarHudOverlay;
 import com.openwheelracing.client.input.OWRClientInputHandler;
 import com.openwheelracing.client.input.OWRKeyMappings;
-import com.openwheelracing.client.screen.WheelSetupScreen;
+import com.openwheelracing.client.screen.OpenwheelSetupScreen;
 import com.openwheelracing.client.sound.CarSoundManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
@@ -43,7 +43,7 @@ public final class OpenwheelRacingClientEvents {
         if (!(screen instanceof PauseScreen)) {
             return;
         }
-        event.addListener(Button.builder(Component.translatable("screen.openwheelracing.wheel_setup.open"), button -> Minecraft.getInstance().setScreen(new WheelSetupScreen(screen)))
+        event.addListener(Button.builder(Component.translatable("screen.openwheelracing.setup.open"), button -> Minecraft.getInstance().setScreen(new OpenwheelSetupScreen(screen)))
             .bounds(screen.width - 142, screen.height - 28, 134, 20)
             .build());
     }

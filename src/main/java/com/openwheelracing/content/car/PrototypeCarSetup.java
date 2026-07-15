@@ -36,23 +36,43 @@ public record PrototypeCarSetup(int power, int grip, int aero, int gearing) {
     }
 
     public double gripMultiplier() {
-        return 0.86 + (4 - grip) * 0.07;
+        return tyreMuCoefficient();
+    }
+
+    public double tyreMuCoefficient() {
+        return 1.07 + (grip - DEFAULT.grip()) * 0.07;
     }
 
     public double aeroMultiplier() {
-        return 0.92 + aero * 0.05;
+        return clACoefficient();
+    }
+
+    public double clACoefficient() {
+        return 1.0 + (aero - DEFAULT.aero()) * 0.08;
     }
 
     public double dragMultiplier() {
-        return 1.0 - aero * 0.018;
+        return cdACoefficient();
+    }
+
+    public double cdACoefficient() {
+        return 1.0 + (aero - DEFAULT.aero()) * 0.045;
     }
 
     public double gearingMultiplier() {
-        return 0.86 + gearing * 0.12;
+        return topSpeedCoefficient();
+    }
+
+    public double topSpeedCoefficient() {
+        return 1.0 / gearRatioCoefficient();
     }
 
     public double accelerationMultiplier() {
-        return 1.0 - gearing * 0.08;
+        return gearRatioCoefficient();
+    }
+
+    public double gearRatioCoefficient() {
+        return 1.0 + (DEFAULT.gearing() - gearing) * 0.10;
     }
 
     public double fuelUseMultiplier() {
@@ -60,7 +80,7 @@ public record PrototypeCarSetup(int power, int grip, int aero, int gearing) {
     }
 
     public double tyreWearMultiplier() {
-        return 0.75 + (4 - grip) * 0.18;
+        return 0.93 + (grip - DEFAULT.grip()) * 0.18;
     }
 
     private static int clamp(int value, int max) {

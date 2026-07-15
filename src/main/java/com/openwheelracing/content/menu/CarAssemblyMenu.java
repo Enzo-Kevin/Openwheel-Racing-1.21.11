@@ -2,6 +2,7 @@ package com.openwheelracing.content.menu;
 
 import com.openwheelracing.content.block.entity.CarAssemblyWorkstationBlockEntity;
 import com.openwheelracing.registry.OWRBlocks;
+import com.openwheelracing.registry.OWRItems;
 import com.openwheelracing.registry.OWRMenus;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.Container;
@@ -78,6 +79,7 @@ public class CarAssemblyMenu extends AbstractContainerMenu {
                 if (!moveItemStackTo(stack, PLAYER_INVENTORY_START, HOTBAR_END, false)) {
                     return ItemStack.EMPTY;
                 }
+            } else if (moveToCarTuningSlot(stack)) {
             } else if (!moveToMatchingInput(stack)) {
                 if (index < PLAYER_INVENTORY_END) {
                     if (!moveItemStackTo(stack, HOTBAR_START, HOTBAR_END, false)) {
@@ -110,27 +112,32 @@ public class CarAssemblyMenu extends AbstractContainerMenu {
     }
 
     private void addWorkstationSlots(Container container) {
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_CHASSIS, 44, 32));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_ENGINE, 44, 58));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_TIRES, 14, 42));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_AERO_KIT, 44, 8));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_GEARBOX, 64, 58));
-        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_STEERING_CONTROLS, 64, 32));
-        addSlot(new OutputSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_OUTPUT, 98, 40));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_CHASSIS, 52, 36));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_ENGINE, 52, 70));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_TIRES, 18, 53));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_AERO_KIT, 52, 16));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_GEARBOX, 86, 70));
+        addSlot(new ComponentSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_STEERING_CONTROLS, 86, 36));
+        addSlot(new CarTuningSlot(container, CarAssemblyWorkstationBlockEntity.SLOT_OUTPUT, 130, 45));
     }
 
     private void addPlayerInventory(Inventory playerInventory) {
         for (int row = 0; row < 3; row++) {
             for (int column = 0; column < 9; column++) {
-                addSlot(new Slot(playerInventory, column + row * 9 + 9, 8 + column * 18, 96 + row * 18));
+                addSlot(new Slot(playerInventory, column + row * 9 + 9, 46 + column * 18, 136 + row * 18));
             }
         }
     }
 
     private void addPlayerHotbar(Inventory playerInventory) {
         for (int column = 0; column < 9; column++) {
-            addSlot(new Slot(playerInventory, column, 8 + column * 18, 154));
+            addSlot(new Slot(playerInventory, column, 46 + column * 18, 194));
         }
+    }
+
+    private boolean moveToCarTuningSlot(ItemStack stack) {
+        Slot tuningSlot = slots.get(CarAssemblyWorkstationBlockEntity.SLOT_OUTPUT);
+        return tuningSlot.mayPlace(stack) && moveItemStackTo(stack, CarAssemblyWorkstationBlockEntity.SLOT_OUTPUT, CarAssemblyWorkstationBlockEntity.SLOT_OUTPUT + 1, false);
     }
 
     private boolean moveToMatchingInput(ItemStack stack) {
@@ -154,14 +161,24 @@ public class CarAssemblyMenu extends AbstractContainerMenu {
         }
     }
 
-    private static class OutputSlot extends Slot {
-        OutputSlot(Container container, int slot, int x, int y) {
+    private static class CarTuningSlot extends Slot {
+        CarTuningSlot(Container container, int slot, int x, int y) {
             super(container, slot, x, y);
         }
 
         @Override
         public boolean mayPlace(ItemStack stack) {
-            return false;
+            return container instanceof CarAssemblyWorkstationBlockEntity workstation && workstation.isValidForSlot(getSlotIndex(), stack);
+        }
+
+        @Override
+        public int getMaxStackSize() {
+            return 1;
+        }
+
+        @Override
+        public int getMaxStackSize(ItemStack stack) {
+            return stack.is(OWRItems.PROTOTYPE_CAR_SPAWN.get()) ? 1 : 0;
         }
     }
 }

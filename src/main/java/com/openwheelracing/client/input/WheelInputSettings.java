@@ -22,6 +22,10 @@ public class WheelInputSettings {
     public int selectedJoystickId = -1;
     public String selectedJoystickName = "";
     public boolean combinedPedals;
+    public Boolean showDrivingHud;
+    public Boolean showSetupHud;
+    public Boolean showRankingHud;
+    public Boolean showPhysicsDebugHud;
     public AxisBinding steering = new AxisBinding(-1, false, -1.0f, 1.0f, 0.0f, 0.08f, 1.0f, 1.0f);
     public AxisBinding throttle = new AxisBinding(-1, true, -1.0f, 1.0f, 1.0f, 0.03f, 1.0f, 1.0f);
     public AxisBinding brake = new AxisBinding(-1, true, -1.0f, 1.0f, 1.0f, 0.03f, 1.0f, 1.0f);
@@ -117,6 +121,18 @@ public class WheelInputSettings {
         if (combinedPedal == null) {
             combinedPedal = defaults().combinedPedal;
         }
+        if (showDrivingHud == null) {
+            showDrivingHud = true;
+        }
+        if (showSetupHud == null) {
+            showSetupHud = true;
+        }
+        if (showRankingHud == null) {
+            showRankingHud = true;
+        }
+        if (showPhysicsDebugHud == null) {
+            showPhysicsDebugHud = true;
+        }
         EnumMap<ButtonRole, Integer> sanitizedButtons = new EnumMap<>(ButtonRole.class);
         if (buttons != null) {
             for (ButtonRole role : ButtonRole.values()) {
@@ -137,6 +153,10 @@ public class WheelInputSettings {
     public static WheelInputSettings defaults() {
         WheelInputSettings settings = new WheelInputSettings();
         settings.version = CURRENT_VERSION;
+        settings.showDrivingHud = true;
+        settings.showSetupHud = true;
+        settings.showRankingHud = true;
+        settings.showPhysicsDebugHud = true;
         settings.buttons = new EnumMap<>(ButtonRole.class);
         return settings;
     }

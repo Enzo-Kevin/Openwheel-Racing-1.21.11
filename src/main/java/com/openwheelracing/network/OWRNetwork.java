@@ -3,6 +3,7 @@ package com.openwheelracing.network;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import com.openwheelracing.OpenwheelRacing;
 import com.openwheelracing.content.car.CarLivery;
+import com.openwheelracing.content.car.CarLiveryColors;
 import com.openwheelracing.content.car.PrototypeCarSetup;
 import com.openwheelracing.content.item.PrototypeCarItem;
 import com.openwheelracing.content.menu.CarAssemblyMenu;
@@ -59,6 +60,11 @@ public final class OWRNetwork {
             .encoder(CycleLiveryMessage::encode)
             .decoder(CycleLiveryMessage::decode)
             .consumerMainThread(CycleLiveryMessage::handle)
+            .add();
+        CHANNEL.messageBuilder(CycleLiveryColorMessage.class)
+            .encoder(CycleLiveryColorMessage::encode)
+            .decoder(CycleLiveryColorMessage::decode)
+            .consumerMainThread(CycleLiveryColorMessage::handle)
             .add();
         CHANNEL.messageBuilder(ShiftMessage.class)
             .encoder(ShiftMessage::encode)
@@ -252,8 +258,36 @@ public final class OWRNetwork {
                 }
                 int current = PrototypeCarItem.getLivery(stack);
                 int livery = CarLivery.wrapIndex(current + message.delta);
+                CarLiveryColors colors = CarLiveryColors.fromPreset(CarLivery.fromIndex(livery));
                 stack.set(OWRDataComponents.CAR_LIVERY.get(), livery);
-                PrototypeCarItem.applyLiveryItemDisplay(stack, livery);
+                PrototypeCarItem.setLiveryColors(stack, colors);
+                menu.slotsChanged(menu.getContainer());
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public record CycleLiveryColorMessage(int channel, int delta) {
+        private static void encode(CycleLiveryColorMessage message, FriendlyByteBuf buffer) {
+            buffer.writeInt(message.channel);
+            buffer.writeInt(message.delta);
+        }
+
+        private static CycleLiveryColorMessage decode(FriendlyByteBuf buffer) {
+            return new CycleLiveryColorMessage(buffer.readInt(), buffer.readInt());
+        }
+
+        private static void handle(CycleLiveryColorMessage message, CustomPayloadEvent.Context context) {
+            context.enqueueWork(() -> {
+                ServerPlayer player = context.getSender();
+                if (player == null || !(player.containerMenu instanceof CarAssemblyMenu menu)) {
+                    return;
+                }
+                ItemStack stack = menu.getOutputStack();
+                if (!stack.is(OWRItems.PROTOTYPE_CAR_SPAWN.get())) {
+                    return;
+                }
+                PrototypeCarItem.setLiveryColors(stack, PrototypeCarItem.getLiveryColors(stack).cycle(message.channel, message.delta));
                 menu.slotsChanged(menu.getContainer());
             });
             context.setPacketHandled(true);

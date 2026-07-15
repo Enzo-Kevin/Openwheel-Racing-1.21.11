@@ -14,7 +14,8 @@ public class ColoredObjModel {
         float x1, float y1, float z1,
         float x2, float y2, float z2,
         float nx, float ny, float nz,
-        int materialRgb
+        int materialRgb,
+        String group
     ) {}
 
     public final List<Face> faces;
@@ -40,6 +41,7 @@ public class ColoredObjModel {
         List<float[]> positions = new ArrayList<>();
         List<Face> faces = new ArrayList<>();
         int materialRgb = 0xFF000000;
+        String group = "";
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(rm.getResource(loc).orElseThrow().open()))) {
             String line;
@@ -48,6 +50,8 @@ public class ColoredObjModel {
                 if (line.startsWith("v ")) {
                     String[] p = line.split("\\s+");
                     positions.add(new float[] {Float.parseFloat(p[1]), Float.parseFloat(p[2]), Float.parseFloat(p[3])});
+                } else if (line.startsWith("g ")) {
+                    group = line.substring(2).trim();
                 } else if (line.startsWith("usemtl ")) {
                     materialRgb = parseMaterialColor(line.substring(7).trim());
                 } else if (line.startsWith("f ")) {
@@ -59,7 +63,7 @@ public class ColoredObjModel {
                     float[] b = positions.get(vertexIndex(tokens[2]));
                     float[] c = positions.get(vertexIndex(tokens[3]));
                     float[] n = normal(a, b, c);
-                    faces.add(new Face(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], n[0], n[1], n[2], materialRgb));
+                    faces.add(new Face(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], n[0], n[1], n[2], materialRgb, group));
                 }
             }
         } catch (Exception e) {

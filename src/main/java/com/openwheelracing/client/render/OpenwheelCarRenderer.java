@@ -3,7 +3,7 @@ package com.openwheelracing.client.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
-import com.openwheelracing.content.car.CarLivery;
+import com.openwheelracing.content.car.CarLiveryColors;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import java.util.List;
 
@@ -36,12 +36,16 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     private static final float MODEL_Y_SCALE = TARGET_HEIGHT / (SOURCE_MAX_Y - SOURCE_MIN_Y);
     private static final float MODEL_Z_SCALE = TARGET_LENGTH / (SOURCE_MAX_Z - SOURCE_MIN_Z);
     private static final float MODEL_Z_CENTER = (SOURCE_MIN_Z + SOURCE_MAX_Z) * 0.5f;
+    private static final float FRONT_WHEEL_LEFT_PIVOT_X = -0.647447f;
+    private static final float FRONT_WHEEL_RIGHT_PIVOT_X = 0.647447f;
+    private static final float FRONT_WHEEL_PIVOT_Z = -1.556256f;
 
     private static final int CARBON = rgb(24, 24, 28);
     private static final int TYRE = rgb(18, 18, 22);
     private static final int METAL = rgb(155, 155, 150);
 
     private static ColoredObjModel carModel;
+    private static float[] frontWheelPivots;
     // Pre-baked color array per livery index — populated once per livery, reused every frame.
     private static final java.util.HashMap<Integer, int[]> BAKED_COLORS = new java.util.HashMap<>();
 
@@ -62,7 +66,7 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         state.frontWheelSteerDegrees = car.getFrontWheelSteerDegrees();
         state.lightCoords = 15728880;
         state.tyreCompound = car.getTyreCompound();
-        state.livery = car.getLivery();
+        state.liveryColors = car.getLiveryColors();
     }
 
     @Override
@@ -70,16 +74,15 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         super.submit(state, poseStack, nodeCollector, cameraState);
         loadModel();
 
-        int[] bakedColors = BAKED_COLORS.computeIfAbsent(state.livery, liveryIndex -> {
-            CarLivery livery = CarLivery.fromIndex(liveryIndex);
-            return carModel.bakeColors(face -> liveryColor(face, livery));
-        });
+        int liveryColorKey = liveryColorKey(state.liveryColors);
+        int[] bakedColors = BAKED_COLORS.computeIfAbsent(liveryColorKey, ignored -> carModel.bakeColors(face -> liveryColor(face, state.liveryColors)));
 
         poseStack.pushPose();
         poseStack.mulPose(Axis.YP.rotationDegrees(-state.yRot));
 
         int light = state.lightCoords;
-        nodeCollector.submitCustomGeometry(poseStack, RT_CAR, (pose, consumer) -> drawModel(consumer, pose, carModel, bakedColors, light));
+        float frontWheelSteerDegrees = state.frontWheelSteerDegrees;
+        nodeCollector.submitCustomGeometry(poseStack, RT_CAR, (pose, consumer) -> drawModel(consumer, pose, carModel, bakedColors, light, frontWheelSteerDegrees));
 
         poseStack.popPose();
     }
@@ -87,69 +90,119 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     private static void loadModel() {
         if (carModel == null) {
             carModel = ColoredObjModel.load(Minecraft.getInstance().getResourceManager(), CAR_OBJ);
+            frontWheelPivots = bakeFrontWheelPivots(carModel);
         }
     }
 
-    private static void drawModel(VertexConsumer consumer, PoseStack.Pose pose, ColoredObjModel model, int[] bakedColors, int light) {
+    private static float[] bakeFrontWheelPivots(ColoredObjModel model) {
+        float[] pivots = new float[model.faces.size()];
+        List<ColoredObjModel.Face> faces = model.faces;
+        for (int i = 0; i < faces.size(); i++) {
+            String group = faces.get(i).group();
+            pivots[i] = group.equals("Wheel_Front_Left") ? FRONT_WHEEL_LEFT_PIVOT_X : group.equals("Wheel_Front_Right") ? FRONT_WHEEL_RIGHT_PIVOT_X : Float.NaN;
+        }
+        return pivots;
+    }
+
+    private static void drawModel(VertexConsumer consumer, PoseStack.Pose pose, ColoredObjModel model, int[] bakedColors, int light, float frontWheelSteerDegrees) {
+        float steerRadians = (float) Math.toRadians(-frontWheelSteerDegrees);
+        float steerSin = (float) Math.sin(steerRadians);
+        float steerCos = (float) Math.cos(steerRadians);
         List<ColoredObjModel.Face> faces = model.faces;
         for (int i = 0; i < faces.size(); i++) {
             ColoredObjModel.Face face = faces.get(i);
             int color = bakedColors[i];
-            vertex(consumer, pose, face.x0(), face.y0(), face.z0(), face.nx(), face.ny(), face.nz(), color, light);
-            vertex(consumer, pose, face.x1(), face.y1(), face.z1(), face.nx(), face.ny(), face.nz(), color, light);
-            vertex(consumer, pose, face.x2(), face.y2(), face.z2(), face.nx(), face.ny(), face.nz(), color, light);
-            vertex(consumer, pose, face.x2(), face.y2(), face.z2(), face.nx(), face.ny(), face.nz(), color, light);
+            float pivotX = frontWheelPivots[i];
+            if (Float.isNaN(pivotX)) {
+                vertex(consumer, pose, face.x0(), face.y0(), face.z0(), face.nx(), face.ny(), face.nz(), color, light);
+                vertex(consumer, pose, face.x1(), face.y1(), face.z1(), face.nx(), face.ny(), face.nz(), color, light);
+                vertex(consumer, pose, face.x2(), face.y2(), face.z2(), face.nx(), face.ny(), face.nz(), color, light);
+                vertex(consumer, pose, face.x2(), face.y2(), face.z2(), face.nx(), face.ny(), face.nz(), color, light);
+            } else {
+                steeredVertex(consumer, pose, face.x0(), face.y0(), face.z0(), face.nx(), face.ny(), face.nz(), color, light, pivotX, steerSin, steerCos);
+                steeredVertex(consumer, pose, face.x1(), face.y1(), face.z1(), face.nx(), face.ny(), face.nz(), color, light, pivotX, steerSin, steerCos);
+                steeredVertex(consumer, pose, face.x2(), face.y2(), face.z2(), face.nx(), face.ny(), face.nz(), color, light, pivotX, steerSin, steerCos);
+                steeredVertex(consumer, pose, face.x2(), face.y2(), face.z2(), face.nx(), face.ny(), face.nz(), color, light, pivotX, steerSin, steerCos);
+            }
         }
     }
 
-    private static int liveryColor(ColoredObjModel.Face face, CarLivery livery) {
+    private static int liveryColorKey(CarLiveryColors colors) {
+        return colors.body() | (colors.accent1() << 8) | (colors.accent2() << 16);
+    }
+
+    private static int liveryColor(ColoredObjModel.Face face, CarLiveryColors colors) {
         int materialRgb = face.materialRgb();
         int r = (materialRgb >> 16) & 255;
         int g = (materialRgb >> 8) & 255;
         int b = materialRgb & 255;
         int brightness = Math.max(r, Math.max(g, b));
+        String group = face.group();
 
-        if (isWheelFace(face)) {
+        if (group.startsWith("Wheel_")) {
             return TYRE;
         }
-        if (r == 0 && g == 0 && b == 0) {
+        if (group.equals("Underfloor-mid") || group.equals("Diffuser")) {
             return CARBON;
         }
-        if (brightness <= 4) {
-            return livery.bodySide();
+        if (group.endsWith("-FW-Endplate") || group.startsWith("RW-")) {
+            return fixedAeroDetailColor(r, g, b, brightness);
         }
-        if (brightness <= 40) {
-            return TYRE;
+        if (group.endsWith("-Front-Connector")) {
+            return materialDetailColor(r, g, b, brightness, METAL, colors.accent1Side(), colors.accent2Side());
         }
-        if (r > 180 && g < 90 && b < 80) {
-            return livery.accent2Side();
+        if (group.equals("FW-Tip")) {
+            return materialDetailColor(r, g, b, brightness, colors.accent2Top(), colors.accent1Top(), METAL);
         }
-        if (r > 220 && g > 180 && b > 120) {
-            return livery.accent2Top();
+        if (group.equals("Upper-Body")) {
+            return materialDetailColor(r, g, b, brightness, colors.bodyTop(), colors.accent1Top(), colors.accent2Top());
         }
-        if (brightness > 120 && Math.abs(r - g) < 18 && Math.abs(g - b) < 18) {
-            return livery.accent1Side();
+        if (group.equals("LeftSection") || group.equals("RightSection")) {
+            return materialDetailColor(r, g, b, brightness, colors.bodySide(), colors.accent1Side(), colors.accent2Side());
+        }
+        if (group.equals("MidSection")) {
+            return materialDetailColor(r, g, b, brightness, colors.bodyBottom(), colors.accent1Bottom(), colors.accent2Bottom());
+        }
+        return materialDetailColor(r, g, b, brightness, colors.bodySide(), colors.accent1Side(), colors.accent2Side());
+    }
+
+    private static int fixedAeroDetailColor(int r, int g, int b, int brightness) {
+        if (r == 0 && g == 0 && b == 0) {
+            return CARBON;
         }
         if (brightness > 120) {
             return METAL;
         }
-        return livery.bodyBottom();
+        return CARBON;
     }
 
-    private static boolean isWheelFace(ColoredObjModel.Face face) {
-        float centerX = (face.x0() + face.x1() + face.x2()) / 3.0f;
-        float centerY = (face.y0() + face.y1() + face.y2()) / 3.0f;
-        float centerZ = (face.z0() + face.z1() + face.z2()) / 3.0f;
-        return inWheelBox(centerX, centerY, centerZ, -0.84f, -0.40f, -4.78f, -4.05f)
-            || inWheelBox(centerX, centerY, centerZ, 0.40f, 0.84f, -4.78f, -4.05f)
-            || inWheelBox(centerX, centerY, centerZ, -0.84f, -0.40f, -1.85f, -1.20f)
-            || inWheelBox(centerX, centerY, centerZ, 0.40f, 0.84f, -1.85f, -1.20f);
+    private static int materialDetailColor(int r, int g, int b, int brightness, int baseColor, int accent1, int accent2) {
+        if (r == 0 && g == 0 && b == 0) {
+            return CARBON;
+        }
+        if (r > 180 && g < 90 && b < 80) {
+            return accent2;
+        }
+        if (r > 220 && g > 180 && b > 120) {
+            return accent2;
+        }
+        if (brightness > 120 && Math.abs(r - g) < 18 && Math.abs(g - b) < 18) {
+            return accent1;
+        }
+        if (brightness > 120) {
+            return METAL;
+        }
+        return baseColor;
     }
 
-    private static boolean inWheelBox(float x, float y, float z, float minX, float maxX, float minZ, float maxZ) {
-        return x >= minX && x <= maxX
-            && y >= -0.32f && y <= 0.25f
-            && z >= minZ && z <= maxZ;
+    private static void steeredVertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float normalX, float normalY, float normalZ, int color, int light, float pivotX, float steerSin, float steerCos) {
+        float dx = x - pivotX;
+        float dz = z - FRONT_WHEEL_PIVOT_Z;
+        float steeredX = pivotX + dx * steerCos + dz * steerSin;
+        float steeredZ = FRONT_WHEEL_PIVOT_Z - dx * steerSin + dz * steerCos;
+        float steeredNormalX = normalX * steerCos + normalZ * steerSin;
+        float steeredNormalZ = -normalX * steerSin + normalZ * steerCos;
+        vertex(consumer, pose, steeredX, y, steeredZ, steeredNormalX, normalY, steeredNormalZ, color, light);
     }
 
     private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float normalX, float normalY, float normalZ, int color, int light) {
@@ -170,6 +223,6 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         public float frontWheelSteerDegrees;
         public int lightCoords;
         public int tyreCompound;
-        public int livery;
+        public CarLiveryColors liveryColors = CarLiveryColors.DEFAULT;
     }
 }
