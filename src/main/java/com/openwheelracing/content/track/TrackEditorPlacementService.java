@@ -377,6 +377,8 @@ public final class TrackEditorPlacementService {
             || block == Blocks.GRAY_CONCRETE
             || block == Blocks.BLACK_CONCRETE
             || block == Blocks.RED_CONCRETE
+            || block == Blocks.CYAN_CONCRETE
+            || block == Blocks.BLUE_CONCRETE
             || block == Blocks.SAND
             || block == Blocks.GRASS_BLOCK
             || block == Blocks.DIRT

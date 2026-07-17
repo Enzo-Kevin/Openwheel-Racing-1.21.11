@@ -27,10 +27,10 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.FluidTags;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
@@ -100,6 +100,10 @@ public class OpenwheelCarEntity extends Entity {
     private static final double[] GEAR_TOP_SPEEDS = {0.0, 80.0 * SPEED_TO_BLOCKS_PER_TICK, 120.0 * SPEED_TO_BLOCKS_PER_TICK, 150.0 * SPEED_TO_BLOCKS_PER_TICK, 190.0 * SPEED_TO_BLOCKS_PER_TICK, 235.0 * SPEED_TO_BLOCKS_PER_TICK, 275.0 * SPEED_TO_BLOCKS_PER_TICK, 310.0 * SPEED_TO_BLOCKS_PER_TICK, 350.0 * SPEED_TO_BLOCKS_PER_TICK};
     private static final double MAX_REASONABLE_SPEED_BLOCKS_PER_TICK = 420.0 * SPEED_TO_BLOCKS_PER_TICK;
     private static final double MAX_REASONABLE_MOVEMENT_BLOCKS_PER_TICK = MAX_REASONABLE_SPEED_BLOCKS_PER_TICK + 0.35;
+    private static final double PASSIVE_GROUND_DRAG = 0.92;
+    private static final double PASSIVE_AIR_DRAG = 0.985;
+    private static final double PASSIVE_YAW_DAMPING = 0.70;
+    private static final double TERRAIN_CLIMB_CLEARANCE = 0.08;
     private static final double CAR_MASS_KG = 805.0;
     private static final double GRAVITY = 9.81;
     private static final double PHYSICS_DT = 1.0 / 20.0;
@@ -936,13 +940,13 @@ public class OpenwheelCarEntity extends Entity {
     private enum SurfaceProfile {
         //                          grip   drag   sinkDrag  wearMult  lapValid
         ASPHALT(                    VehiclePhysics.ASPHALT_GRIP,    VehiclePhysics.ASPHALT_DRAG,    0.00,     1.0,     true),
-        CONCRETE(                   0.92,                          0.995,                          0.00,     1.1,     true),
+        CONCRETE(                   0.93,                          0.990,                          0.00,     1.1,     true),
         KERB(                       0.78,                          0.991,                          0.01,     1.8,     true),
         PIT_LANE(                   VehiclePhysics.PIT_LANE_GRIP,   VehiclePhysics.PIT_LANE_DRAG,   0.00,     0.6,     true),
-        DIRT(                       0.58,  0.952,  0.05,     1.4,     false),
-        GRASS(                      0.42,  0.930,  0.08,     1.6,     false),
-        GRAVEL(                     0.45,  0.940,  0.16,     2.0,     false),
-        SAND(                       0.28,  0.900,  0.28,     2.4,     false),
+        DIRT(                       0.58,  0.925,  0.10,     1.4,     false),
+        GRASS(                      0.42,  0.900,  0.14,     1.6,     false),
+        GRAVEL(                     0.45,  0.910,  0.24,     2.0,     false),
+        SAND(                       0.28,  0.860,  0.40,     2.4,     false),
         WATER(                      0.02,  0.720,  0.35,     0.2,     false);
 
         final double grip;
@@ -1151,7 +1155,52 @@ public class OpenwheelCarEntity extends Entity {
         inputThrottle = 0;
         inputBrake = 0;
         inputSteering = 0;
+        if (getControllingPassenger() == null) {
+            tickPassiveMovement(debugMovement);
+            return;
+        }
         tickMovement(throttle, brake, steering, debugMovement);
+    }
+
+    private void tickPassiveMovement(boolean debugMovement) {
+        Vec3 requestedMovement = getDeltaMovement();
+        SurfaceProfile surface = getCurrentSurface();
+        double drag = onGround() ? Math.min(PASSIVE_GROUND_DRAG, surface.drag) : PASSIVE_AIR_DRAG;
+        Vec3 delta = new Vec3(requestedMovement.x * drag, onGround() ? 0.0 : requestedMovement.y - 0.04, requestedMovement.z * drag);
+        if (delta.horizontalDistanceSqr() < 1.0E-5) {
+            delta = new Vec3(0.0, delta.y, 0.0);
+            resetTyreRelaxation();
+        }
+        yawRate *= PASSIVE_YAW_DAMPING;
+        steeringAngle *= 0.65;
+        if (Math.abs(yawRate) < 0.01) {
+            yawRate = 0.0;
+        }
+        setYRot(getYRot() + (float) Math.toDegrees(yawRate * PHYSICS_DT));
+        delta = clampHorizontalMovement(delta, MAX_REASONABLE_MOVEMENT_BLOCKS_PER_TICK);
+
+        setDeltaMovement(delta);
+        Vec3 beforeMove = position();
+        lastTerrainPositionCorrectionY = 0.0;
+        Vec3 actualMovement = moveWithPreemptiveClimb(delta);
+        double groundSnapDelta = snapToNearbyGround(delta, actualMovement);
+        if (groundSnapDelta < 0.0) {
+            actualMovement = actualMovement.add(0.0, groundSnapDelta, 0.0);
+        }
+        lastClimbDelta = actualMovement.y;
+        lastGroundSnapDelta = groundSnapDelta;
+        double carriedVerticalMovement = actualMovement.y;
+        if (onGround() && Math.abs(actualMovement.y) <= maxUpStep() + 0.15) {
+            carriedVerticalMovement = 0.0;
+        }
+        actualMovement = clampHorizontalMovement(actualMovement, MAX_REASONABLE_MOVEMENT_BLOCKS_PER_TICK);
+        setDeltaMovement(new Vec3(actualMovement.x, carriedVerticalMovement, actualMovement.z));
+        handleEntityImpacts(beforeMove, actualMovement);
+
+        entityData.set(SPEED, (float)(actualMovement.horizontalDistance() * 72.0));
+        entityData.set(RPM, updateEngineRpm(actualMovement.horizontalDistance(), getGear(), gearTopSpeed(getGear(), setup), 0.0, false, false));
+        entityData.set(TYRE_SLIP, 0.0f);
+        previousHorizontalSpeed = requestedMovement.horizontalDistance();
     }
 
     private void tickMovement(double throttle, double brake, double steering, boolean debugMovement) {
@@ -1675,14 +1724,70 @@ public class OpenwheelCarEntity extends Entity {
         Vec3 beforeMove = position();
         Vec3 terrainMovement = terrainFollowingMovement(beforeMove, requestedMovement);
         if (terrainMovement != null) {
+            if (emptyShapeBlockIntersectsMovement(beforeMove, terrainMovement)) {
+                return stopHorizontalAtEmptyShapeBlock(beforeMove, requestedMovement);
+            }
             setPos(beforeMove.x + terrainMovement.x, beforeMove.y + terrainMovement.y, beforeMove.z + terrainMovement.z);
             horizontalCollision = false;
             verticalCollision = false;
             setOnGround(true);
             return terrainMovement;
         }
+        if (emptyShapeBlockIntersectsMovement(beforeMove, requestedMovement)) {
+            return stopHorizontalAtEmptyShapeBlock(beforeMove, requestedMovement);
+        }
         move(MoverType.SELF, requestedMovement);
         return position().subtract(beforeMove);
+    }
+
+    private Vec3 stopHorizontalAtEmptyShapeBlock(Vec3 beforeMove, Vec3 requestedMovement) {
+        horizontalCollision = true;
+        if (Math.abs(requestedMovement.y) <= 1.0E-6) {
+            return Vec3.ZERO;
+        }
+        move(MoverType.SELF, new Vec3(0.0, requestedMovement.y, 0.0));
+        return position().subtract(beforeMove);
+    }
+
+    private boolean emptyShapeBlockIntersectsMovement(Vec3 beforeMove, Vec3 movement) {
+        double horizontalDistance = movement.horizontalDistance();
+        if (horizontalDistance < 1.0E-6) {
+            return false;
+        }
+        int samples = Math.max(1, (int) Math.ceil(horizontalDistance / 0.20));
+        for (int sample = 1; sample <= samples; sample++) {
+            double t = sample / (double) samples;
+            AABB footprint = getBoundingBox()
+                .move(beforeMove.subtract(position()))
+                .move(movement.x * t, 0.0, movement.z * t)
+                .inflate(0.02, 0.0, 0.02);
+            if (emptyShapeBlockIntersects(footprint)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean emptyShapeBlockIntersects(AABB box) {
+        int x0 = (int) Math.floor(box.minX);
+        int x1 = (int) Math.floor(box.maxX - 1.0E-6);
+        int z0 = (int) Math.floor(box.minZ);
+        int z1 = (int) Math.floor(box.maxZ - 1.0E-6);
+        int y0 = (int) Math.floor(box.minY);
+        int y1 = (int) Math.floor(box.maxY - 1.0E-6);
+        for (int y = y0; y <= y1; y++) {
+            for (int x = x0; x <= x1; x++) {
+                for (int z = z0; z <= z1; z++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    BlockState state = level().getBlockState(pos);
+                    VoxelShape shape = state.getCollisionShape(level(), pos, CollisionContext.of(this));
+                    if (shape.isEmpty() && !state.isAir() && !state.canBeReplaced()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private Vec3 terrainFollowingMovement(Vec3 beforeMove, Vec3 requestedMovement) {
@@ -1708,6 +1813,9 @@ public class OpenwheelCarEntity extends Entity {
         if (floorDelta > step + 1.0E-4 || floorDelta < -step - 0.15) {
             return null;
         }
+        if (floorDelta > TERRAIN_CLIMB_CLEARANCE && hasBlockingShapeAbove(currentFootprint, requestedMovement, targetFloor)) {
+            return null;
+        }
         double dyTotal = -snapCorrection + floorDelta;
         AABB targetBox = currentFootprint.move(requestedMovement.x, requestedMovement.y + dyTotal, requestedMovement.z);
         if (!level().noCollision(this, targetBox)) {
@@ -1719,6 +1827,36 @@ public class OpenwheelCarEntity extends Entity {
         }
         lastTerrainPositionCorrectionY = -snapCorrection;
         return new Vec3(requestedMovement.x, requestedMovement.y + dyTotal, requestedMovement.z);
+    }
+
+    private boolean hasBlockingShapeAbove(AABB currentFootprint, Vec3 requestedMovement, double targetFloor) {
+        AABB sweptFootprint = new AABB(
+            Math.min(currentFootprint.minX, currentFootprint.minX + requestedMovement.x),
+            targetFloor + TERRAIN_CLIMB_CLEARANCE,
+            Math.min(currentFootprint.minZ, currentFootprint.minZ + requestedMovement.z),
+            Math.max(currentFootprint.maxX, currentFootprint.maxX + requestedMovement.x),
+            targetFloor + maxUpStep() + TERRAIN_CLIMB_CLEARANCE,
+            Math.max(currentFootprint.maxZ, currentFootprint.maxZ + requestedMovement.z)
+        ).inflate(0.02, 0.0, 0.02);
+
+        int x0 = (int) Math.floor(sweptFootprint.minX);
+        int x1 = (int) Math.floor(sweptFootprint.maxX - 1.0E-6);
+        int z0 = (int) Math.floor(sweptFootprint.minZ);
+        int z1 = (int) Math.floor(sweptFootprint.maxZ - 1.0E-6);
+        int y0 = (int) Math.floor(sweptFootprint.minY);
+        int y1 = (int) Math.floor(sweptFootprint.maxY);
+        for (int y = y0; y <= y1; y++) {
+            for (int x = x0; x <= x1; x++) {
+                for (int z = z0; z <= z1; z++) {
+                    BlockPos pos = new BlockPos(x, y, z);
+                    VoxelShape shape = level().getBlockState(pos).getCollisionShape(level(), pos, CollisionContext.of(this));
+                    if (!shape.isEmpty() && shape.bounds().move(pos).intersects(sweptFootprint)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private double footprintFloorHeight(AABB box, double minY, double maxY) {

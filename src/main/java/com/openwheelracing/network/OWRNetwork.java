@@ -26,6 +26,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -726,8 +727,11 @@ public final class OWRNetwork {
                 OWRLapRecords records = OWRLapRecords.get(player.level());
                 records.getLap(message.lapId).ifPresent(record -> {
                     if (records.invalidateLap(message.lapId, player.getUUID(), "race director")) {
-                player.level().getServer().getPlayerList().broadcastSystemMessage(Component.translatable("message.openwheelracing.race_director.lap_invalidated", record.driverName(), formatLapTime(record.lapTicks()), player.getGameProfile().name()), false);
+                        player.level().getServer().getPlayerList().broadcastSystemMessage(Component.translatable("message.openwheelracing.race_director.lap_invalidated", record.driverName(), formatLapTime(record.lapTicks()), player.getGameProfile().name()), false);
                         sendRaceDirectorSnapshot(player, menu.createSnapshot(player.level()));
+                        if (player.level() instanceof ServerLevel serverLevel) {
+                            broadcastRankingBoard(serverLevel.getServer(), serverLevel);
+                        }
                     }
                 });
             });

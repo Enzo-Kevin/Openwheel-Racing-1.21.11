@@ -5,8 +5,7 @@ import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.world.phys.Vec3;
 
 final class CarSoundSet {
-    private CarEngineSoundInstance engineLow;
-    private CarEngineSoundInstance engineHigh;
+    private final CarEngineSoundInstance[] engines = new CarEngineSoundInstance[CarEngineSoundInstance.sampleCount()];
     private final CarTyreSoundInstance frontLeft;
     private final CarTyreSoundInstance frontRight;
     private final CarTyreSoundInstance rearLeft;
@@ -18,8 +17,6 @@ final class CarSoundSet {
     private CarSoundSet(OpenwheelCarEntity car, Vec3 listenerPosition) {
         this.car = car;
         this.listenerPosition = listenerPosition;
-        engineLow = CarEngineSoundInstance.lowTone(car, listenerPosition);
-        engineHigh = CarEngineSoundInstance.highTone(car, listenerPosition);
         frontLeft = CarTyreSoundInstance.frontLeft(car, listenerPosition);
         frontRight = CarTyreSoundInstance.frontRight(car, listenerPosition);
         rearLeft = CarTyreSoundInstance.rearLeft(car, listenerPosition);
@@ -28,8 +25,7 @@ final class CarSoundSet {
 
     static CarSoundSet start(SoundManager soundManager, OpenwheelCarEntity car, Vec3 listenerPosition) {
         CarSoundSet soundSet = new CarSoundSet(car, listenerPosition);
-        soundManager.play(soundSet.engineLow);
-        soundManager.play(soundSet.engineHigh);
+        soundSet.updateEngines(soundManager);
         soundManager.play(soundSet.frontLeft);
         soundManager.play(soundSet.frontRight);
         soundManager.play(soundSet.rearLeft);
@@ -39,8 +35,11 @@ final class CarSoundSet {
 
     void replaceCar(OpenwheelCarEntity car) {
         this.car = car;
-        engineLow.replaceCar(car);
-        engineHigh.replaceCar(car);
+        for (CarEngineSoundInstance engine : engines) {
+            if (engine != null) {
+                engine.replaceCar(car);
+            }
+        }
         frontLeft.replaceCar(car);
         frontRight.replaceCar(car);
         rearLeft.replaceCar(car);
@@ -49,24 +48,42 @@ final class CarSoundSet {
 
     void updateListener(Vec3 listenerPosition) {
         this.listenerPosition = listenerPosition;
-        engineLow.updateListener(listenerPosition);
-        engineHigh.updateListener(listenerPosition);
+        for (CarEngineSoundInstance engine : engines) {
+            if (engine != null) {
+                engine.updateListener(listenerPosition);
+            }
+        }
         frontLeft.updateListener(listenerPosition);
         frontRight.updateListener(listenerPosition);
         rearLeft.updateListener(listenerPosition);
         rearRight.updateListener(listenerPosition);
     }
 
-    // Restart any engine track the sound pool silently evicted.
-    // Tyre instances are non-critical so we leave them alone.
-    void repairEngines(SoundManager soundManager) {
-        if (engineLow.isStopped()) {
-            engineLow = CarEngineSoundInstance.lowTone(car, listenerPosition);
-            soundManager.play(engineLow);
+    void updateEngines(SoundManager soundManager) {
+        float rpm = CarEngineSoundInstance.displayedRpm(car);
+        int first = CarEngineSoundInstance.firstAudibleSample(rpm);
+        int second = CarEngineSoundInstance.secondAudibleSample(rpm);
+
+        for (int i = 0; i < engines.length; i++) {
+            if (i != first && i != second && engines[i] != null) {
+                soundManager.stop(engines[i]);
+                engines[i] = null;
+            }
         }
-        if (engineHigh.isStopped()) {
-            engineHigh = CarEngineSoundInstance.highTone(car, listenerPosition);
-            soundManager.play(engineHigh);
+        ensureEngine(soundManager, first);
+        if (second >= 0) {
+            ensureEngine(soundManager, second);
+        }
+    }
+
+    private void ensureEngine(SoundManager soundManager, int sampleIndex) {
+        if (sampleIndex < 0) {
+            return;
+        }
+        CarEngineSoundInstance engine = engines[sampleIndex];
+        if (engine == null || engine.isStopped()) {
+            engines[sampleIndex] = CarEngineSoundInstance.rpmSample(car, listenerPosition, sampleIndex);
+            soundManager.play(engines[sampleIndex]);
         }
     }
 
@@ -75,8 +92,11 @@ final class CarSoundSet {
     }
 
     void stop(SoundManager soundManager) {
-        soundManager.stop(engineLow);
-        soundManager.stop(engineHigh);
+        for (CarEngineSoundInstance engine : engines) {
+            if (engine != null) {
+                soundManager.stop(engine);
+            }
+        }
         soundManager.stop(frontLeft);
         soundManager.stop(frontRight);
         soundManager.stop(rearLeft);

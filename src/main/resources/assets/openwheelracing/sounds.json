@@ -1,27 +1,15 @@
 {
-  "car.engine.ferrari.low": {
-    "sounds": [{ "name": "openwheelracing:car_engine_ferrari_low", "stream": true }]
+  "car.engine.rpm.5250": {
+    "sounds": [{ "name": "openwheelracing:car_engine_rpm_5250", "stream": true }]
   },
-  "car.engine.ferrari.high": {
-    "sounds": [{ "name": "openwheelracing:car_engine_ferrari_high", "stream": true }]
+  "car.engine.rpm.7425": {
+    "sounds": [{ "name": "openwheelracing:car_engine_rpm_7425", "stream": true }]
   },
-  "car.engine.renault.low": {
-    "sounds": [{ "name": "openwheelracing:car_engine_renault_low", "stream": true }]
+  "car.engine.rpm.9970": {
+    "sounds": [{ "name": "openwheelracing:car_engine_rpm_9970", "stream": true }]
   },
-  "car.engine.renault.high": {
-    "sounds": [{ "name": "openwheelracing:car_engine_renault_high", "stream": true }]
-  },
-  "car.engine.mercedes.low": {
-    "sounds": [{ "name": "openwheelracing:car_engine_mercedes_low", "stream": true }]
-  },
-  "car.engine.mercedes.high": {
-    "sounds": [{ "name": "openwheelracing:car_engine_mercedes_high", "stream": true }]
-  },
-  "car.engine.rbpt.low": {
-    "sounds": [{ "name": "openwheelracing:car_engine_rbpt_low", "stream": true }]
-  },
-  "car.engine.rbpt.high": {
-    "sounds": [{ "name": "openwheelracing:car_engine_rbpt_high", "stream": true }]
+  "car.engine.rpm.11360": {
+    "sounds": [{ "name": "openwheelracing:car_engine_rpm_11360", "stream": true }]
   },
   "car.tyre_squeal": {
     "sounds": [

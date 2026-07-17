@@ -1,6 +1,5 @@
 package com.openwheelracing.client.sound;
 
-import com.openwheelracing.content.car.CarLivery;
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
 import com.openwheelracing.registry.OWRSoundEvents;
 
@@ -13,21 +12,26 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.RegistryObject;
 
 final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
-    private static final float IDLE_RPM    = 900.0f;
-    private static final float REDLINE_RPM = 13000.0f;
-    // Gear top speeds in km/h (index 0 = neutral placeholder, 1-8 = gears)
+    private static final float IDLE_RPM = 900.0f;
+    private static final float REDLINE_RPM = 13_000.0f;
     private static final float[] GEAR_TOP_KMH = { 0f, 80f, 120f, 150f, 190f, 235f, 275f, 310f, 350f };
     private static final float REVERSE_TOP_KMH = 35f;
-    // Mirror server-side neutral blip rates (RPM/s)
     private static final float NEUTRAL_RISE = 18_000f;
     private static final float NEUTRAL_DECAY = 3_800f;
     private static final float ENGINE_BRAKE_DECAY = 7_000f;
     private static final float CLUTCH_RPM_DROP = 12_000f;
     private static final float LAUNCH_RPM = 4_000f;
     private static final int CLUTCH_RELEASE_TICKS = 12;
-    private static final float DT = 1.0f / 20.0f; // one game tick
+    private static final float DT = 1.0f / 20.0f;
+    private static final Sample[] SAMPLES = {
+        new Sample(5_250f, OWRSoundEvents.CAR_ENGINE_RPM_5250),
+        new Sample(7_425f, OWRSoundEvents.CAR_ENGINE_RPM_7425),
+        new Sample(9_970f, OWRSoundEvents.CAR_ENGINE_RPM_9970),
+        new Sample(11_360f, OWRSoundEvents.CAR_ENGINE_RPM_11360)
+    };
 
-    private final Tone tone;
+    private final int sampleIndex;
+    private final float sampleRpm;
     private OpenwheelCarEntity car;
     private Vec3 listenerPosition;
     private Vec3 previousSourcePosition;
@@ -36,11 +40,12 @@ final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
     private int shiftCutTicks;
     private int clutchReleaseTicks;
 
-    private CarEngineSoundInstance(OpenwheelCarEntity car, Vec3 listenerPosition, SoundEvent soundEvent, Tone tone) {
-        super(soundEvent, SoundSource.PLAYERS, RandomSource.create());
+    private CarEngineSoundInstance(OpenwheelCarEntity car, Vec3 listenerPosition, int sampleIndex) {
+        super(SAMPLES[sampleIndex].sound.get(), SoundSource.PLAYERS, RandomSource.create());
         this.car = car;
         this.listenerPosition = listenerPosition;
-        this.tone = tone;
+        this.sampleIndex = sampleIndex;
+        this.sampleRpm = SAMPLES[sampleIndex].rpm;
         looping = true;
         delay = 0;
         attenuation = Attenuation.LINEAR;
@@ -54,38 +59,57 @@ final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
         lastGear = car.getGear();
     }
 
-    private static SoundEvent resolve(RegistryObject<SoundEvent> ferrari,
-                                      RegistryObject<SoundEvent> renault,
-                                      RegistryObject<SoundEvent> mercedes,
-                                      RegistryObject<SoundEvent> rbpt,
-                                      OpenwheelCarEntity car) {
-        CarLivery.PowerUnit pu = CarLivery.fromIndex(car.getLivery()).powerUnit();
-        return switch (pu) {
-            case FERRARI  -> ferrari.get();
-            case RENAULT  -> renault.get();
-            case MERCEDES -> mercedes.get();
-            case RBPT     -> rbpt.get();
-        };
+    static CarEngineSoundInstance rpmSample(OpenwheelCarEntity car, Vec3 listenerPosition, int sampleIndex) {
+        return new CarEngineSoundInstance(car, listenerPosition, sampleIndex);
     }
 
-    static CarEngineSoundInstance lowTone(OpenwheelCarEntity car, Vec3 listenerPosition) {
-        SoundEvent sound = resolve(
-            OWRSoundEvents.CAR_ENGINE_FERRARI_LOW,
-            OWRSoundEvents.CAR_ENGINE_RENAULT_LOW,
-            OWRSoundEvents.CAR_ENGINE_MERCEDES_LOW,
-            OWRSoundEvents.CAR_ENGINE_RBPT_LOW,
-            car);
-        return new CarEngineSoundInstance(car, listenerPosition, sound, Tone.LOW);
+    static int sampleCount() {
+        return SAMPLES.length;
     }
 
-    static CarEngineSoundInstance highTone(OpenwheelCarEntity car, Vec3 listenerPosition) {
-        SoundEvent sound = resolve(
-            OWRSoundEvents.CAR_ENGINE_FERRARI_HIGH,
-            OWRSoundEvents.CAR_ENGINE_RENAULT_HIGH,
-            OWRSoundEvents.CAR_ENGINE_MERCEDES_HIGH,
-            OWRSoundEvents.CAR_ENGINE_RBPT_HIGH,
-            car);
-        return new CarEngineSoundInstance(car, listenerPosition, sound, Tone.HIGH);
+    static int firstAudibleSample(float rpm) {
+        if (rpm <= SAMPLES[0].rpm || rpm >= SAMPLES[SAMPLES.length - 1].rpm) {
+            return nearestSample(rpm);
+        }
+        for (int i = 0; i < SAMPLES.length - 1; i++) {
+            if (rpm >= SAMPLES[i].rpm && rpm <= SAMPLES[i + 1].rpm) {
+                return i;
+            }
+        }
+        return nearestSample(rpm);
+    }
+
+    static int secondAudibleSample(float rpm) {
+        if (rpm <= SAMPLES[0].rpm || rpm >= SAMPLES[SAMPLES.length - 1].rpm) {
+            return -1;
+        }
+        for (int i = 0; i < SAMPLES.length - 1; i++) {
+            if (rpm >= SAMPLES[i].rpm && rpm <= SAMPLES[i + 1].rpm) {
+                return i + 1;
+            }
+        }
+        return -1;
+    }
+
+    static float displayedRpm(OpenwheelCarEntity car) {
+        return Mth.clamp(car.getRpm(), IDLE_RPM, REDLINE_RPM);
+    }
+
+    int sampleIndex() {
+        return sampleIndex;
+    }
+
+    private static int nearestSample(float rpm) {
+        int closest = 0;
+        float closestDistance = Math.abs(rpm - SAMPLES[0].rpm);
+        for (int i = 1; i < SAMPLES.length; i++) {
+            float distance = Math.abs(rpm - SAMPLES[i].rpm);
+            if (distance < closestDistance) {
+                closest = i;
+                closestDistance = distance;
+            }
+        }
+        return closest;
     }
 
     void replaceCar(OpenwheelCarEntity car) {
@@ -97,7 +121,9 @@ final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
     }
 
     @Override
-    public boolean canStartSilent() { return true; }
+    public boolean canStartSilent() {
+        return true;
+    }
 
     @Override
     public boolean canPlaySound() {
@@ -134,12 +160,11 @@ final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
             predictedRpm = predictRpm(gear, speedKmh);
         }
 
-        float rpmNorm = Mth.clamp((predictedRpm - 900.0f) / 11600.0f, 0.0f, 1.0f);
-        float basePitch = tone.pitch(predictedRpm);
         float distance = (float) listenerPosition.distanceTo(new Vec3(x, y, z));
         float shiftGain = shiftCutTicks > 0 ? 0.28f : 1.0f;
-        volume = tone.volume(speedKmh, rpmNorm) * CarSoundPhysics.attenuation(distance) * shiftGain;
-        pitch = CarSoundPhysics.doppler(basePitch, new Vec3(x, y, z), previousSourcePosition, listenerPosition);
+        float baseVolume = baseVolume(speedKmh, predictedRpm) * CarSoundPhysics.attenuation(distance) * shiftGain;
+        volume = baseVolume * crossfadeGain(predictedRpm, sampleIndex);
+        pitch = CarSoundPhysics.doppler(samplePitch(predictedRpm, sampleRpm), new Vec3(x, y, z), previousSourcePosition, listenerPosition);
         if (shiftCutTicks > 0) {
             shiftCutTicks--;
         }
@@ -147,9 +172,7 @@ final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
 
     private float predictRpm(int gear, float speedKmh) {
         if (gear == 0) {
-            // Neutral: mirror server blip logic using float precision (no int truncation)
             int serverRpm = car.getRpm();
-            // Rising if server RPM is climbing, decaying otherwise
             if (serverRpm > predictedRpm) {
                 predictedRpm += NEUTRAL_RISE * DT;
             } else {
@@ -188,31 +211,40 @@ final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
         return Mth.clamp(Math.max(IDLE_RPM, speedKmh / topKmh * REDLINE_RPM), IDLE_RPM, REDLINE_RPM);
     }
 
-    private enum Tone {
-        LOW(40.0f, 162.5f, 0.42f),
-        HIGH(60.0f, 108.333336f, 0.92f);
+    private static float baseVolume(float speedKmh, float rpm) {
+        float rpmNorm = Mth.clamp((rpm - IDLE_RPM) / (REDLINE_RPM - IDLE_RPM), 0.0f, 1.0f);
+        float speedBoost = Mth.clamp(speedKmh / 100.0f, 0.0f, 1.0f) * 0.02f;
+        float volumeMultiplier = 1.0f;
+        return (1.25f + rpmNorm * 0.04f + speedBoost) * volumeMultiplier;
+    }
 
-        private final float divisor;
-        private final float referenceFrequency;
-        private final float baseVolume;
-
-        Tone(float divisor, float referenceFrequency, float baseVolume) {
-            this.divisor = divisor;
-            this.referenceFrequency = referenceFrequency;
-            this.baseVolume = baseVolume;
+    private static float crossfadeGain(float rpm, int index) {
+        if (index == 0 && rpm <= SAMPLES[0].rpm) {
+            return 1.0f;
+        }
+        if (index == SAMPLES.length - 1 && rpm >= SAMPLES[SAMPLES.length - 1].rpm) {
+            return 1.0f;
         }
 
-        float volume(float speedKmh, float rpmNorm) {
-            float speedBoost = Mth.clamp(speedKmh / 80.0f, 0.0f, 1.0f) * 0.35f;
-            if (this == LOW) {
-                float rpmCurved = (float) Math.pow(rpmNorm, 2.5);
-                return baseVolume * (0.08f + rpmCurved * 0.92f + speedBoost);
-            }
-            return baseVolume * (0.35f + rpmNorm * 0.65f + speedBoost);
+        if (index > 0 && rpm >= SAMPLES[index - 1].rpm && rpm <= SAMPLES[index].rpm) {
+            float t = smoothstep(Mth.clamp((rpm - SAMPLES[index - 1].rpm) / (SAMPLES[index].rpm - SAMPLES[index - 1].rpm), 0.0f, 1.0f));
+            return index == 0 ? 1.0f - t : t;
         }
+        if (index < SAMPLES.length - 1 && rpm >= SAMPLES[index].rpm && rpm <= SAMPLES[index + 1].rpm) {
+            float t = smoothstep(Mth.clamp((rpm - SAMPLES[index].rpm) / (SAMPLES[index + 1].rpm - SAMPLES[index].rpm), 0.0f, 1.0f));
+            return 1.0f - t;
+        }
+        return 0.0f;
+    }
 
-        float pitch(float rpm) {
-            return Mth.clamp((rpm / divisor) / referenceFrequency, 0.5f, 2.0f);
-        }
+    private static float samplePitch(float rpm, float sampleRpm) {
+        return Mth.clamp(rpm / sampleRpm, 0.72f, 1.28f);
+    }
+
+    private static float smoothstep(float t) {
+        return t * t * (3.0f - 2.0f * t);
+    }
+
+    private record Sample(float rpm, RegistryObject<SoundEvent> sound) {
     }
 }

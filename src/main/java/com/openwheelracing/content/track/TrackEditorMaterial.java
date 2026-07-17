@@ -15,6 +15,8 @@ public enum TrackEditorMaterial {
     GRAY_CONCRETE(false),
     BLACK_CONCRETE(false),
     RED_CONCRETE(false),
+    CYAN_CONCRETE(false),
+    BLUE_CONCRETE(false),
     SAND(false),
     GRASS(false),
     DIRT(false),
@@ -41,6 +43,8 @@ public enum TrackEditorMaterial {
             case GRAY_CONCRETE -> Blocks.GRAY_CONCRETE;
             case BLACK_CONCRETE -> Blocks.BLACK_CONCRETE;
             case RED_CONCRETE -> Blocks.RED_CONCRETE;
+            case CYAN_CONCRETE -> Blocks.CYAN_CONCRETE;
+            case BLUE_CONCRETE -> Blocks.BLUE_CONCRETE;
             case SAND -> Blocks.SAND;
             case GRASS -> Blocks.GRASS_BLOCK;
             case DIRT -> Blocks.DIRT;

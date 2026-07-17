@@ -15,8 +15,12 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
 public final class CarSoundManager {
-    private static final int MAX_ACTIVE_CAR_SOUNDS = 5;
+    private static final int MAX_ACTIVE_CAR_SOUNDS = 3;
+    private static final int SELECTION_HEARTBEAT_TICKS = 80;
+
     private static final Map<Integer, CarSoundSet> SOUNDS = new HashMap<>();
+    private static Set<Integer> selectedCarIds = new HashSet<>();
+    private static int heartbeatOffset;
 
     private CarSoundManager() {
     }
@@ -27,58 +31,110 @@ public final class CarSoundManager {
         LocalPlayer player = mc.player;
         if (level == null || player == null) {
             stopAll(mc.getSoundManager());
+            selectedCarIds.clear();
+            heartbeatOffset = 0;
             return;
         }
 
         SoundManager soundManager = mc.getSoundManager();
         Vec3 listenerPosition = player.position();
+        if (shouldRefreshSelection()) {
+            refreshSelection(level, player, soundManager);
+        }
 
-        // Collect all cars in hearing range sorted nearest-first.
-        // The player's own ridden car is always treated as distance 0.
-        List<OpenwheelCarEntity> nearby = new ArrayList<>();
-        for (Entity entity : level.entitiesForRendering()) {
-            if (entity instanceof OpenwheelCarEntity car
-                    && car.distanceToSqr(player) <= CarSoundPhysics.MAX_AUDIBLE_DISTANCE_SQR) {
-                nearby.add(car);
+        Set<Integer> activeSelection = new HashSet<>(selectedCarIds);
+        Set<Integer> stillActive = new HashSet<>();
+        for (int carId : activeSelection) {
+            OpenwheelCarEntity car = selectedCar(level, player, carId);
+            if (car == null) {
+                continue;
             }
-        }
-        nearby.sort((a, b) -> {
-            double da = player.isPassenger() && player.getVehicle() == a ? -1.0 : a.distanceToSqr(player);
-            double db = player.isPassenger() && player.getVehicle() == b ? -1.0 : b.distanceToSqr(player);
-            return Double.compare(da, db);
-        });
-
-        // Allowed cars: player's car first, then nearest others.
-        Set<Integer> allowed = new HashSet<>();
-        if (player.getVehicle() instanceof OpenwheelCarEntity car) {
-            allowed.add(car.getId());
-        }
-        for (OpenwheelCarEntity car : nearby) {
-            if (allowed.size() >= MAX_ACTIVE_CAR_SOUNDS) {
-                break;
+            stillActive.add(carId);
+            CarSoundSet soundSet = SOUNDS.get(carId);
+            if (soundSet == null) {
+                soundSet = CarSoundSet.start(soundManager, car, listenerPosition);
+                SOUNDS.put(carId, soundSet);
             }
-            allowed.add(car.getId());
-        }
-
-        // Activate/update allowed cars; stop anything outside the allowed set.
-        Set<Integer> active = new HashSet<>();
-        for (OpenwheelCarEntity car : nearby) {
-            if (!allowed.contains(car.getId())) continue;
-            active.add(car.getId());
-            SOUNDS.computeIfAbsent(car.getId(), id -> CarSoundSet.start(soundManager, car, listenerPosition))
-                  .replaceCar(car);
+            soundSet.replaceCar(car);
         }
 
         SOUNDS.entrySet().removeIf(entry -> {
             CarSoundSet soundSet = entry.getValue();
-            if (!active.contains(entry.getKey()) || soundSet.isEntityGone()) {
+            if (!stillActive.contains(entry.getKey()) || soundSet.isEntityGone()) {
                 soundSet.stop(soundManager);
                 return true;
             }
             soundSet.updateListener(listenerPosition);
-            soundSet.repairEngines(soundManager);
+            soundSet.updateEngines(soundManager);
             return false;
         });
+        selectedCarIds = stillActive;
+    }
+
+    private static boolean shouldRefreshSelection() {
+        heartbeatOffset = (heartbeatOffset + 1) % SELECTION_HEARTBEAT_TICKS;
+        return heartbeatOffset == 0 || selectedCarIds.isEmpty();
+    }
+
+    private static void refreshSelection(ClientLevel level, LocalPlayer player, SoundManager soundManager) {
+        Set<Integer> nextSelection = selectedCarIds(level, player);
+        SOUNDS.entrySet().removeIf(entry -> {
+            if (nextSelection.contains(entry.getKey())) {
+                return false;
+            }
+            entry.getValue().stop(soundManager);
+            return true;
+        });
+        selectedCarIds = nextSelection;
+    }
+
+    private static Set<Integer> selectedCarIds(ClientLevel level, LocalPlayer player) {
+        List<OpenwheelCarEntity> candidates = new ArrayList<>();
+        if (player.getVehicle() instanceof OpenwheelCarEntity car) {
+            candidates.add(car);
+        }
+
+        for (Entity entity : level.entitiesForRendering()) {
+            if (entity instanceof OpenwheelCarEntity car
+                    && car.distanceToSqr(player) <= CarSoundPhysics.MAX_AUDIBLE_DISTANCE_SQR
+                    && !containsCar(candidates, car)) {
+                candidates.add(car);
+            }
+        }
+
+        candidates.sort((a, b) -> Double.compare(selectionDistance(player, a), selectionDistance(player, b)));
+        Set<Integer> ids = new HashSet<>();
+        for (OpenwheelCarEntity car : candidates) {
+            if (ids.size() >= MAX_ACTIVE_CAR_SOUNDS) {
+                break;
+            }
+            ids.add(car.getId());
+        }
+        return ids;
+    }
+
+    private static double selectionDistance(LocalPlayer player, OpenwheelCarEntity car) {
+        return player.getVehicle() == car ? -1.0 : car.distanceToSqr(player);
+    }
+
+    private static boolean containsCar(List<OpenwheelCarEntity> cars, OpenwheelCarEntity target) {
+        for (OpenwheelCarEntity car : cars) {
+            if (car.getId() == target.getId()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static OpenwheelCarEntity selectedCar(ClientLevel level, LocalPlayer player, int carId) {
+        Entity entity = level.getEntity(carId);
+        if (entity instanceof OpenwheelCarEntity car
+                && car.isAlive()
+                && !car.isRemoved()
+                && car.distanceToSqr(player) <= CarSoundPhysics.MAX_AUDIBLE_DISTANCE_SQR) {
+            return car;
+        }
+        return null;
     }
 
     private static void stopAll(SoundManager soundManager) {

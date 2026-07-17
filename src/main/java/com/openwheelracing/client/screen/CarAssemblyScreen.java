@@ -10,11 +10,11 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 
 public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> {
-    private static final Identifier BG = Identifier.fromNamespaceAndPath("openwheelracing", "textures/gui/car_assembly_workstation.png");
+    private static final int[] WORKSTATION_SLOT_X = {52, 52, 18, 52, 86, 86, 130};
+    private static final int[] WORKSTATION_SLOT_Y = {36, 70, 53, 16, 70, 36, 45};
 
     public CarAssemblyScreen(CarAssemblyMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -47,6 +47,17 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
         graphics.fill(x + 178, y + 6, x + 250, y + 114, 0xFFE0E0E0);
         graphics.fill(x + 6, y + 120, x + 250, y + 210, 0xFFD0D0D0);
         graphics.fill(x + 70, y + 44, x + 95, y + 49, 0xFF55555A);
+        for (int slot = 0; slot < WORKSTATION_SLOT_X.length; slot++) {
+            drawSlot(graphics, x + WORKSTATION_SLOT_X[slot], y + WORKSTATION_SLOT_Y[slot]);
+        }
+        for (int row = 0; row < 3; row++) {
+            for (int column = 0; column < 9; column++) {
+                drawSlot(graphics, x + 46 + column * 18, y + 136 + row * 18);
+            }
+        }
+        for (int column = 0; column < 9; column++) {
+            drawSlot(graphics, x + 46 + column * 18, y + 194);
+        }
 
         int progress = menu.getScaledProgress();
         if (progress > 0) {
@@ -81,6 +92,13 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
         renderBackground(graphics, mouseX, mouseY, partialTick);
         super.render(graphics, mouseX, mouseY, partialTick);
         renderTooltip(graphics, mouseX, mouseY);
+    }
+
+    private void drawSlot(GuiGraphics graphics, int x, int y) {
+        graphics.fill(x - 1, y - 1, x + 17, y + 17, 0xFF555555);
+        graphics.fill(x, y, x + 18, y + 18, 0xFFFFFFFF);
+        graphics.fill(x, y, x + 17, y + 17, 0xFF8B8B8B);
+        graphics.fill(x + 1, y + 1, x + 17, y + 17, 0xFFEFEFEF);
     }
 
     private void addTuneButtons(int setupSlot, int yOffset) {

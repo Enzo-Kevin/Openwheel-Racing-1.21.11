@@ -56,6 +56,8 @@ public class TrackEditorScreen extends Screen {
         TrackEditorMaterial.GRAY_CONCRETE,
         TrackEditorMaterial.BLACK_CONCRETE,
         TrackEditorMaterial.RED_CONCRETE,
+        TrackEditorMaterial.CYAN_CONCRETE,
+        TrackEditorMaterial.BLUE_CONCRETE,
         TrackEditorMaterial.SAND,
         TrackEditorMaterial.GRASS,
         TrackEditorMaterial.DIRT,
@@ -72,7 +74,9 @@ public class TrackEditorScreen extends Screen {
         TrackEditorMaterial.GRASS,
         TrackEditorMaterial.LIGHT_GRAY_CONCRETE,
         TrackEditorMaterial.GRAY_CONCRETE,
-        TrackEditorMaterial.RED_CONCRETE
+        TrackEditorMaterial.RED_CONCRETE,
+        TrackEditorMaterial.CYAN_CONCRETE,
+        TrackEditorMaterial.BLUE_CONCRETE
     };
     private static final TrackEditorPreset[] PRESETS = TrackEditorPreset.values();
     private static final double[] ZOOM_LEVELS = {0.25, 0.5, 1.0, 2.0, 4.0};
