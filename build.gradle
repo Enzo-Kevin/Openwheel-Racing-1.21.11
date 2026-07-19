@@ -9,11 +9,17 @@ plugins {
     id 'net.minecraftforge.gradle' version '[7.0.3,8)'
 }
 
-version = '1.7.0'
+version = '1.7.1'
 group = 'com.openwheelracing'
 
-// Mojang ships Java 21 to end users in 1.20.5+, so your mod should target Java 21.
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+// Mojang ships Java 21 to end users in 1.20.5+, so every Gradle Java task should use Java 21.
+def java21 = JavaLanguageVersion.of(21)
+
+java {
+    toolchain {
+        languageVersion = java21
+    }
+}
 
 // Include generated resources
 sourceSets.main.resources { srcDir 'src/generated/resources' }
@@ -65,7 +71,24 @@ test {
 }
 
 tasks.withType(JavaCompile).configureEach {
+    javaCompiler = javaToolchains.compilerFor {
+        languageVersion = java21
+    }
+    options.release = 21
+
     // Use the UTF-8 charset for Java compilation
     // This is done by default in Java 18+, but this ensures it no matter the Java or Gradle version
     options.encoding = 'UTF-8'
+}
+
+tasks.withType(JavaExec).configureEach {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = java21
+    }
+}
+
+tasks.withType(Test).configureEach {
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = java21
+    }
 }

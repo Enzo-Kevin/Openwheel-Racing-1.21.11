@@ -1,6 +1,7 @@
 package com.openwheelracing.client.sound;
 
 import com.openwheelracing.content.entity.OpenwheelCarEntity;
+import com.openwheelracing.content.entity.VehiclePhysics;
 import com.openwheelracing.registry.OWRSoundEvents;
 
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
@@ -14,8 +15,6 @@ import net.minecraftforge.registries.RegistryObject;
 final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
     private static final float IDLE_RPM = 900.0f;
     private static final float REDLINE_RPM = 13_000.0f;
-    private static final float[] GEAR_TOP_KMH = { 0f, 80f, 120f, 150f, 190f, 235f, 275f, 310f, 350f };
-    private static final float REVERSE_TOP_KMH = 35f;
     private static final float NEUTRAL_RISE = 18_000f;
     private static final float NEUTRAL_DECAY = 3_800f;
     private static final float ENGINE_BRAKE_DECAY = 7_000f;
@@ -201,13 +200,11 @@ final class CarEngineSoundInstance extends AbstractTickableSoundInstance {
         return Mth.clamp(predictedRpm, IDLE_RPM, REDLINE_RPM);
     }
 
-    private static float rpmFromSpeed(int gear, float speedKmh) {
+    private float rpmFromSpeed(int gear, float speedKmh) {
         if (gear == 0) {
             return IDLE_RPM;
         }
-        float topKmh = gear == -1
-            ? REVERSE_TOP_KMH
-            : GEAR_TOP_KMH[Math.min(gear, GEAR_TOP_KMH.length - 1)];
+        float topKmh = (float) VehiclePhysics.gearTopSpeedKmh(gear, car.getSetup());
         return Mth.clamp(Math.max(IDLE_RPM, speedKmh / topKmh * REDLINE_RPM), IDLE_RPM, REDLINE_RPM);
     }
 

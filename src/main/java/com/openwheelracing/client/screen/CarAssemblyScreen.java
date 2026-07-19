@@ -7,6 +7,7 @@ import com.openwheelracing.content.menu.CarAssemblyMenu;
 import com.openwheelracing.network.OWRNetwork;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -15,6 +16,10 @@ import net.minecraft.world.entity.player.Inventory;
 public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> {
     private static final int[] WORKSTATION_SLOT_X = {52, 52, 18, 52, 86, 86, 130};
     private static final int[] WORKSTATION_SLOT_Y = {36, 70, 53, 16, 70, 36, 45};
+    private int colorPickerChannel = -1;
+    private int pickerRed;
+    private int pickerGreen;
+    private int pickerBlue;
 
     public CarAssemblyScreen(CarAssemblyMenu menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
@@ -26,6 +31,10 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
     @Override
     protected void init() {
         super.init();
+        if (colorPickerChannel >= 0) {
+            addColorPickerWidgets();
+            return;
+        }
         addTuneButtons(0, 28);
         addTuneButtons(1, 43);
         addTuneButtons(2, 58);
@@ -81,6 +90,9 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
             graphics.drawString(font, "A1 " + CarLiveryColors.colorName(colors.accent1()), x + 190, y + 139, colors.accent1Side(), false);
             graphics.drawString(font, "A2 " + CarLiveryColors.colorName(colors.accent2()), x + 190, y + 150, colors.accent2Side(), false);
         }
+        if (colorPickerChannel >= 0) {
+            renderColorPicker(graphics);
+        }
     }
 
     @Override
@@ -120,14 +132,114 @@ public class CarAssemblyScreen extends AbstractContainerScreen<CarAssemblyMenu> 
     }
 
     private void addLiveryColorButtons(int yOffset) {
-        addRenderableWidget(Button.builder(Component.literal("B"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.CycleLiveryColorMessage(0, 1), PacketDistributor.SERVER.noArg()))
+        addRenderableWidget(Button.builder(Component.literal("B"), button -> openColorPicker(0))
             .bounds(leftPos + 190, topPos + yOffset, 12, 11)
             .build());
-        addRenderableWidget(Button.builder(Component.literal("A1"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.CycleLiveryColorMessage(1, 1), PacketDistributor.SERVER.noArg()))
+        addRenderableWidget(Button.builder(Component.literal("A1"), button -> openColorPicker(1))
             .bounds(leftPos + 207, topPos + yOffset, 14, 11)
             .build());
-        addRenderableWidget(Button.builder(Component.literal("A2"), button -> OWRNetwork.CHANNEL.send(new OWRNetwork.CycleLiveryColorMessage(2, 1), PacketDistributor.SERVER.noArg()))
+        addRenderableWidget(Button.builder(Component.literal("A2"), button -> openColorPicker(2))
             .bounds(leftPos + 232, topPos + yOffset, 14, 11)
             .build());
+    }
+
+    private void openColorPicker(int channel) {
+        if (menu.getOutputStack().isEmpty()) {
+            return;
+        }
+        colorPickerChannel = channel;
+        int color = PrototypeCarItem.getLiveryColors(menu.getOutputStack()).channel(channel);
+        pickerRed = CarLiveryColors.red(color);
+        pickerGreen = CarLiveryColors.green(color);
+        pickerBlue = CarLiveryColors.blue(color);
+        rebuildWidgets();
+    }
+
+    private void closeColorPicker() {
+        colorPickerChannel = -1;
+        rebuildWidgets();
+    }
+
+    private void applyColorPicker() {
+        if (colorPickerChannel >= 0) {
+            int color = CarLiveryColors.rgb(pickerRed, pickerGreen, pickerBlue);
+            OWRNetwork.CHANNEL.send(new OWRNetwork.SetLiveryColorMessage(colorPickerChannel, color), PacketDistributor.SERVER.noArg());
+        }
+        closeColorPicker();
+    }
+
+    private void addColorPickerWidgets() {
+        int x = leftPos + 60;
+        int y = topPos + 64;
+        addRenderableWidget(new RgbSlider(x, y, 112, 18, 0));
+        addRenderableWidget(new RgbSlider(x, y + 24, 112, 18, 1));
+        addRenderableWidget(new RgbSlider(x, y + 48, 112, 18, 2));
+        addRenderableWidget(Button.builder(Component.literal("Apply"), button -> applyColorPicker())
+            .bounds(leftPos + 70, topPos + 128, 52, 18)
+            .build());
+        addRenderableWidget(Button.builder(Component.literal("Cancel"), button -> closeColorPicker())
+            .bounds(leftPos + 134, topPos + 128, 52, 18)
+            .build());
+    }
+
+    private void renderColorPicker(GuiGraphics graphics) {
+        int x = leftPos + 34;
+        int y = topPos + 34;
+        int color = CarLiveryColors.rgb(pickerRed, pickerGreen, pickerBlue);
+        graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, 0x88000000);
+        graphics.fill(x, y, x + 188, y + 118, 0xFF2A3038);
+        graphics.fill(x + 4, y + 4, x + 184, y + 114, 0xFFDFDFDF);
+        graphics.drawString(font, "RGB " + channelLabel(colorPickerChannel), x + 10, y + 10, 0xFF303030, false);
+        graphics.fill(x + 132, y + 14, x + 172, y + 54, color);
+        graphics.drawString(font, CarLiveryColors.colorName(color), x + 126, y + 60, 0xFF303030, false);
+        graphics.drawString(font, "R", x + 12, y + 34, 0xFFB00020, false);
+        graphics.drawString(font, "G", x + 12, y + 58, 0xFF006E36, false);
+        graphics.drawString(font, "B", x + 12, y + 82, 0xFF0057B8, false);
+    }
+
+    private static String channelLabel(int channel) {
+        return switch (channel) {
+            case 0 -> "Body";
+            case 1 -> "Accent 1";
+            case 2 -> "Accent 2";
+            default -> "Color";
+        };
+    }
+
+    private class RgbSlider extends AbstractSliderButton {
+        private final int channel;
+
+        private RgbSlider(int x, int y, int width, int height, int channel) {
+            super(x, y, width, height, Component.empty(), 0.0);
+            this.channel = channel;
+            value = valueForChannel(channel) / 255.0;
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            setMessage(Component.literal(Integer.toString(valueForChannel(channel))));
+        }
+
+        @Override
+        protected void applyValue() {
+            int valueInt = (int) Math.round(value * 255.0);
+            switch (channel) {
+                case 0 -> pickerRed = valueInt;
+                case 1 -> pickerGreen = valueInt;
+                case 2 -> pickerBlue = valueInt;
+                default -> {
+                }
+            }
+        }
+
+        private int valueForChannel(int channel) {
+            return switch (channel) {
+                case 0 -> pickerRed;
+                case 1 -> pickerGreen;
+                case 2 -> pickerBlue;
+                default -> 0;
+            };
+        }
     }
 }

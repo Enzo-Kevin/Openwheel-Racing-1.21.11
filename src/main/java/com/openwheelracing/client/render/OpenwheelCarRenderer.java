@@ -47,7 +47,7 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
     private static ColoredObjModel carModel;
     private static float[] frontWheelPivots;
     // Pre-baked color array per livery index — populated once per livery, reused every frame.
-    private static final java.util.HashMap<Integer, int[]> BAKED_COLORS = new java.util.HashMap<>();
+    private static final java.util.HashMap<String, int[]> BAKED_COLORS = new java.util.HashMap<>();
 
     public OpenwheelCarRenderer(EntityRendererProvider.Context context) {
         super(context);
@@ -74,7 +74,7 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         super.submit(state, poseStack, nodeCollector, cameraState);
         loadModel();
 
-        int liveryColorKey = liveryColorKey(state.liveryColors);
+        String liveryColorKey = liveryColorKey(state.liveryColors);
         int[] bakedColors = BAKED_COLORS.computeIfAbsent(liveryColorKey, ignored -> carModel.bakeColors(face -> liveryColor(face, state.liveryColors)));
 
         poseStack.pushPose();
@@ -127,8 +127,8 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
         }
     }
 
-    private static int liveryColorKey(CarLiveryColors colors) {
-        return colors.body() | (colors.accent1() << 8) | (colors.accent2() << 16);
+    private static String liveryColorKey(CarLiveryColors colors) {
+        return colors.body() + ":" + colors.accent1() + ":" + colors.accent2();
     }
 
     private static int liveryColor(ColoredObjModel.Face face, CarLiveryColors colors) {
@@ -149,21 +149,21 @@ public class OpenwheelCarRenderer extends EntityRenderer<OpenwheelCarEntity, Ope
             return fixedAeroDetailColor(r, g, b, brightness);
         }
         if (group.endsWith("-Front-Connector")) {
-            return materialDetailColor(r, g, b, brightness, METAL, colors.accent1Side(), colors.accent2Side());
+            return materialDetailColor(r, g, b, brightness, METAL, colors.accent1(), colors.accent2());
         }
         if (group.equals("FW-Tip")) {
-            return materialDetailColor(r, g, b, brightness, colors.accent2Top(), colors.accent1Top(), METAL);
+            return materialDetailColor(r, g, b, brightness, colors.accent2(), colors.accent1(), METAL);
         }
         if (group.equals("Upper-Body")) {
-            return materialDetailColor(r, g, b, brightness, colors.bodyTop(), colors.accent1Top(), colors.accent2Top());
+            return materialDetailColor(r, g, b, brightness, colors.body(), colors.accent1(), colors.accent2());
         }
         if (group.equals("LeftSection") || group.equals("RightSection")) {
-            return materialDetailColor(r, g, b, brightness, colors.bodySide(), colors.accent1Side(), colors.accent2Side());
+            return materialDetailColor(r, g, b, brightness, colors.body(), colors.accent1(), colors.accent2());
         }
         if (group.equals("MidSection")) {
-            return materialDetailColor(r, g, b, brightness, colors.bodyBottom(), colors.accent1Bottom(), colors.accent2Bottom());
+            return materialDetailColor(r, g, b, brightness, colors.body(), colors.accent1(), colors.accent2());
         }
-        return materialDetailColor(r, g, b, brightness, colors.bodySide(), colors.accent1Side(), colors.accent2Side());
+        return materialDetailColor(r, g, b, brightness, colors.body(), colors.accent1(), colors.accent2());
     }
 
     private static int fixedAeroDetailColor(int r, int g, int b, int brightness) {

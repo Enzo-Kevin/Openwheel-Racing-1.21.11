@@ -10,7 +10,7 @@ public enum CarLivery {
     WILLIAMS("Williams",      palette(0, 90, 255),     palette(240, 240, 240),  palette(255, 215, 0),    PowerUnit.MERCEDES),
     VCARB("VCARB",            palette(26, 31, 110),    palette(240, 240, 240),  palette(204, 30, 30),    PowerUnit.RBPT),
     HAAS("Haas",              palette(245, 245, 245),  palette(204, 30, 30),    palette(51, 51, 51),     PowerUnit.FERRARI),
-    KICK_SAUBER("Kick Sauber", palette(26, 42, 26),   palette(0, 230, 118),    palette(102, 102, 102),  PowerUnit.FERRARI);
+    KICK_SAUBER("Kick Sauber", palette(0, 230, 118),  palette(26, 26, 26),     palette(245, 245, 245),  PowerUnit.FERRARI);
 
     private final String displayName;
     private final int bodyTop;

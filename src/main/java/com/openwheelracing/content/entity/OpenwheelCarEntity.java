@@ -30,6 +30,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -96,8 +97,6 @@ public class OpenwheelCarEntity extends Entity {
     private static final int NEUTRAL_GEAR = 0;
     private static final int MAX_GEAR = 8;
     private static final double SPEED_TO_BLOCKS_PER_TICK = VehiclePhysics.SPEED_TO_BLOCKS_PER_TICK;
-    private static final double REVERSE_TOP_SPEED = 35.0 * SPEED_TO_BLOCKS_PER_TICK;
-    private static final double[] GEAR_TOP_SPEEDS = {0.0, 80.0 * SPEED_TO_BLOCKS_PER_TICK, 120.0 * SPEED_TO_BLOCKS_PER_TICK, 150.0 * SPEED_TO_BLOCKS_PER_TICK, 190.0 * SPEED_TO_BLOCKS_PER_TICK, 235.0 * SPEED_TO_BLOCKS_PER_TICK, 275.0 * SPEED_TO_BLOCKS_PER_TICK, 310.0 * SPEED_TO_BLOCKS_PER_TICK, 350.0 * SPEED_TO_BLOCKS_PER_TICK};
     private static final double MAX_REASONABLE_SPEED_BLOCKS_PER_TICK = 420.0 * SPEED_TO_BLOCKS_PER_TICK;
     private static final double MAX_REASONABLE_MOVEMENT_BLOCKS_PER_TICK = MAX_REASONABLE_SPEED_BLOCKS_PER_TICK + 0.35;
     private static final double PASSIVE_GROUND_DRAG = 0.92;
@@ -360,13 +359,10 @@ public class OpenwheelCarEntity extends Entity {
     }
 
     private static double gearTopSpeed(int gear, PrototypeCarSetup setup) {
-        if (gear == REVERSE_GEAR) {
-            return REVERSE_TOP_SPEED * setup.topSpeedCoefficient();
-        }
         if (gear == NEUTRAL_GEAR) {
             return 0.0;
         }
-        return GEAR_TOP_SPEEDS[gear] * setup.topSpeedCoefficient();
+        return VehiclePhysics.gearTopSpeedBlocksPerTick(gear, setup);
     }
 
     public int getRpm() {
@@ -1904,6 +1900,7 @@ public class OpenwheelCarEntity extends Entity {
     private boolean isSoftCollisionBlock(BlockState state) {
         Block block = state.getBlock();
         return state.canBeReplaced()
+            || state.is(BlockTags.FLOWERS)
             || block instanceof LeavesBlock
             || block == Blocks.VINE
             || block == Blocks.SNOW;

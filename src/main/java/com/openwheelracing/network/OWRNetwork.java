@@ -62,10 +62,10 @@ public final class OWRNetwork {
             .decoder(CycleLiveryMessage::decode)
             .consumerMainThread(CycleLiveryMessage::handle)
             .add();
-        CHANNEL.messageBuilder(CycleLiveryColorMessage.class)
-            .encoder(CycleLiveryColorMessage::encode)
-            .decoder(CycleLiveryColorMessage::decode)
-            .consumerMainThread(CycleLiveryColorMessage::handle)
+        CHANNEL.messageBuilder(SetLiveryColorMessage.class)
+            .encoder(SetLiveryColorMessage::encode)
+            .decoder(SetLiveryColorMessage::decode)
+            .consumerMainThread(SetLiveryColorMessage::handle)
             .add();
         CHANNEL.messageBuilder(ShiftMessage.class)
             .encoder(ShiftMessage::encode)
@@ -268,17 +268,17 @@ public final class OWRNetwork {
         }
     }
 
-    public record CycleLiveryColorMessage(int channel, int delta) {
-        private static void encode(CycleLiveryColorMessage message, FriendlyByteBuf buffer) {
+    public record SetLiveryColorMessage(int channel, int color) {
+        private static void encode(SetLiveryColorMessage message, FriendlyByteBuf buffer) {
             buffer.writeInt(message.channel);
-            buffer.writeInt(message.delta);
+            buffer.writeInt(message.color);
         }
 
-        private static CycleLiveryColorMessage decode(FriendlyByteBuf buffer) {
-            return new CycleLiveryColorMessage(buffer.readInt(), buffer.readInt());
+        private static SetLiveryColorMessage decode(FriendlyByteBuf buffer) {
+            return new SetLiveryColorMessage(buffer.readInt(), buffer.readInt());
         }
 
-        private static void handle(CycleLiveryColorMessage message, CustomPayloadEvent.Context context) {
+        private static void handle(SetLiveryColorMessage message, CustomPayloadEvent.Context context) {
             context.enqueueWork(() -> {
                 ServerPlayer player = context.getSender();
                 if (player == null || !(player.containerMenu instanceof CarAssemblyMenu menu)) {
@@ -288,7 +288,7 @@ public final class OWRNetwork {
                 if (!stack.is(OWRItems.PROTOTYPE_CAR_SPAWN.get())) {
                     return;
                 }
-                PrototypeCarItem.setLiveryColors(stack, PrototypeCarItem.getLiveryColors(stack).cycle(message.channel, message.delta));
+                PrototypeCarItem.setLiveryColors(stack, PrototypeCarItem.getLiveryColors(stack).withChannel(message.channel, message.color));
                 menu.slotsChanged(menu.getContainer());
             });
             context.setPacketHandled(true);
